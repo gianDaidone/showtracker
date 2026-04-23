@@ -254,7 +254,32 @@ Future<TmdbSeason> seasonDetail(
           final direct = await ref
               .read(tmdbServiceProvider)
               .getSeasonDetails(showId, animeSeason.tmdbSeasonNumber);
-          if (direct.episodes?.isNotEmpty ?? false) return direct;
+          final rawEps = direct.episodes;
+          if (rawEps != null && rawEps.isNotEmpty) {
+            // Inject AniList precise airingAt into the next airing episode,
+            // since the raw TMDB fetch doesn't include this data.
+            final nextAiring = animeSeason.nextAiringEpisode;
+            if (nextAiring == null) return direct;
+            final enriched = rawEps.map((ep) {
+              if (ep.episodeNumber != nextAiring.episode) return ep;
+              return TmdbEpisode(
+                episodeNumber: ep.episodeNumber,
+                name: ep.name,
+                overview: ep.overview,
+                stillPath: ep.stillPath,
+                airDate: ep.airDate,
+                voteAverage: ep.voteAverage,
+                absoluteEpisodeNumber: ep.absoluteEpisodeNumber,
+                airingAt: nextAiring.airingDateTime,
+              );
+            }).toList();
+            return TmdbSeason(
+              seasonNumber: direct.seasonNumber,
+              episodeCount: direct.episodeCount,
+              name: direct.name,
+              episodes: enriched,
+            );
+          }
         } catch (_) {}
       }
 
