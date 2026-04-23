@@ -38,6 +38,21 @@ class _SeasonSectionState extends ConsumerState<SeasonSection> {
     return map[widget.season.seasonNumber]?.length ?? 0;
   }
 
+  String get _episodeCountLabel {
+    final total = widget.season.episodeCount;
+    final watched = widget.trackedShow != null ? _watchedInSeason : null;
+
+    if (total > 0) {
+      return watched != null
+          ? '$watched / $total ep. visti'
+          : '$total episodi';
+    }
+    // Unknown total (airing season, AniList hasn't set episodes count yet)
+    return watched != null
+        ? watched > 0 ? '$watched ep. visti' : 'In corso'
+        : 'In corso';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -63,9 +78,7 @@ class _SeasonSectionState extends ConsumerState<SeasonSection> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        widget.trackedShow != null
-                            ? '$_watchedInSeason / ${widget.season.episodeCount} ep. visti'
-                            : '${widget.season.episodeCount} episodi',
+                        _episodeCountLabel,
                         style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,

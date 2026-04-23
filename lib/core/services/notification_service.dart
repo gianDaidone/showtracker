@@ -4,8 +4,25 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'app_toast.dart';
 
+class ScheduledNotifInfo {
+  final int id;
+  final String showTitle;
+  final String body;
+  final DateTime scheduledAt;
+
+  const ScheduledNotifInfo({
+    required this.id,
+    required this.showTitle,
+    required this.body,
+    required this.scheduledAt,
+  });
+}
+
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
+
+  // In-memory registry of scheduled notifications (survives only current session).
+  static final Map<int, ScheduledNotifInfo> _registry = {};
 
   static const _channelId = 'episode_releases';
   static const _channelName = 'Uscite episodi';
@@ -29,8 +46,10 @@ class NotificationService {
         ?.requestNotificationsPermission();
   }
 
-  /// Pianifica una notifica alle 13:00 del giorno di uscita dell'episodio.
-  /// Se l'orario è già passato la notifica viene ignorata.
+  /// Pianifica una notifica per l'uscita di un episodio.
+  ///
+  /// Per serie normali (TMDB): alle 09:00 del giorno di uscita.
+  /// Per anime (AniList): all'orario preciso se [useExactTime] è true.
   static Future<void> schedule({
     required int tmdbId,
     required String showTitle,
@@ -38,11 +57,12 @@ class NotificationService {
     required int episodeNumber,
     required String episodeName,
     required DateTime airDate,
+    bool useExactTime = false,
   }) async {
     try {
-      final scheduledAt = DateTime(
-        airDate.year, airDate.month, airDate.day, 9, 0,
-      );
+      final scheduledAt = useExactTime
+          ? airDate
+          : DateTime(airDate.year, airDate.month, airDate.day, 9, 0);
       if (!scheduledAt.isAfter(DateTime.now())) return;
 
       final sNum = seasonNumber.toString().padLeft(2, '0');
@@ -65,12 +85,20 @@ class NotificationService {
         ),
         androidScheduleMode: AndroidScheduleMode.inexact,
       );
+
+      _registry[tmdbId] = ScheduledNotifInfo(
+        id: tmdbId,
+        showTitle: showTitle,
+        body: body,
+        scheduledAt: scheduledAt,
+      );
     } catch (_) {
       AppToast.show('Impossibile pianificare la notifica per $showTitle');
     }
   }
 
   static Future<void> cancel(int tmdbId) async {
+    _registry.remove(tmdbId);
     try {
       await _plugin.cancel(id: tmdbId);
     } catch (_) {
@@ -122,6 +150,28 @@ class NotificationService {
   }
 
   static Future<void> cancelAll() async {
+    _registry.clear();
     await _plugin.cancelAll();
+  }
+
+  /// Returns pending notifications combining Android's scheduler (persists
+  /// across restarts) with the in-session registry (adds scheduled time).
+  static Future<List<ScheduledNotifInfo>> getPendingNotifications() async {
+    final pending = await _plugin.pendingNotificationRequests();
+    final pendingIds = pending.map((p) => p.id).toSet();
+
+    // Remove stale registry entries that Android already fired/cancelled.
+    _registry.removeWhere((id, _) => !pendingIds.contains(id));
+
+    return pending.map((p) {
+      final reg = _registry[p.id];
+      return ScheduledNotifInfo(
+        id: p.id,
+        showTitle: reg?.showTitle ?? p.title ?? '—',
+        body: reg?.body ?? p.body ?? '—',
+        scheduledAt: reg?.scheduledAt ?? DateTime(0),
+      );
+    }).toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
   }
 }

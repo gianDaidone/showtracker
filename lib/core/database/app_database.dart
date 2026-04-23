@@ -8,10 +8,13 @@ import 'tables/tracked_seasons.dart';
 import 'tables/cached_episodes.dart';
 import 'tables/tracked_movies.dart';
 import 'tables/tracked_games.dart';
+import 'tables/yuna_cache.dart';
+import 'tables/anime_season_cache.dart';
 import 'daos/shows_dao.dart';
 import 'daos/movies_dao.dart';
 import 'daos/games_dao.dart';
 import 'daos/cache_dao.dart';
+import 'daos/anime_cache_dao.dart';
 
 export 'tables/enums.dart';
 export 'tables/tracked_shows.dart';
@@ -20,10 +23,13 @@ export 'tables/tracked_seasons.dart';
 export 'tables/cached_episodes.dart';
 export 'tables/tracked_movies.dart';
 export 'tables/tracked_games.dart';
+export 'tables/yuna_cache.dart';
+export 'tables/anime_season_cache.dart';
 export 'daos/shows_dao.dart';
 export 'daos/movies_dao.dart';
 export 'daos/games_dao.dart';
 export 'daos/cache_dao.dart';
+export 'daos/anime_cache_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -35,8 +41,10 @@ part 'app_database.g.dart';
     CachedEpisodes,
     TrackedMovies,
     TrackedGames,
+    YunaCache,
+    AnimeSeasonCache,
   ],
-  daos: [ShowsDao, MoviesDao, GamesDao, CacheDao],
+  daos: [ShowsDao, MoviesDao, GamesDao, CacheDao, AnimeCacheDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase._() : super(_openConnection());
@@ -44,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -69,8 +77,6 @@ class AppDatabase extends _$AppDatabase {
             await customStatement('DROP TABLE IF EXISTS tracked_books');
           }
           if (from < 8) {
-            // Rinomina igdb_id → rawg_id e aggiunge le nuove colonne.
-            // Usiamo la tecnica create+copy+drop per compatibilità con SQLite < 3.25.
             await customStatement('''
               CREATE TABLE IF NOT EXISTS tracked_games_v8 (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,6 +102,14 @@ class AppDatabase extends _$AppDatabase {
             await customStatement('DROP TABLE tracked_games');
             await customStatement(
                 'ALTER TABLE tracked_games_v8 RENAME TO tracked_games');
+          }
+          if (from < 9) {
+            await m.addColumn(trackedShows, trackedShows.isAnime);
+            await m.addColumn(
+                cachedEpisodes, cachedEpisodes.absoluteEpisodeNumber);
+            await m.addColumn(cachedEpisodes, cachedEpisodes.airingAt);
+            await m.createTable(yunaCache);
+            await m.createTable(animeSeasonCache);
           }
         },
       );

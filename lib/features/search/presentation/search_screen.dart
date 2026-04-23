@@ -384,14 +384,7 @@ class _Results extends ConsumerWidget {
           mediaId: g.id,
           sortYear: g.year,
         ),
-    ]..sort((a, b) {
-        final ay = a.sortYear;
-        final by = b.sortYear;
-        if (ay == null && by == null) return 0;
-        if (ay == null) return 1;
-        if (by == null) return -1;
-        return by.compareTo(ay);
-      });
+    ];
 
     if (results.isEmpty && !anyLoading) {
       return Center(

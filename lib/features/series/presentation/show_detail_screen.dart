@@ -32,12 +32,33 @@ class ShowDetailScreen extends ConsumerWidget {
 
 // ── Body ──────────────────────────────────────────────────────────────────────
 
-class _DetailBody extends ConsumerWidget {
+class _DetailBody extends ConsumerStatefulWidget {
   final TmdbShowDetail detail;
   const _DetailBody({required this.detail});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DetailBody> createState() => _DetailBodyState();
+}
+
+class _DetailBodyState extends ConsumerState<_DetailBody> {
+  @override
+  void initState() {
+    super.initState();
+    // Reschedule anime notification once when the detail page opens so that
+    // stale cached nextAiringEpisode data doesn't block scheduling.
+    if (widget.detail.isAnime && widget.detail.animeSeasonsData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref
+            .read(trackedShowsNotifierProvider.notifier)
+            .rescheduleNotification(widget.detail);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final detail = widget.detail;
     final trackedList =
         ref.watch(trackedShowsNotifierProvider).valueOrNull ?? [];
     final TrackedShow? trackedShow =
@@ -181,13 +202,42 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                detail.name,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      detail.name,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (detail.isAnime) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withAlpha(30),
+                        border: Border.all(
+                            color: AppColors.accent.withAlpha(150)),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'ANIME',
+                        style: TextStyle(
+                          color: AppColors.accent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
               if (detail.year != null) ...[
                 const SizedBox(height: 4),

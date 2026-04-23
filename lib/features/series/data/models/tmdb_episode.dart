@@ -7,6 +7,8 @@ class TmdbEpisode {
   final String? stillPath;
   final String? airDate;
   final double? voteAverage;
+  final int? absoluteEpisodeNumber;
+  final DateTime? airingAt;
 
   const TmdbEpisode({
     required this.episodeNumber,
@@ -15,6 +17,8 @@ class TmdbEpisode {
     this.stillPath,
     this.airDate,
     this.voteAverage,
+    this.absoluteEpisodeNumber,
+    this.airingAt,
   });
 
   factory TmdbEpisode.fromJson(
@@ -32,7 +36,7 @@ class TmdbEpisode {
     final enName = notEmpty('name', en ?? {});
     final name = (itName != null && !RegExp(r'^Episodio\s+\d+$').hasMatch(itName))
         ? itName
-        : (enName ?? itName ?? 'Episodio ${ it['episode_number'] }');
+        : (enName ?? itName ?? 'Episodio ${it['episode_number']}');
 
     return TmdbEpisode(
       episodeNumber: it['episode_number'] as int,
@@ -45,6 +49,9 @@ class TmdbEpisode {
   }
 
   bool get hasAired {
+    if (airingAt != null) {
+      return airingAt!.isBefore(DateTime.now());
+    }
     if (airDate == null || airDate!.isEmpty) return false;
     try {
       return DateTime.parse(airDate!).isBefore(DateTime.now());

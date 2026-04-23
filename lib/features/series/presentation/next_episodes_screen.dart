@@ -183,6 +183,7 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                   show: info.show,
                   episode: info.episode,
                   airDate: info.airDate,
+                  preciseAirTime: info.preciseAirTime,
                 );
               },
             ),
