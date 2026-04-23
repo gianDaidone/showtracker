@@ -1,0 +1,52 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+import '../../../core/constants.dart';
+import 'models/rawg_game.dart';
+import 'models/rawg_game_detail.dart';
+
+class RawgService {
+  static const _base = 'https://api.rawg.io/api';
+
+  Uri _uri(String path, [Map<String, String>? params]) {
+    return Uri.parse('$_base$path').replace(
+      queryParameters: {'key': kRawgApiKey, ...?params},
+    );
+  }
+
+  Future<Map<String, dynamic>> _get(Uri uri) async {
+    final response = await http.get(uri);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('RAWG ${response.statusCode}: ${response.reasonPhrase}');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<List<RawgGame>> searchGames(String query) async {
+    if (query.length < 2) return [];
+    final data = await _get(_uri('/games', {
+      'search': query,
+      'page_size': '20',
+    }));
+    return ((data['results'] as List<dynamic>?) ?? [])
+        .map((e) => RawgGame.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<RawgGameDetail> getGameDetails(int id) async {
+    final data = await _get(_uri('/games/$id'));
+    return RawgGameDetail.fromJson(data);
+  }
+
+  Future<List<String>> getScreenshots(int id) async {
+    try {
+      final data = await _get(_uri('/games/$id/screenshots'));
+      return ((data['results'] as List<dynamic>?) ?? [])
+          .map((s) => s['image'] as String)
+          .where((url) => url.isNotEmpty)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+}

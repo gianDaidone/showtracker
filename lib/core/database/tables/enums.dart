@@ -1,0 +1,17 @@
+/// Shared tracking status for all media types.
+enum MediaStatus {
+  watching,
+  completed,
+  paused,
+  dropped,
+  planToWatch;
+
+  /// Human-readable Italian label for UI display.
+  String get label => switch (this) {
+        MediaStatus.watching => 'In visione',
+        MediaStatus.completed => 'Completato',
+        MediaStatus.paused => 'In pausa',
+        MediaStatus.dropped => 'Abbandonato',
+        MediaStatus.planToWatch => 'Da vedere',
+      };
+}
