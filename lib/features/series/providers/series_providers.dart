@@ -42,7 +42,7 @@ class UpcomingEpisodeInfo {
 @riverpod
 TmdbService tmdbService(TmdbServiceRef ref) => TmdbService();
 
-@riverpod
+@Riverpod(keepAlive: true)
 AniListService anilistService(AnilistServiceRef ref) {
   final service = AniListService();
   ref.onDispose(service.dispose);
@@ -72,9 +72,7 @@ Future<List<NormalizedAnimeSeason>?> animeData(
 
   // 1. Check cache
   final cached = await animeCacheDao.getFreshAnimeSeasons(tmdbId);
-  if (cached != null) {
-    return cached;
-  }
+  if (cached != null) return cached;
 
   // 2. Fetch fresh from Yuna + AniList
   try {
@@ -106,7 +104,6 @@ Future<List<NormalizedAnimeSeason>?> animeData(
     final seasons = AnimeDataMerger.merge(
       tmdbSeasons: detail.seasons,
       anilistMedia: anilistMedia,
-      maxSeasons: detail.numberOfSeasons,
     );
 
     if (seasons.isEmpty) return null;

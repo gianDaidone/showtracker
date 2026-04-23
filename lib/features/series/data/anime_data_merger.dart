@@ -19,10 +19,9 @@ class AnimeDataMerger {
   static List<NormalizedAnimeSeason> merge({
     required List<TmdbSeason> tmdbSeasons,
     required List<AniListMedia> anilistMedia,
-    int? maxSeasons,
   }) {
     // 1. Filter to main formats only (no OVA, Movie, Special, ONA)
-    var filtered = anilistMedia
+    final filtered = anilistMedia
         .where((m) => _mainFormats.contains(m.format))
         .toList();
 
@@ -39,12 +38,11 @@ class AnimeDataMerger {
       return a.id.compareTo(b.id);
     });
 
-    // 3. Clamp to TMDB season count
-    if (maxSeasons != null && filtered.length > maxSeasons) {
-      filtered = filtered.take(maxSeasons).toList();
-    }
+    // AniList is authoritative for season count — no clamping to TMDB.
+    // TMDB often groups multiple cours into fewer seasons; AniList always
+    // splits correctly. tmdbSeasons is used only for positional mapping below.
 
-    // 4. Build normalized seasons with positional TMDB season mapping
+    // 3. Build normalized seasons with positional TMDB season mapping
     final result = <NormalizedAnimeSeason>[];
     for (var i = 0; i < filtered.length; i++) {
       final media = filtered[i];
