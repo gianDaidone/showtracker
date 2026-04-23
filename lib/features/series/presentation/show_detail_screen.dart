@@ -32,12 +32,33 @@ class ShowDetailScreen extends ConsumerWidget {
 
 // ── Body ──────────────────────────────────────────────────────────────────────
 
-class _DetailBody extends ConsumerWidget {
+class _DetailBody extends ConsumerStatefulWidget {
   final TmdbShowDetail detail;
   const _DetailBody({required this.detail});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DetailBody> createState() => _DetailBodyState();
+}
+
+class _DetailBodyState extends ConsumerState<_DetailBody> {
+  @override
+  void initState() {
+    super.initState();
+    // Reschedule anime notification once when the detail page opens so that
+    // stale cached nextAiringEpisode data doesn't block scheduling.
+    if (widget.detail.isAnime && widget.detail.animeSeasonsData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref
+            .read(trackedShowsNotifierProvider.notifier)
+            .rescheduleNotification(widget.detail);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final detail = widget.detail;
     final trackedList =
         ref.watch(trackedShowsNotifierProvider).valueOrNull ?? [];
     final TrackedShow? trackedShow =

@@ -213,11 +213,12 @@ Future<TmdbSeason> seasonDetail(
           .getAnimeEpisodesBySeason(showId, animeSeasonsData);
 
       if (redistributed.isNotEmpty) {
-        // Cache all redistributed seasons (cachedAt = now; TTL applied at read time)
+        // Cache only non-empty seasons (empty ones will be retried next time)
         final now = DateTime.now();
         for (final entry in redistributed.entries) {
           final sNum = entry.key;
           final eps = entry.value;
+          if (eps.isEmpty) continue;
           await cacheDao.saveSeasonEpisodes(eps
               .map((e) => CachedEpisodesCompanion(
                     tmdbShowId: Value(showId),
@@ -236,14 +237,27 @@ Future<TmdbSeason> seasonDetail(
         }
 
         final eps = redistributed[seasonNumber] ?? [];
-        return TmdbSeason(
-          seasonNumber: seasonNumber,
-          episodeCount: eps.length,
-          episodes: eps,
-        );
+        if (eps.isNotEmpty) {
+          return TmdbSeason(
+            seasonNumber: seasonNumber,
+            episodeCount: eps.length,
+            episodes: eps,
+          );
+        }
       }
 
-      // Fallback: empty season if redistribution failed
+      // Redistribution gave 0 episodes for this season (TMDB doesn't have the
+      // data yet). For airing/upcoming seasons, try fetching TMDB directly.
+      if (animeSeason.status == 'RELEASING' ||
+          animeSeason.status == 'NOT_YET_RELEASED') {
+        try {
+          final direct = await ref
+              .read(tmdbServiceProvider)
+              .getSeasonDetails(showId, animeSeason.tmdbSeasonNumber);
+          if (direct.episodes?.isNotEmpty ?? false) return direct;
+        } catch (_) {}
+      }
+
       return TmdbSeason(seasonNumber: seasonNumber, episodeCount: 0);
     }
   }
@@ -355,6 +369,11 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
       }
     }
   }
+
+  /// Re-schedules the notification for an already-tracked show.
+  /// Safe to call multiple times (overwrites the previous notification).
+  Future<void> rescheduleNotification(TmdbShowDetail detail) =>
+      _scheduleNotification(detail);
 
   Future<void> _scheduleNotification(TmdbShowDetail detail) async {
     // Anime: use AniList precise airingAt if available
