@@ -472,7 +472,7 @@ return showDetail;
 
 Per serie anime con `nextAiringEpisode.airingAt`:
 - **Priorita' 1:** timestamp AniList (preciso al secondo) → usa questo
-- **Priorita' 2:** data TMDB (solo giorno) → assume **ore 13:00** come default
+- **Priorita' 2:** data TMDB (solo giorno) → assume **ore 09:00** come default
 - Questo garantisce notifiche al momento preciso per gli anime, e notifiche ragionevoli per le serie normali
 
 ---
