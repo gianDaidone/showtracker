@@ -290,6 +290,38 @@ Future<TmdbSeason> seasonDetail(
   // ── Standard TMDB path ─────────────────────────────────────────────────────
   final ttl = _seasonCacheTtl(show?.tmdbStatus, seasonNumber, show?.totalSeasons);
 
+  // Compute 09:00 airingAt for the next airing episode of this season.
+  // Evaluated fresh each time (not cached) so it stays accurate as episodes air.
+  final nextEp = detail.nextEpisodeToAir;
+  DateTime? nextAt;
+  int? nextEpNum;
+  if (nextEp != null &&
+      nextEp.seasonNumber == seasonNumber &&
+      nextEp.airDate != null) {
+    final d = DateTime.tryParse(nextEp.airDate!);
+    if (d != null) {
+      final candidate = DateTime(d.year, d.month, d.day, 9, 0);
+      if (candidate.isAfter(DateTime.now())) {
+        nextAt = candidate;
+        nextEpNum = nextEp.episodeNumber;
+      }
+    }
+  }
+
+  TmdbEpisode injectAt(TmdbEpisode ep) {
+    if (nextAt == null || ep.episodeNumber != nextEpNum) return ep;
+    return TmdbEpisode(
+      episodeNumber: ep.episodeNumber,
+      name: ep.name,
+      overview: ep.overview,
+      stillPath: ep.stillPath,
+      airDate: ep.airDate,
+      voteAverage: ep.voteAverage,
+      absoluteEpisodeNumber: ep.absoluteEpisodeNumber,
+      airingAt: nextAt,
+    );
+  }
+
   final cached =
       await cacheDao.getFreshSeasonEpisodes(showId, seasonNumber, ttl: ttl);
   if (cached.isNotEmpty) {
@@ -297,7 +329,7 @@ Future<TmdbSeason> seasonDetail(
       seasonNumber: seasonNumber,
       episodeCount: cached.length,
       episodes: cached
-          .map((e) => TmdbEpisode(
+          .map((e) => injectAt(TmdbEpisode(
                 episodeNumber: e.episodeNumber,
                 name: e.name,
                 overview: e.overview,
@@ -306,7 +338,7 @@ Future<TmdbSeason> seasonDetail(
                 voteAverage: e.voteAverage,
                 absoluteEpisodeNumber: e.absoluteEpisodeNumber,
                 airingAt: e.airingAt,
-              ))
+              )))
           .toList(),
     );
   }
@@ -335,7 +367,12 @@ Future<TmdbSeason> seasonDetail(
     );
   }
 
-  return season;
+  return TmdbSeason(
+    seasonNumber: season.seasonNumber,
+    episodeCount: season.episodeCount,
+    name: season.name,
+    episodes: season.episodes?.map(injectAt).toList(),
+  );
 }
 
 // ── DB: serie tracciate (stream reattivo) ─────────────────────────────────────
