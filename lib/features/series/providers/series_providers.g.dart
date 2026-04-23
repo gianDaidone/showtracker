@@ -22,11 +22,11 @@ final tmdbServiceProvider = AutoDisposeProvider<TmdbService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef TmdbServiceRef = AutoDisposeProviderRef<TmdbService>;
-String _$anilistServiceHash() => r'b132a5b02df845a583f2a4db35fc7b0034029dde';
+String _$anilistServiceHash() => r'cad02c8a6f80ade99617c14952a5793181e4a192';
 
 /// See also [anilistService].
 @ProviderFor(anilistService)
-final anilistServiceProvider = AutoDisposeProvider<AniListService>.internal(
+final anilistServiceProvider = Provider<AniListService>.internal(
   anilistService,
   name: r'anilistServiceProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -38,7 +38,7 @@ final anilistServiceProvider = AutoDisposeProvider<AniListService>.internal(
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef AnilistServiceRef = AutoDisposeProviderRef<AniListService>;
+typedef AnilistServiceRef = ProviderRef<AniListService>;
 String _$yunaServiceHash() => r'30ccc90f3b4c221c37ed18f6ff5d641bd726ab2e';
 
 /// See also [yunaService].
@@ -207,7 +207,7 @@ class _SearchShowsProviderElement
   String get query => (origin as SearchShowsProvider).query;
 }
 
-String _$animeDataHash() => r'3dd1a6c83c94f318e09d1c20c6378d65f32ce1dc';
+String _$animeDataHash() => r'933a869ae021e5733970e0ffc856aea728749f55';
 
 /// See also [animeData].
 @ProviderFor(animeData)
@@ -341,7 +341,7 @@ class _AnimeDataProviderElement
   int get tmdbId => (origin as AnimeDataProvider).tmdbId;
 }
 
-String _$showDetailHash() => r'4cdbb471ff887b94c8dc8ab65d866db7bd77769c';
+String _$showDetailHash() => r'4a1f40a9f0717c77d0f9aac591466f7a182f883a';
 
 /// See also [showDetail].
 @ProviderFor(showDetail)
