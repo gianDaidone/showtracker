@@ -77,6 +77,16 @@ class $TrackedShowsTable extends TrackedShows
   late final GeneratedColumn<String> tmdbStatus = GeneratedColumn<String>(
       'tmdb_status', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _isAnimeMeta =
+      const VerificationMeta('isAnime');
+  @override
+  late final GeneratedColumn<bool> isAnime = GeneratedColumn<bool>(
+      'is_anime', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_anime" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _addedAtMeta =
       const VerificationMeta('addedAt');
   @override
@@ -96,6 +106,7 @@ class $TrackedShowsTable extends TrackedShows
         totalSeasons,
         totalEpisodes,
         tmdbStatus,
+        isAnime,
         addedAt
       ];
   @override
@@ -161,6 +172,10 @@ class $TrackedShowsTable extends TrackedShows
           tmdbStatus.isAcceptableOrUnknown(
               data['tmdb_status']!, _tmdbStatusMeta));
     }
+    if (data.containsKey('is_anime')) {
+      context.handle(_isAnimeMeta,
+          isAnime.isAcceptableOrUnknown(data['is_anime']!, _isAnimeMeta));
+    }
     if (data.containsKey('added_at')) {
       context.handle(_addedAtMeta,
           addedAt.isAcceptableOrUnknown(data['added_at']!, _addedAtMeta));
@@ -199,6 +214,8 @@ class $TrackedShowsTable extends TrackedShows
           .read(DriftSqlType.int, data['${effectivePrefix}total_episodes']),
       tmdbStatus: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}tmdb_status']),
+      isAnime: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_anime'])!,
       addedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}added_at'])!,
     );
@@ -228,6 +245,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
   /// Stato TMDB della serie: "Returning Series", "Ended", "Canceled", ecc.
   /// Usato per calcolare il TTL della cache episodi in modo intelligente.
   final String? tmdbStatus;
+  final bool isAnime;
   final DateTime addedAt;
   const TrackedShow(
       {required this.id,
@@ -241,6 +259,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       this.totalSeasons,
       this.totalEpisodes,
       this.tmdbStatus,
+      required this.isAnime,
       required this.addedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -273,6 +292,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
     if (!nullToAbsent || tmdbStatus != null) {
       map['tmdb_status'] = Variable<String>(tmdbStatus);
     }
+    map['is_anime'] = Variable<bool>(isAnime);
     map['added_at'] = Variable<DateTime>(addedAt);
     return map;
   }
@@ -304,6 +324,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       tmdbStatus: tmdbStatus == null && nullToAbsent
           ? const Value.absent()
           : Value(tmdbStatus),
+      isAnime: Value(isAnime),
       addedAt: Value(addedAt),
     );
   }
@@ -324,6 +345,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       totalSeasons: serializer.fromJson<int?>(json['totalSeasons']),
       totalEpisodes: serializer.fromJson<int?>(json['totalEpisodes']),
       tmdbStatus: serializer.fromJson<String?>(json['tmdbStatus']),
+      isAnime: serializer.fromJson<bool>(json['isAnime']),
       addedAt: serializer.fromJson<DateTime>(json['addedAt']),
     );
   }
@@ -343,6 +365,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       'totalSeasons': serializer.toJson<int?>(totalSeasons),
       'totalEpisodes': serializer.toJson<int?>(totalEpisodes),
       'tmdbStatus': serializer.toJson<String?>(tmdbStatus),
+      'isAnime': serializer.toJson<bool>(isAnime),
       'addedAt': serializer.toJson<DateTime>(addedAt),
     };
   }
@@ -359,6 +382,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           Value<int?> totalSeasons = const Value.absent(),
           Value<int?> totalEpisodes = const Value.absent(),
           Value<String?> tmdbStatus = const Value.absent(),
+          bool? isAnime,
           DateTime? addedAt}) =>
       TrackedShow(
         id: id ?? this.id,
@@ -374,6 +398,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
         totalEpisodes:
             totalEpisodes.present ? totalEpisodes.value : this.totalEpisodes,
         tmdbStatus: tmdbStatus.present ? tmdbStatus.value : this.tmdbStatus,
+        isAnime: isAnime ?? this.isAnime,
         addedAt: addedAt ?? this.addedAt,
       );
   TrackedShow copyWithCompanion(TrackedShowsCompanion data) {
@@ -396,6 +421,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           : this.totalEpisodes,
       tmdbStatus:
           data.tmdbStatus.present ? data.tmdbStatus.value : this.tmdbStatus,
+      isAnime: data.isAnime.present ? data.isAnime.value : this.isAnime,
       addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
     );
   }
@@ -414,6 +440,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           ..write('totalSeasons: $totalSeasons, ')
           ..write('totalEpisodes: $totalEpisodes, ')
           ..write('tmdbStatus: $tmdbStatus, ')
+          ..write('isAnime: $isAnime, ')
           ..write('addedAt: $addedAt')
           ..write(')'))
         .toString();
@@ -432,6 +459,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       totalSeasons,
       totalEpisodes,
       tmdbStatus,
+      isAnime,
       addedAt);
   @override
   bool operator ==(Object other) =>
@@ -448,6 +476,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           other.totalSeasons == this.totalSeasons &&
           other.totalEpisodes == this.totalEpisodes &&
           other.tmdbStatus == this.tmdbStatus &&
+          other.isAnime == this.isAnime &&
           other.addedAt == this.addedAt);
 }
 
@@ -463,6 +492,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
   final Value<int?> totalSeasons;
   final Value<int?> totalEpisodes;
   final Value<String?> tmdbStatus;
+  final Value<bool> isAnime;
   final Value<DateTime> addedAt;
   const TrackedShowsCompanion({
     this.id = const Value.absent(),
@@ -476,6 +506,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     this.totalSeasons = const Value.absent(),
     this.totalEpisodes = const Value.absent(),
     this.tmdbStatus = const Value.absent(),
+    this.isAnime = const Value.absent(),
     this.addedAt = const Value.absent(),
   });
   TrackedShowsCompanion.insert({
@@ -490,6 +521,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     this.totalSeasons = const Value.absent(),
     this.totalEpisodes = const Value.absent(),
     this.tmdbStatus = const Value.absent(),
+    this.isAnime = const Value.absent(),
     required DateTime addedAt,
   })  : tmdbId = Value(tmdbId),
         title = Value(title),
@@ -507,6 +539,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     Expression<int>? totalSeasons,
     Expression<int>? totalEpisodes,
     Expression<String>? tmdbStatus,
+    Expression<bool>? isAnime,
     Expression<DateTime>? addedAt,
   }) {
     return RawValuesInsertable({
@@ -521,6 +554,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       if (totalSeasons != null) 'total_seasons': totalSeasons,
       if (totalEpisodes != null) 'total_episodes': totalEpisodes,
       if (tmdbStatus != null) 'tmdb_status': tmdbStatus,
+      if (isAnime != null) 'is_anime': isAnime,
       if (addedAt != null) 'added_at': addedAt,
     });
   }
@@ -537,6 +571,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       Value<int?>? totalSeasons,
       Value<int?>? totalEpisodes,
       Value<String?>? tmdbStatus,
+      Value<bool>? isAnime,
       Value<DateTime>? addedAt}) {
     return TrackedShowsCompanion(
       id: id ?? this.id,
@@ -550,6 +585,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       totalSeasons: totalSeasons ?? this.totalSeasons,
       totalEpisodes: totalEpisodes ?? this.totalEpisodes,
       tmdbStatus: tmdbStatus ?? this.tmdbStatus,
+      isAnime: isAnime ?? this.isAnime,
       addedAt: addedAt ?? this.addedAt,
     );
   }
@@ -591,6 +627,9 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     if (tmdbStatus.present) {
       map['tmdb_status'] = Variable<String>(tmdbStatus.value);
     }
+    if (isAnime.present) {
+      map['is_anime'] = Variable<bool>(isAnime.value);
+    }
     if (addedAt.present) {
       map['added_at'] = Variable<DateTime>(addedAt.value);
     }
@@ -611,6 +650,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
           ..write('totalSeasons: $totalSeasons, ')
           ..write('totalEpisodes: $totalEpisodes, ')
           ..write('tmdbStatus: $tmdbStatus, ')
+          ..write('isAnime: $isAnime, ')
           ..write('addedAt: $addedAt')
           ..write(')'))
         .toString();
@@ -1267,6 +1307,18 @@ class $CachedEpisodesTable extends CachedEpisodes
   late final GeneratedColumn<double> voteAverage = GeneratedColumn<double>(
       'vote_average', aliasedName, true,
       type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _absoluteEpisodeNumberMeta =
+      const VerificationMeta('absoluteEpisodeNumber');
+  @override
+  late final GeneratedColumn<int> absoluteEpisodeNumber = GeneratedColumn<int>(
+      'absolute_episode_number', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _airingAtMeta =
+      const VerificationMeta('airingAt');
+  @override
+  late final GeneratedColumn<DateTime> airingAt = GeneratedColumn<DateTime>(
+      'airing_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   static const VerificationMeta _cachedAtMeta =
       const VerificationMeta('cachedAt');
   @override
@@ -1284,6 +1336,8 @@ class $CachedEpisodesTable extends CachedEpisodes
         stillPath,
         airDate,
         voteAverage,
+        absoluteEpisodeNumber,
+        airingAt,
         cachedAt
       ];
   @override
@@ -1347,6 +1401,16 @@ class $CachedEpisodesTable extends CachedEpisodes
           voteAverage.isAcceptableOrUnknown(
               data['vote_average']!, _voteAverageMeta));
     }
+    if (data.containsKey('absolute_episode_number')) {
+      context.handle(
+          _absoluteEpisodeNumberMeta,
+          absoluteEpisodeNumber.isAcceptableOrUnknown(
+              data['absolute_episode_number']!, _absoluteEpisodeNumberMeta));
+    }
+    if (data.containsKey('airing_at')) {
+      context.handle(_airingAtMeta,
+          airingAt.isAcceptableOrUnknown(data['airing_at']!, _airingAtMeta));
+    }
     if (data.containsKey('cached_at')) {
       context.handle(_cachedAtMeta,
           cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta));
@@ -1384,6 +1448,10 @@ class $CachedEpisodesTable extends CachedEpisodes
           .read(DriftSqlType.string, data['${effectivePrefix}air_date']),
       voteAverage: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}vote_average']),
+      absoluteEpisodeNumber: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}absolute_episode_number']),
+      airingAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}airing_at']),
       cachedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}cached_at'])!,
     );
@@ -1405,6 +1473,8 @@ class CachedEpisode extends DataClass implements Insertable<CachedEpisode> {
   final String? stillPath;
   final String? airDate;
   final double? voteAverage;
+  final int? absoluteEpisodeNumber;
+  final DateTime? airingAt;
   final DateTime cachedAt;
   const CachedEpisode(
       {required this.id,
@@ -1416,6 +1486,8 @@ class CachedEpisode extends DataClass implements Insertable<CachedEpisode> {
       this.stillPath,
       this.airDate,
       this.voteAverage,
+      this.absoluteEpisodeNumber,
+      this.airingAt,
       required this.cachedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1436,6 +1508,12 @@ class CachedEpisode extends DataClass implements Insertable<CachedEpisode> {
     }
     if (!nullToAbsent || voteAverage != null) {
       map['vote_average'] = Variable<double>(voteAverage);
+    }
+    if (!nullToAbsent || absoluteEpisodeNumber != null) {
+      map['absolute_episode_number'] = Variable<int>(absoluteEpisodeNumber);
+    }
+    if (!nullToAbsent || airingAt != null) {
+      map['airing_at'] = Variable<DateTime>(airingAt);
     }
     map['cached_at'] = Variable<DateTime>(cachedAt);
     return map;
@@ -1460,6 +1538,12 @@ class CachedEpisode extends DataClass implements Insertable<CachedEpisode> {
       voteAverage: voteAverage == null && nullToAbsent
           ? const Value.absent()
           : Value(voteAverage),
+      absoluteEpisodeNumber: absoluteEpisodeNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(absoluteEpisodeNumber),
+      airingAt: airingAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(airingAt),
       cachedAt: Value(cachedAt),
     );
   }
@@ -1477,6 +1561,9 @@ class CachedEpisode extends DataClass implements Insertable<CachedEpisode> {
       stillPath: serializer.fromJson<String?>(json['stillPath']),
       airDate: serializer.fromJson<String?>(json['airDate']),
       voteAverage: serializer.fromJson<double?>(json['voteAverage']),
+      absoluteEpisodeNumber:
+          serializer.fromJson<int?>(json['absoluteEpisodeNumber']),
+      airingAt: serializer.fromJson<DateTime?>(json['airingAt']),
       cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
     );
   }
@@ -1493,6 +1580,8 @@ class CachedEpisode extends DataClass implements Insertable<CachedEpisode> {
       'stillPath': serializer.toJson<String?>(stillPath),
       'airDate': serializer.toJson<String?>(airDate),
       'voteAverage': serializer.toJson<double?>(voteAverage),
+      'absoluteEpisodeNumber': serializer.toJson<int?>(absoluteEpisodeNumber),
+      'airingAt': serializer.toJson<DateTime?>(airingAt),
       'cachedAt': serializer.toJson<DateTime>(cachedAt),
     };
   }
@@ -1507,6 +1596,8 @@ class CachedEpisode extends DataClass implements Insertable<CachedEpisode> {
           Value<String?> stillPath = const Value.absent(),
           Value<String?> airDate = const Value.absent(),
           Value<double?> voteAverage = const Value.absent(),
+          Value<int?> absoluteEpisodeNumber = const Value.absent(),
+          Value<DateTime?> airingAt = const Value.absent(),
           DateTime? cachedAt}) =>
       CachedEpisode(
         id: id ?? this.id,
@@ -1518,6 +1609,10 @@ class CachedEpisode extends DataClass implements Insertable<CachedEpisode> {
         stillPath: stillPath.present ? stillPath.value : this.stillPath,
         airDate: airDate.present ? airDate.value : this.airDate,
         voteAverage: voteAverage.present ? voteAverage.value : this.voteAverage,
+        absoluteEpisodeNumber: absoluteEpisodeNumber.present
+            ? absoluteEpisodeNumber.value
+            : this.absoluteEpisodeNumber,
+        airingAt: airingAt.present ? airingAt.value : this.airingAt,
         cachedAt: cachedAt ?? this.cachedAt,
       );
   CachedEpisode copyWithCompanion(CachedEpisodesCompanion data) {
@@ -1537,6 +1632,10 @@ class CachedEpisode extends DataClass implements Insertable<CachedEpisode> {
       airDate: data.airDate.present ? data.airDate.value : this.airDate,
       voteAverage:
           data.voteAverage.present ? data.voteAverage.value : this.voteAverage,
+      absoluteEpisodeNumber: data.absoluteEpisodeNumber.present
+          ? data.absoluteEpisodeNumber.value
+          : this.absoluteEpisodeNumber,
+      airingAt: data.airingAt.present ? data.airingAt.value : this.airingAt,
       cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
     );
   }
@@ -1553,14 +1652,27 @@ class CachedEpisode extends DataClass implements Insertable<CachedEpisode> {
           ..write('stillPath: $stillPath, ')
           ..write('airDate: $airDate, ')
           ..write('voteAverage: $voteAverage, ')
+          ..write('absoluteEpisodeNumber: $absoluteEpisodeNumber, ')
+          ..write('airingAt: $airingAt, ')
           ..write('cachedAt: $cachedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, tmdbShowId, seasonNumber, episodeNumber,
-      name, overview, stillPath, airDate, voteAverage, cachedAt);
+  int get hashCode => Object.hash(
+      id,
+      tmdbShowId,
+      seasonNumber,
+      episodeNumber,
+      name,
+      overview,
+      stillPath,
+      airDate,
+      voteAverage,
+      absoluteEpisodeNumber,
+      airingAt,
+      cachedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1574,6 +1686,8 @@ class CachedEpisode extends DataClass implements Insertable<CachedEpisode> {
           other.stillPath == this.stillPath &&
           other.airDate == this.airDate &&
           other.voteAverage == this.voteAverage &&
+          other.absoluteEpisodeNumber == this.absoluteEpisodeNumber &&
+          other.airingAt == this.airingAt &&
           other.cachedAt == this.cachedAt);
 }
 
@@ -1587,6 +1701,8 @@ class CachedEpisodesCompanion extends UpdateCompanion<CachedEpisode> {
   final Value<String?> stillPath;
   final Value<String?> airDate;
   final Value<double?> voteAverage;
+  final Value<int?> absoluteEpisodeNumber;
+  final Value<DateTime?> airingAt;
   final Value<DateTime> cachedAt;
   const CachedEpisodesCompanion({
     this.id = const Value.absent(),
@@ -1598,6 +1714,8 @@ class CachedEpisodesCompanion extends UpdateCompanion<CachedEpisode> {
     this.stillPath = const Value.absent(),
     this.airDate = const Value.absent(),
     this.voteAverage = const Value.absent(),
+    this.absoluteEpisodeNumber = const Value.absent(),
+    this.airingAt = const Value.absent(),
     this.cachedAt = const Value.absent(),
   });
   CachedEpisodesCompanion.insert({
@@ -1610,6 +1728,8 @@ class CachedEpisodesCompanion extends UpdateCompanion<CachedEpisode> {
     this.stillPath = const Value.absent(),
     this.airDate = const Value.absent(),
     this.voteAverage = const Value.absent(),
+    this.absoluteEpisodeNumber = const Value.absent(),
+    this.airingAt = const Value.absent(),
     required DateTime cachedAt,
   })  : tmdbShowId = Value(tmdbShowId),
         seasonNumber = Value(seasonNumber),
@@ -1626,6 +1746,8 @@ class CachedEpisodesCompanion extends UpdateCompanion<CachedEpisode> {
     Expression<String>? stillPath,
     Expression<String>? airDate,
     Expression<double>? voteAverage,
+    Expression<int>? absoluteEpisodeNumber,
+    Expression<DateTime>? airingAt,
     Expression<DateTime>? cachedAt,
   }) {
     return RawValuesInsertable({
@@ -1638,6 +1760,9 @@ class CachedEpisodesCompanion extends UpdateCompanion<CachedEpisode> {
       if (stillPath != null) 'still_path': stillPath,
       if (airDate != null) 'air_date': airDate,
       if (voteAverage != null) 'vote_average': voteAverage,
+      if (absoluteEpisodeNumber != null)
+        'absolute_episode_number': absoluteEpisodeNumber,
+      if (airingAt != null) 'airing_at': airingAt,
       if (cachedAt != null) 'cached_at': cachedAt,
     });
   }
@@ -1652,6 +1777,8 @@ class CachedEpisodesCompanion extends UpdateCompanion<CachedEpisode> {
       Value<String?>? stillPath,
       Value<String?>? airDate,
       Value<double?>? voteAverage,
+      Value<int?>? absoluteEpisodeNumber,
+      Value<DateTime?>? airingAt,
       Value<DateTime>? cachedAt}) {
     return CachedEpisodesCompanion(
       id: id ?? this.id,
@@ -1663,6 +1790,9 @@ class CachedEpisodesCompanion extends UpdateCompanion<CachedEpisode> {
       stillPath: stillPath ?? this.stillPath,
       airDate: airDate ?? this.airDate,
       voteAverage: voteAverage ?? this.voteAverage,
+      absoluteEpisodeNumber:
+          absoluteEpisodeNumber ?? this.absoluteEpisodeNumber,
+      airingAt: airingAt ?? this.airingAt,
       cachedAt: cachedAt ?? this.cachedAt,
     );
   }
@@ -1697,6 +1827,13 @@ class CachedEpisodesCompanion extends UpdateCompanion<CachedEpisode> {
     if (voteAverage.present) {
       map['vote_average'] = Variable<double>(voteAverage.value);
     }
+    if (absoluteEpisodeNumber.present) {
+      map['absolute_episode_number'] =
+          Variable<int>(absoluteEpisodeNumber.value);
+    }
+    if (airingAt.present) {
+      map['airing_at'] = Variable<DateTime>(airingAt.value);
+    }
     if (cachedAt.present) {
       map['cached_at'] = Variable<DateTime>(cachedAt.value);
     }
@@ -1715,6 +1852,8 @@ class CachedEpisodesCompanion extends UpdateCompanion<CachedEpisode> {
           ..write('stillPath: $stillPath, ')
           ..write('airDate: $airDate, ')
           ..write('voteAverage: $voteAverage, ')
+          ..write('absoluteEpisodeNumber: $absoluteEpisodeNumber, ')
+          ..write('airingAt: $airingAt, ')
           ..write('cachedAt: $cachedAt')
           ..write(')'))
         .toString();
@@ -2876,6 +3015,709 @@ class TrackedGamesCompanion extends UpdateCompanion<TrackedGame> {
   }
 }
 
+class $YunaCacheTable extends YunaCache
+    with TableInfo<$YunaCacheTable, YunaCacheData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $YunaCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _tmdbIdMeta = const VerificationMeta('tmdbId');
+  @override
+  late final GeneratedColumn<int> tmdbId = GeneratedColumn<int>(
+      'tmdb_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _anilistIdsJsonMeta =
+      const VerificationMeta('anilistIdsJson');
+  @override
+  late final GeneratedColumn<String> anilistIdsJson = GeneratedColumn<String>(
+      'anilist_ids_json', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _cachedAtMeta =
+      const VerificationMeta('cachedAt');
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+      'cached_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [tmdbId, anilistIdsJson, cachedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'yuna_cache';
+  @override
+  VerificationContext validateIntegrity(Insertable<YunaCacheData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('tmdb_id')) {
+      context.handle(_tmdbIdMeta,
+          tmdbId.isAcceptableOrUnknown(data['tmdb_id']!, _tmdbIdMeta));
+    }
+    if (data.containsKey('anilist_ids_json')) {
+      context.handle(
+          _anilistIdsJsonMeta,
+          anilistIdsJson.isAcceptableOrUnknown(
+              data['anilist_ids_json']!, _anilistIdsJsonMeta));
+    } else if (isInserting) {
+      context.missing(_anilistIdsJsonMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(_cachedAtMeta,
+          cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta));
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {tmdbId};
+  @override
+  YunaCacheData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return YunaCacheData(
+      tmdbId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}tmdb_id'])!,
+      anilistIdsJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}anilist_ids_json'])!,
+      cachedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}cached_at'])!,
+    );
+  }
+
+  @override
+  $YunaCacheTable createAlias(String alias) {
+    return $YunaCacheTable(attachedDatabase, alias);
+  }
+}
+
+class YunaCacheData extends DataClass implements Insertable<YunaCacheData> {
+  final int tmdbId;
+  final String anilistIdsJson;
+  final DateTime cachedAt;
+  const YunaCacheData(
+      {required this.tmdbId,
+      required this.anilistIdsJson,
+      required this.cachedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['tmdb_id'] = Variable<int>(tmdbId);
+    map['anilist_ids_json'] = Variable<String>(anilistIdsJson);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  YunaCacheCompanion toCompanion(bool nullToAbsent) {
+    return YunaCacheCompanion(
+      tmdbId: Value(tmdbId),
+      anilistIdsJson: Value(anilistIdsJson),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory YunaCacheData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return YunaCacheData(
+      tmdbId: serializer.fromJson<int>(json['tmdbId']),
+      anilistIdsJson: serializer.fromJson<String>(json['anilistIdsJson']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'tmdbId': serializer.toJson<int>(tmdbId),
+      'anilistIdsJson': serializer.toJson<String>(anilistIdsJson),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  YunaCacheData copyWith(
+          {int? tmdbId, String? anilistIdsJson, DateTime? cachedAt}) =>
+      YunaCacheData(
+        tmdbId: tmdbId ?? this.tmdbId,
+        anilistIdsJson: anilistIdsJson ?? this.anilistIdsJson,
+        cachedAt: cachedAt ?? this.cachedAt,
+      );
+  YunaCacheData copyWithCompanion(YunaCacheCompanion data) {
+    return YunaCacheData(
+      tmdbId: data.tmdbId.present ? data.tmdbId.value : this.tmdbId,
+      anilistIdsJson: data.anilistIdsJson.present
+          ? data.anilistIdsJson.value
+          : this.anilistIdsJson,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('YunaCacheData(')
+          ..write('tmdbId: $tmdbId, ')
+          ..write('anilistIdsJson: $anilistIdsJson, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(tmdbId, anilistIdsJson, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is YunaCacheData &&
+          other.tmdbId == this.tmdbId &&
+          other.anilistIdsJson == this.anilistIdsJson &&
+          other.cachedAt == this.cachedAt);
+}
+
+class YunaCacheCompanion extends UpdateCompanion<YunaCacheData> {
+  final Value<int> tmdbId;
+  final Value<String> anilistIdsJson;
+  final Value<DateTime> cachedAt;
+  const YunaCacheCompanion({
+    this.tmdbId = const Value.absent(),
+    this.anilistIdsJson = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+  });
+  YunaCacheCompanion.insert({
+    this.tmdbId = const Value.absent(),
+    required String anilistIdsJson,
+    required DateTime cachedAt,
+  })  : anilistIdsJson = Value(anilistIdsJson),
+        cachedAt = Value(cachedAt);
+  static Insertable<YunaCacheData> custom({
+    Expression<int>? tmdbId,
+    Expression<String>? anilistIdsJson,
+    Expression<DateTime>? cachedAt,
+  }) {
+    return RawValuesInsertable({
+      if (tmdbId != null) 'tmdb_id': tmdbId,
+      if (anilistIdsJson != null) 'anilist_ids_json': anilistIdsJson,
+      if (cachedAt != null) 'cached_at': cachedAt,
+    });
+  }
+
+  YunaCacheCompanion copyWith(
+      {Value<int>? tmdbId,
+      Value<String>? anilistIdsJson,
+      Value<DateTime>? cachedAt}) {
+    return YunaCacheCompanion(
+      tmdbId: tmdbId ?? this.tmdbId,
+      anilistIdsJson: anilistIdsJson ?? this.anilistIdsJson,
+      cachedAt: cachedAt ?? this.cachedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (tmdbId.present) {
+      map['tmdb_id'] = Variable<int>(tmdbId.value);
+    }
+    if (anilistIdsJson.present) {
+      map['anilist_ids_json'] = Variable<String>(anilistIdsJson.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('YunaCacheCompanion(')
+          ..write('tmdbId: $tmdbId, ')
+          ..write('anilistIdsJson: $anilistIdsJson, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AnimeSeasonCacheTable extends AnimeSeasonCache
+    with TableInfo<$AnimeSeasonCacheTable, AnimeSeasonCacheData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AnimeSeasonCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _tmdbShowIdMeta =
+      const VerificationMeta('tmdbShowId');
+  @override
+  late final GeneratedColumn<int> tmdbShowId = GeneratedColumn<int>(
+      'tmdb_show_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _seasonNumberMeta =
+      const VerificationMeta('seasonNumber');
+  @override
+  late final GeneratedColumn<int> seasonNumber = GeneratedColumn<int>(
+      'season_number', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _anilistIdMeta =
+      const VerificationMeta('anilistId');
+  @override
+  late final GeneratedColumn<int> anilistId = GeneratedColumn<int>(
+      'anilist_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _episodeCountMeta =
+      const VerificationMeta('episodeCount');
+  @override
+  late final GeneratedColumn<int> episodeCount = GeneratedColumn<int>(
+      'episode_count', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _animeSeasonJsonMeta =
+      const VerificationMeta('animeSeasonJson');
+  @override
+  late final GeneratedColumn<String> animeSeasonJson = GeneratedColumn<String>(
+      'anime_season_json', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _cachedAtMeta =
+      const VerificationMeta('cachedAt');
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+      'cached_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _validUntilMeta =
+      const VerificationMeta('validUntil');
+  @override
+  late final GeneratedColumn<DateTime> validUntil = GeneratedColumn<DateTime>(
+      'valid_until', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        tmdbShowId,
+        seasonNumber,
+        anilistId,
+        episodeCount,
+        status,
+        animeSeasonJson,
+        cachedAt,
+        validUntil
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'anime_season_cache';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<AnimeSeasonCacheData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('tmdb_show_id')) {
+      context.handle(
+          _tmdbShowIdMeta,
+          tmdbShowId.isAcceptableOrUnknown(
+              data['tmdb_show_id']!, _tmdbShowIdMeta));
+    } else if (isInserting) {
+      context.missing(_tmdbShowIdMeta);
+    }
+    if (data.containsKey('season_number')) {
+      context.handle(
+          _seasonNumberMeta,
+          seasonNumber.isAcceptableOrUnknown(
+              data['season_number']!, _seasonNumberMeta));
+    } else if (isInserting) {
+      context.missing(_seasonNumberMeta);
+    }
+    if (data.containsKey('anilist_id')) {
+      context.handle(_anilistIdMeta,
+          anilistId.isAcceptableOrUnknown(data['anilist_id']!, _anilistIdMeta));
+    } else if (isInserting) {
+      context.missing(_anilistIdMeta);
+    }
+    if (data.containsKey('episode_count')) {
+      context.handle(
+          _episodeCountMeta,
+          episodeCount.isAcceptableOrUnknown(
+              data['episode_count']!, _episodeCountMeta));
+    } else if (isInserting) {
+      context.missing(_episodeCountMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('anime_season_json')) {
+      context.handle(
+          _animeSeasonJsonMeta,
+          animeSeasonJson.isAcceptableOrUnknown(
+              data['anime_season_json']!, _animeSeasonJsonMeta));
+    } else if (isInserting) {
+      context.missing(_animeSeasonJsonMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(_cachedAtMeta,
+          cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta));
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    if (data.containsKey('valid_until')) {
+      context.handle(
+          _validUntilMeta,
+          validUntil.isAcceptableOrUnknown(
+              data['valid_until']!, _validUntilMeta));
+    } else if (isInserting) {
+      context.missing(_validUntilMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {tmdbShowId, seasonNumber},
+      ];
+  @override
+  AnimeSeasonCacheData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AnimeSeasonCacheData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      tmdbShowId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}tmdb_show_id'])!,
+      seasonNumber: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}season_number'])!,
+      anilistId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}anilist_id'])!,
+      episodeCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}episode_count'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      animeSeasonJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}anime_season_json'])!,
+      cachedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}cached_at'])!,
+      validUntil: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}valid_until'])!,
+    );
+  }
+
+  @override
+  $AnimeSeasonCacheTable createAlias(String alias) {
+    return $AnimeSeasonCacheTable(attachedDatabase, alias);
+  }
+}
+
+class AnimeSeasonCacheData extends DataClass
+    implements Insertable<AnimeSeasonCacheData> {
+  final int id;
+  final int tmdbShowId;
+  final int seasonNumber;
+  final int anilistId;
+  final int episodeCount;
+  final String status;
+  final String animeSeasonJson;
+  final DateTime cachedAt;
+  final DateTime validUntil;
+  const AnimeSeasonCacheData(
+      {required this.id,
+      required this.tmdbShowId,
+      required this.seasonNumber,
+      required this.anilistId,
+      required this.episodeCount,
+      required this.status,
+      required this.animeSeasonJson,
+      required this.cachedAt,
+      required this.validUntil});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['tmdb_show_id'] = Variable<int>(tmdbShowId);
+    map['season_number'] = Variable<int>(seasonNumber);
+    map['anilist_id'] = Variable<int>(anilistId);
+    map['episode_count'] = Variable<int>(episodeCount);
+    map['status'] = Variable<String>(status);
+    map['anime_season_json'] = Variable<String>(animeSeasonJson);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    map['valid_until'] = Variable<DateTime>(validUntil);
+    return map;
+  }
+
+  AnimeSeasonCacheCompanion toCompanion(bool nullToAbsent) {
+    return AnimeSeasonCacheCompanion(
+      id: Value(id),
+      tmdbShowId: Value(tmdbShowId),
+      seasonNumber: Value(seasonNumber),
+      anilistId: Value(anilistId),
+      episodeCount: Value(episodeCount),
+      status: Value(status),
+      animeSeasonJson: Value(animeSeasonJson),
+      cachedAt: Value(cachedAt),
+      validUntil: Value(validUntil),
+    );
+  }
+
+  factory AnimeSeasonCacheData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AnimeSeasonCacheData(
+      id: serializer.fromJson<int>(json['id']),
+      tmdbShowId: serializer.fromJson<int>(json['tmdbShowId']),
+      seasonNumber: serializer.fromJson<int>(json['seasonNumber']),
+      anilistId: serializer.fromJson<int>(json['anilistId']),
+      episodeCount: serializer.fromJson<int>(json['episodeCount']),
+      status: serializer.fromJson<String>(json['status']),
+      animeSeasonJson: serializer.fromJson<String>(json['animeSeasonJson']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+      validUntil: serializer.fromJson<DateTime>(json['validUntil']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'tmdbShowId': serializer.toJson<int>(tmdbShowId),
+      'seasonNumber': serializer.toJson<int>(seasonNumber),
+      'anilistId': serializer.toJson<int>(anilistId),
+      'episodeCount': serializer.toJson<int>(episodeCount),
+      'status': serializer.toJson<String>(status),
+      'animeSeasonJson': serializer.toJson<String>(animeSeasonJson),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+      'validUntil': serializer.toJson<DateTime>(validUntil),
+    };
+  }
+
+  AnimeSeasonCacheData copyWith(
+          {int? id,
+          int? tmdbShowId,
+          int? seasonNumber,
+          int? anilistId,
+          int? episodeCount,
+          String? status,
+          String? animeSeasonJson,
+          DateTime? cachedAt,
+          DateTime? validUntil}) =>
+      AnimeSeasonCacheData(
+        id: id ?? this.id,
+        tmdbShowId: tmdbShowId ?? this.tmdbShowId,
+        seasonNumber: seasonNumber ?? this.seasonNumber,
+        anilistId: anilistId ?? this.anilistId,
+        episodeCount: episodeCount ?? this.episodeCount,
+        status: status ?? this.status,
+        animeSeasonJson: animeSeasonJson ?? this.animeSeasonJson,
+        cachedAt: cachedAt ?? this.cachedAt,
+        validUntil: validUntil ?? this.validUntil,
+      );
+  AnimeSeasonCacheData copyWithCompanion(AnimeSeasonCacheCompanion data) {
+    return AnimeSeasonCacheData(
+      id: data.id.present ? data.id.value : this.id,
+      tmdbShowId:
+          data.tmdbShowId.present ? data.tmdbShowId.value : this.tmdbShowId,
+      seasonNumber: data.seasonNumber.present
+          ? data.seasonNumber.value
+          : this.seasonNumber,
+      anilistId: data.anilistId.present ? data.anilistId.value : this.anilistId,
+      episodeCount: data.episodeCount.present
+          ? data.episodeCount.value
+          : this.episodeCount,
+      status: data.status.present ? data.status.value : this.status,
+      animeSeasonJson: data.animeSeasonJson.present
+          ? data.animeSeasonJson.value
+          : this.animeSeasonJson,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+      validUntil:
+          data.validUntil.present ? data.validUntil.value : this.validUntil,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnimeSeasonCacheData(')
+          ..write('id: $id, ')
+          ..write('tmdbShowId: $tmdbShowId, ')
+          ..write('seasonNumber: $seasonNumber, ')
+          ..write('anilistId: $anilistId, ')
+          ..write('episodeCount: $episodeCount, ')
+          ..write('status: $status, ')
+          ..write('animeSeasonJson: $animeSeasonJson, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('validUntil: $validUntil')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, tmdbShowId, seasonNumber, anilistId,
+      episodeCount, status, animeSeasonJson, cachedAt, validUntil);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AnimeSeasonCacheData &&
+          other.id == this.id &&
+          other.tmdbShowId == this.tmdbShowId &&
+          other.seasonNumber == this.seasonNumber &&
+          other.anilistId == this.anilistId &&
+          other.episodeCount == this.episodeCount &&
+          other.status == this.status &&
+          other.animeSeasonJson == this.animeSeasonJson &&
+          other.cachedAt == this.cachedAt &&
+          other.validUntil == this.validUntil);
+}
+
+class AnimeSeasonCacheCompanion extends UpdateCompanion<AnimeSeasonCacheData> {
+  final Value<int> id;
+  final Value<int> tmdbShowId;
+  final Value<int> seasonNumber;
+  final Value<int> anilistId;
+  final Value<int> episodeCount;
+  final Value<String> status;
+  final Value<String> animeSeasonJson;
+  final Value<DateTime> cachedAt;
+  final Value<DateTime> validUntil;
+  const AnimeSeasonCacheCompanion({
+    this.id = const Value.absent(),
+    this.tmdbShowId = const Value.absent(),
+    this.seasonNumber = const Value.absent(),
+    this.anilistId = const Value.absent(),
+    this.episodeCount = const Value.absent(),
+    this.status = const Value.absent(),
+    this.animeSeasonJson = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.validUntil = const Value.absent(),
+  });
+  AnimeSeasonCacheCompanion.insert({
+    this.id = const Value.absent(),
+    required int tmdbShowId,
+    required int seasonNumber,
+    required int anilistId,
+    required int episodeCount,
+    required String status,
+    required String animeSeasonJson,
+    required DateTime cachedAt,
+    required DateTime validUntil,
+  })  : tmdbShowId = Value(tmdbShowId),
+        seasonNumber = Value(seasonNumber),
+        anilistId = Value(anilistId),
+        episodeCount = Value(episodeCount),
+        status = Value(status),
+        animeSeasonJson = Value(animeSeasonJson),
+        cachedAt = Value(cachedAt),
+        validUntil = Value(validUntil);
+  static Insertable<AnimeSeasonCacheData> custom({
+    Expression<int>? id,
+    Expression<int>? tmdbShowId,
+    Expression<int>? seasonNumber,
+    Expression<int>? anilistId,
+    Expression<int>? episodeCount,
+    Expression<String>? status,
+    Expression<String>? animeSeasonJson,
+    Expression<DateTime>? cachedAt,
+    Expression<DateTime>? validUntil,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (tmdbShowId != null) 'tmdb_show_id': tmdbShowId,
+      if (seasonNumber != null) 'season_number': seasonNumber,
+      if (anilistId != null) 'anilist_id': anilistId,
+      if (episodeCount != null) 'episode_count': episodeCount,
+      if (status != null) 'status': status,
+      if (animeSeasonJson != null) 'anime_season_json': animeSeasonJson,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (validUntil != null) 'valid_until': validUntil,
+    });
+  }
+
+  AnimeSeasonCacheCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? tmdbShowId,
+      Value<int>? seasonNumber,
+      Value<int>? anilistId,
+      Value<int>? episodeCount,
+      Value<String>? status,
+      Value<String>? animeSeasonJson,
+      Value<DateTime>? cachedAt,
+      Value<DateTime>? validUntil}) {
+    return AnimeSeasonCacheCompanion(
+      id: id ?? this.id,
+      tmdbShowId: tmdbShowId ?? this.tmdbShowId,
+      seasonNumber: seasonNumber ?? this.seasonNumber,
+      anilistId: anilistId ?? this.anilistId,
+      episodeCount: episodeCount ?? this.episodeCount,
+      status: status ?? this.status,
+      animeSeasonJson: animeSeasonJson ?? this.animeSeasonJson,
+      cachedAt: cachedAt ?? this.cachedAt,
+      validUntil: validUntil ?? this.validUntil,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (tmdbShowId.present) {
+      map['tmdb_show_id'] = Variable<int>(tmdbShowId.value);
+    }
+    if (seasonNumber.present) {
+      map['season_number'] = Variable<int>(seasonNumber.value);
+    }
+    if (anilistId.present) {
+      map['anilist_id'] = Variable<int>(anilistId.value);
+    }
+    if (episodeCount.present) {
+      map['episode_count'] = Variable<int>(episodeCount.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (animeSeasonJson.present) {
+      map['anime_season_json'] = Variable<String>(animeSeasonJson.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (validUntil.present) {
+      map['valid_until'] = Variable<DateTime>(validUntil.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnimeSeasonCacheCompanion(')
+          ..write('id: $id, ')
+          ..write('tmdbShowId: $tmdbShowId, ')
+          ..write('seasonNumber: $seasonNumber, ')
+          ..write('anilistId: $anilistId, ')
+          ..write('episodeCount: $episodeCount, ')
+          ..write('status: $status, ')
+          ..write('animeSeasonJson: $animeSeasonJson, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('validUntil: $validUntil')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2886,10 +3728,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CachedEpisodesTable cachedEpisodes = $CachedEpisodesTable(this);
   late final $TrackedMoviesTable trackedMovies = $TrackedMoviesTable(this);
   late final $TrackedGamesTable trackedGames = $TrackedGamesTable(this);
+  late final $YunaCacheTable yunaCache = $YunaCacheTable(this);
+  late final $AnimeSeasonCacheTable animeSeasonCache =
+      $AnimeSeasonCacheTable(this);
   late final ShowsDao showsDao = ShowsDao(this as AppDatabase);
   late final MoviesDao moviesDao = MoviesDao(this as AppDatabase);
   late final GamesDao gamesDao = GamesDao(this as AppDatabase);
   late final CacheDao cacheDao = CacheDao(this as AppDatabase);
+  late final AnimeCacheDao animeCacheDao = AnimeCacheDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2900,7 +3746,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         trackedSeasons,
         cachedEpisodes,
         trackedMovies,
-        trackedGames
+        trackedGames,
+        yunaCache,
+        animeSeasonCache
       ];
 }
 
@@ -2917,6 +3765,7 @@ typedef $$TrackedShowsTableCreateCompanionBuilder = TrackedShowsCompanion
   Value<int?> totalSeasons,
   Value<int?> totalEpisodes,
   Value<String?> tmdbStatus,
+  Value<bool> isAnime,
   required DateTime addedAt,
 });
 typedef $$TrackedShowsTableUpdateCompanionBuilder = TrackedShowsCompanion
@@ -2932,6 +3781,7 @@ typedef $$TrackedShowsTableUpdateCompanionBuilder = TrackedShowsCompanion
   Value<int?> totalSeasons,
   Value<int?> totalEpisodes,
   Value<String?> tmdbStatus,
+  Value<bool> isAnime,
   Value<DateTime> addedAt,
 });
 
@@ -3015,6 +3865,9 @@ class $$TrackedShowsTableFilterComposer
 
   ColumnFilters<String> get tmdbStatus => $composableBuilder(
       column: $table.tmdbStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isAnime => $composableBuilder(
+      column: $table.isAnime, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get addedAt => $composableBuilder(
       column: $table.addedAt, builder: (column) => ColumnFilters(column));
@@ -3106,6 +3959,9 @@ class $$TrackedShowsTableOrderingComposer
   ColumnOrderings<String> get tmdbStatus => $composableBuilder(
       column: $table.tmdbStatus, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get isAnime => $composableBuilder(
+      column: $table.isAnime, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get addedAt => $composableBuilder(
       column: $table.addedAt, builder: (column) => ColumnOrderings(column));
 }
@@ -3151,6 +4007,9 @@ class $$TrackedShowsTableAnnotationComposer
 
   GeneratedColumn<String> get tmdbStatus => $composableBuilder(
       column: $table.tmdbStatus, builder: (column) => column);
+
+  GeneratedColumn<bool> get isAnime =>
+      $composableBuilder(column: $table.isAnime, builder: (column) => column);
 
   GeneratedColumn<DateTime> get addedAt =>
       $composableBuilder(column: $table.addedAt, builder: (column) => column);
@@ -3233,6 +4092,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             Value<int?> totalSeasons = const Value.absent(),
             Value<int?> totalEpisodes = const Value.absent(),
             Value<String?> tmdbStatus = const Value.absent(),
+            Value<bool> isAnime = const Value.absent(),
             Value<DateTime> addedAt = const Value.absent(),
           }) =>
               TrackedShowsCompanion(
@@ -3247,6 +4107,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             totalSeasons: totalSeasons,
             totalEpisodes: totalEpisodes,
             tmdbStatus: tmdbStatus,
+            isAnime: isAnime,
             addedAt: addedAt,
           ),
           createCompanionCallback: ({
@@ -3261,6 +4122,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             Value<int?> totalSeasons = const Value.absent(),
             Value<int?> totalEpisodes = const Value.absent(),
             Value<String?> tmdbStatus = const Value.absent(),
+            Value<bool> isAnime = const Value.absent(),
             required DateTime addedAt,
           }) =>
               TrackedShowsCompanion.insert(
@@ -3275,6 +4137,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             totalSeasons: totalSeasons,
             totalEpisodes: totalEpisodes,
             tmdbStatus: tmdbStatus,
+            isAnime: isAnime,
             addedAt: addedAt,
           ),
           withReferenceMapper: (p0) => p0
@@ -3882,6 +4745,8 @@ typedef $$CachedEpisodesTableCreateCompanionBuilder = CachedEpisodesCompanion
   Value<String?> stillPath,
   Value<String?> airDate,
   Value<double?> voteAverage,
+  Value<int?> absoluteEpisodeNumber,
+  Value<DateTime?> airingAt,
   required DateTime cachedAt,
 });
 typedef $$CachedEpisodesTableUpdateCompanionBuilder = CachedEpisodesCompanion
@@ -3895,6 +4760,8 @@ typedef $$CachedEpisodesTableUpdateCompanionBuilder = CachedEpisodesCompanion
   Value<String?> stillPath,
   Value<String?> airDate,
   Value<double?> voteAverage,
+  Value<int?> absoluteEpisodeNumber,
+  Value<DateTime?> airingAt,
   Value<DateTime> cachedAt,
 });
 
@@ -3933,6 +4800,13 @@ class $$CachedEpisodesTableFilterComposer
 
   ColumnFilters<double> get voteAverage => $composableBuilder(
       column: $table.voteAverage, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get absoluteEpisodeNumber => $composableBuilder(
+      column: $table.absoluteEpisodeNumber,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get airingAt => $composableBuilder(
+      column: $table.airingAt, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get cachedAt => $composableBuilder(
       column: $table.cachedAt, builder: (column) => ColumnFilters(column));
@@ -3976,6 +4850,13 @@ class $$CachedEpisodesTableOrderingComposer
   ColumnOrderings<double> get voteAverage => $composableBuilder(
       column: $table.voteAverage, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get absoluteEpisodeNumber => $composableBuilder(
+      column: $table.absoluteEpisodeNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get airingAt => $composableBuilder(
+      column: $table.airingAt, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
       column: $table.cachedAt, builder: (column) => ColumnOrderings(column));
 }
@@ -4015,6 +4896,12 @@ class $$CachedEpisodesTableAnnotationComposer
 
   GeneratedColumn<double> get voteAverage => $composableBuilder(
       column: $table.voteAverage, builder: (column) => column);
+
+  GeneratedColumn<int> get absoluteEpisodeNumber => $composableBuilder(
+      column: $table.absoluteEpisodeNumber, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get airingAt =>
+      $composableBuilder(column: $table.airingAt, builder: (column) => column);
 
   GeneratedColumn<DateTime> get cachedAt =>
       $composableBuilder(column: $table.cachedAt, builder: (column) => column);
@@ -4056,6 +4943,8 @@ class $$CachedEpisodesTableTableManager extends RootTableManager<
             Value<String?> stillPath = const Value.absent(),
             Value<String?> airDate = const Value.absent(),
             Value<double?> voteAverage = const Value.absent(),
+            Value<int?> absoluteEpisodeNumber = const Value.absent(),
+            Value<DateTime?> airingAt = const Value.absent(),
             Value<DateTime> cachedAt = const Value.absent(),
           }) =>
               CachedEpisodesCompanion(
@@ -4068,6 +4957,8 @@ class $$CachedEpisodesTableTableManager extends RootTableManager<
             stillPath: stillPath,
             airDate: airDate,
             voteAverage: voteAverage,
+            absoluteEpisodeNumber: absoluteEpisodeNumber,
+            airingAt: airingAt,
             cachedAt: cachedAt,
           ),
           createCompanionCallback: ({
@@ -4080,6 +4971,8 @@ class $$CachedEpisodesTableTableManager extends RootTableManager<
             Value<String?> stillPath = const Value.absent(),
             Value<String?> airDate = const Value.absent(),
             Value<double?> voteAverage = const Value.absent(),
+            Value<int?> absoluteEpisodeNumber = const Value.absent(),
+            Value<DateTime?> airingAt = const Value.absent(),
             required DateTime cachedAt,
           }) =>
               CachedEpisodesCompanion.insert(
@@ -4092,6 +4985,8 @@ class $$CachedEpisodesTableTableManager extends RootTableManager<
             stillPath: stillPath,
             airDate: airDate,
             voteAverage: voteAverage,
+            absoluteEpisodeNumber: absoluteEpisodeNumber,
+            airingAt: airingAt,
             cachedAt: cachedAt,
           ),
           withReferenceMapper: (p0) => p0
@@ -4649,6 +5544,377 @@ typedef $$TrackedGamesTableProcessedTableManager = ProcessedTableManager<
     ),
     TrackedGame,
     PrefetchHooks Function()>;
+typedef $$YunaCacheTableCreateCompanionBuilder = YunaCacheCompanion Function({
+  Value<int> tmdbId,
+  required String anilistIdsJson,
+  required DateTime cachedAt,
+});
+typedef $$YunaCacheTableUpdateCompanionBuilder = YunaCacheCompanion Function({
+  Value<int> tmdbId,
+  Value<String> anilistIdsJson,
+  Value<DateTime> cachedAt,
+});
+
+class $$YunaCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $YunaCacheTable> {
+  $$YunaCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get tmdbId => $composableBuilder(
+      column: $table.tmdbId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get anilistIdsJson => $composableBuilder(
+      column: $table.anilistIdsJson,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+      column: $table.cachedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$YunaCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $YunaCacheTable> {
+  $$YunaCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get tmdbId => $composableBuilder(
+      column: $table.tmdbId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get anilistIdsJson => $composableBuilder(
+      column: $table.anilistIdsJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+      column: $table.cachedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$YunaCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $YunaCacheTable> {
+  $$YunaCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get tmdbId =>
+      $composableBuilder(column: $table.tmdbId, builder: (column) => column);
+
+  GeneratedColumn<String> get anilistIdsJson => $composableBuilder(
+      column: $table.anilistIdsJson, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$YunaCacheTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $YunaCacheTable,
+    YunaCacheData,
+    $$YunaCacheTableFilterComposer,
+    $$YunaCacheTableOrderingComposer,
+    $$YunaCacheTableAnnotationComposer,
+    $$YunaCacheTableCreateCompanionBuilder,
+    $$YunaCacheTableUpdateCompanionBuilder,
+    (
+      YunaCacheData,
+      BaseReferences<_$AppDatabase, $YunaCacheTable, YunaCacheData>
+    ),
+    YunaCacheData,
+    PrefetchHooks Function()> {
+  $$YunaCacheTableTableManager(_$AppDatabase db, $YunaCacheTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$YunaCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$YunaCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$YunaCacheTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> tmdbId = const Value.absent(),
+            Value<String> anilistIdsJson = const Value.absent(),
+            Value<DateTime> cachedAt = const Value.absent(),
+          }) =>
+              YunaCacheCompanion(
+            tmdbId: tmdbId,
+            anilistIdsJson: anilistIdsJson,
+            cachedAt: cachedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> tmdbId = const Value.absent(),
+            required String anilistIdsJson,
+            required DateTime cachedAt,
+          }) =>
+              YunaCacheCompanion.insert(
+            tmdbId: tmdbId,
+            anilistIdsJson: anilistIdsJson,
+            cachedAt: cachedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$YunaCacheTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $YunaCacheTable,
+    YunaCacheData,
+    $$YunaCacheTableFilterComposer,
+    $$YunaCacheTableOrderingComposer,
+    $$YunaCacheTableAnnotationComposer,
+    $$YunaCacheTableCreateCompanionBuilder,
+    $$YunaCacheTableUpdateCompanionBuilder,
+    (
+      YunaCacheData,
+      BaseReferences<_$AppDatabase, $YunaCacheTable, YunaCacheData>
+    ),
+    YunaCacheData,
+    PrefetchHooks Function()>;
+typedef $$AnimeSeasonCacheTableCreateCompanionBuilder
+    = AnimeSeasonCacheCompanion Function({
+  Value<int> id,
+  required int tmdbShowId,
+  required int seasonNumber,
+  required int anilistId,
+  required int episodeCount,
+  required String status,
+  required String animeSeasonJson,
+  required DateTime cachedAt,
+  required DateTime validUntil,
+});
+typedef $$AnimeSeasonCacheTableUpdateCompanionBuilder
+    = AnimeSeasonCacheCompanion Function({
+  Value<int> id,
+  Value<int> tmdbShowId,
+  Value<int> seasonNumber,
+  Value<int> anilistId,
+  Value<int> episodeCount,
+  Value<String> status,
+  Value<String> animeSeasonJson,
+  Value<DateTime> cachedAt,
+  Value<DateTime> validUntil,
+});
+
+class $$AnimeSeasonCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $AnimeSeasonCacheTable> {
+  $$AnimeSeasonCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get tmdbShowId => $composableBuilder(
+      column: $table.tmdbShowId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get seasonNumber => $composableBuilder(
+      column: $table.seasonNumber, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get anilistId => $composableBuilder(
+      column: $table.anilistId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get episodeCount => $composableBuilder(
+      column: $table.episodeCount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get animeSeasonJson => $composableBuilder(
+      column: $table.animeSeasonJson,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+      column: $table.cachedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get validUntil => $composableBuilder(
+      column: $table.validUntil, builder: (column) => ColumnFilters(column));
+}
+
+class $$AnimeSeasonCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $AnimeSeasonCacheTable> {
+  $$AnimeSeasonCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get tmdbShowId => $composableBuilder(
+      column: $table.tmdbShowId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get seasonNumber => $composableBuilder(
+      column: $table.seasonNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get anilistId => $composableBuilder(
+      column: $table.anilistId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get episodeCount => $composableBuilder(
+      column: $table.episodeCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get animeSeasonJson => $composableBuilder(
+      column: $table.animeSeasonJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+      column: $table.cachedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get validUntil => $composableBuilder(
+      column: $table.validUntil, builder: (column) => ColumnOrderings(column));
+}
+
+class $$AnimeSeasonCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AnimeSeasonCacheTable> {
+  $$AnimeSeasonCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get tmdbShowId => $composableBuilder(
+      column: $table.tmdbShowId, builder: (column) => column);
+
+  GeneratedColumn<int> get seasonNumber => $composableBuilder(
+      column: $table.seasonNumber, builder: (column) => column);
+
+  GeneratedColumn<int> get anilistId =>
+      $composableBuilder(column: $table.anilistId, builder: (column) => column);
+
+  GeneratedColumn<int> get episodeCount => $composableBuilder(
+      column: $table.episodeCount, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get animeSeasonJson => $composableBuilder(
+      column: $table.animeSeasonJson, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get validUntil => $composableBuilder(
+      column: $table.validUntil, builder: (column) => column);
+}
+
+class $$AnimeSeasonCacheTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AnimeSeasonCacheTable,
+    AnimeSeasonCacheData,
+    $$AnimeSeasonCacheTableFilterComposer,
+    $$AnimeSeasonCacheTableOrderingComposer,
+    $$AnimeSeasonCacheTableAnnotationComposer,
+    $$AnimeSeasonCacheTableCreateCompanionBuilder,
+    $$AnimeSeasonCacheTableUpdateCompanionBuilder,
+    (
+      AnimeSeasonCacheData,
+      BaseReferences<_$AppDatabase, $AnimeSeasonCacheTable,
+          AnimeSeasonCacheData>
+    ),
+    AnimeSeasonCacheData,
+    PrefetchHooks Function()> {
+  $$AnimeSeasonCacheTableTableManager(
+      _$AppDatabase db, $AnimeSeasonCacheTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AnimeSeasonCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AnimeSeasonCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AnimeSeasonCacheTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> tmdbShowId = const Value.absent(),
+            Value<int> seasonNumber = const Value.absent(),
+            Value<int> anilistId = const Value.absent(),
+            Value<int> episodeCount = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String> animeSeasonJson = const Value.absent(),
+            Value<DateTime> cachedAt = const Value.absent(),
+            Value<DateTime> validUntil = const Value.absent(),
+          }) =>
+              AnimeSeasonCacheCompanion(
+            id: id,
+            tmdbShowId: tmdbShowId,
+            seasonNumber: seasonNumber,
+            anilistId: anilistId,
+            episodeCount: episodeCount,
+            status: status,
+            animeSeasonJson: animeSeasonJson,
+            cachedAt: cachedAt,
+            validUntil: validUntil,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int tmdbShowId,
+            required int seasonNumber,
+            required int anilistId,
+            required int episodeCount,
+            required String status,
+            required String animeSeasonJson,
+            required DateTime cachedAt,
+            required DateTime validUntil,
+          }) =>
+              AnimeSeasonCacheCompanion.insert(
+            id: id,
+            tmdbShowId: tmdbShowId,
+            seasonNumber: seasonNumber,
+            anilistId: anilistId,
+            episodeCount: episodeCount,
+            status: status,
+            animeSeasonJson: animeSeasonJson,
+            cachedAt: cachedAt,
+            validUntil: validUntil,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$AnimeSeasonCacheTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AnimeSeasonCacheTable,
+    AnimeSeasonCacheData,
+    $$AnimeSeasonCacheTableFilterComposer,
+    $$AnimeSeasonCacheTableOrderingComposer,
+    $$AnimeSeasonCacheTableAnnotationComposer,
+    $$AnimeSeasonCacheTableCreateCompanionBuilder,
+    $$AnimeSeasonCacheTableUpdateCompanionBuilder,
+    (
+      AnimeSeasonCacheData,
+      BaseReferences<_$AppDatabase, $AnimeSeasonCacheTable,
+          AnimeSeasonCacheData>
+    ),
+    AnimeSeasonCacheData,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4665,4 +5931,8 @@ class $AppDatabaseManager {
       $$TrackedMoviesTableTableManager(_db, _db.trackedMovies);
   $$TrackedGamesTableTableManager get trackedGames =>
       $$TrackedGamesTableTableManager(_db, _db.trackedGames);
+  $$YunaCacheTableTableManager get yunaCache =>
+      $$YunaCacheTableTableManager(_db, _db.yunaCache);
+  $$AnimeSeasonCacheTableTableManager get animeSeasonCache =>
+      $$AnimeSeasonCacheTableTableManager(_db, _db.animeSeasonCache);
 }

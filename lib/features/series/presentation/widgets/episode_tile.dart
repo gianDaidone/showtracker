@@ -49,15 +49,7 @@ class EpisodeTile extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
-        subtitle: episode.airDate != null
-            ? Text(
-                _formatDate(episode.airDate!),
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                ),
-              )
-            : null,
+        subtitle: _buildSubtitle(),
         trailing: onToggle != null && aired
             ? Checkbox(
                 value: isWatched,
@@ -72,6 +64,48 @@ class EpisodeTile extends StatelessWidget {
             : null,
       ),
     );
+  }
+
+  Widget? _buildSubtitle() {
+    // Precise airingAt from AniList (next episode of an airing anime)
+    if (episode.airingAt != null) {
+      final dt = episode.airingAt!;
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final epDay = DateTime(dt.year, dt.month, dt.day);
+      final diff = epDay.difference(today).inDays;
+      final timeStr =
+          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+      final dayLabel = switch (diff) {
+        0 => 'Oggi',
+        1 => 'Domani',
+        _ when diff > 0 => 'Tra $diff giorni',
+        _ => _formatDate(dt.toIso8601String().substring(0, 10)),
+      };
+
+      return Text(
+        '$dayLabel alle $timeStr',
+        style: const TextStyle(
+          color: AppColors.accent,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    }
+
+    // Standard date from TMDB
+    if (episode.airDate != null) {
+      return Text(
+        _formatDate(episode.airDate!),
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 11,
+        ),
+      );
+    }
+
+    return null;
   }
 
   String _formatDate(String iso) {

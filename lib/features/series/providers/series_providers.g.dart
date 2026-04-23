@@ -22,6 +22,39 @@ final tmdbServiceProvider = AutoDisposeProvider<TmdbService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef TmdbServiceRef = AutoDisposeProviderRef<TmdbService>;
+String _$anilistServiceHash() => r'b132a5b02df845a583f2a4db35fc7b0034029dde';
+
+/// See also [anilistService].
+@ProviderFor(anilistService)
+final anilistServiceProvider = AutoDisposeProvider<AniListService>.internal(
+  anilistService,
+  name: r'anilistServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$anilistServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef AnilistServiceRef = AutoDisposeProviderRef<AniListService>;
+String _$yunaServiceHash() => r'30ccc90f3b4c221c37ed18f6ff5d641bd726ab2e';
+
+/// See also [yunaService].
+@ProviderFor(yunaService)
+final yunaServiceProvider = AutoDisposeProvider<YunaService>.internal(
+  yunaService,
+  name: r'yunaServiceProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$yunaServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef YunaServiceRef = AutoDisposeProviderRef<YunaService>;
 String _$searchShowsHash() => r'b478f10ccb1ca66de8c8b6c2f788f885454bf83e';
 
 /// Copied from Dart SDK
@@ -174,7 +207,141 @@ class _SearchShowsProviderElement
   String get query => (origin as SearchShowsProvider).query;
 }
 
-String _$showDetailHash() => r'6a7efb40d5809c49e84a3b01ac23c09f2c513ec1';
+String _$animeDataHash() => r'3dd1a6c83c94f318e09d1c20c6378d65f32ce1dc';
+
+/// See also [animeData].
+@ProviderFor(animeData)
+const animeDataProvider = AnimeDataFamily();
+
+/// See also [animeData].
+class AnimeDataFamily extends Family<AsyncValue<List<NormalizedAnimeSeason>?>> {
+  /// See also [animeData].
+  const AnimeDataFamily();
+
+  /// See also [animeData].
+  AnimeDataProvider call(
+    int tmdbId,
+  ) {
+    return AnimeDataProvider(
+      tmdbId,
+    );
+  }
+
+  @override
+  AnimeDataProvider getProviderOverride(
+    covariant AnimeDataProvider provider,
+  ) {
+    return call(
+      provider.tmdbId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'animeDataProvider';
+}
+
+/// See also [animeData].
+class AnimeDataProvider
+    extends AutoDisposeFutureProvider<List<NormalizedAnimeSeason>?> {
+  /// See also [animeData].
+  AnimeDataProvider(
+    int tmdbId,
+  ) : this._internal(
+          (ref) => animeData(
+            ref as AnimeDataRef,
+            tmdbId,
+          ),
+          from: animeDataProvider,
+          name: r'animeDataProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$animeDataHash,
+          dependencies: AnimeDataFamily._dependencies,
+          allTransitiveDependencies: AnimeDataFamily._allTransitiveDependencies,
+          tmdbId: tmdbId,
+        );
+
+  AnimeDataProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.tmdbId,
+  }) : super.internal();
+
+  final int tmdbId;
+
+  @override
+  Override overrideWith(
+    FutureOr<List<NormalizedAnimeSeason>?> Function(AnimeDataRef provider)
+        create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: AnimeDataProvider._internal(
+        (ref) => create(ref as AnimeDataRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        tmdbId: tmdbId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<List<NormalizedAnimeSeason>?>
+      createElement() {
+    return _AnimeDataProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AnimeDataProvider && other.tmdbId == tmdbId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, tmdbId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin AnimeDataRef
+    on AutoDisposeFutureProviderRef<List<NormalizedAnimeSeason>?> {
+  /// The parameter `tmdbId` of this provider.
+  int get tmdbId;
+}
+
+class _AnimeDataProviderElement
+    extends AutoDisposeFutureProviderElement<List<NormalizedAnimeSeason>?>
+    with AnimeDataRef {
+  _AnimeDataProviderElement(super.provider);
+
+  @override
+  int get tmdbId => (origin as AnimeDataProvider).tmdbId;
+}
+
+String _$showDetailHash() => r'4cdbb471ff887b94c8dc8ab65d866db7bd77769c';
 
 /// See also [showDetail].
 @ProviderFor(showDetail)
@@ -305,7 +472,7 @@ class _ShowDetailProviderElement
   int get tmdbId => (origin as ShowDetailProvider).tmdbId;
 }
 
-String _$seasonDetailHash() => r'05abb7df786bae87fb61a332a5a51f15216b68f8';
+String _$seasonDetailHash() => r'd9c5bf2611e75e9ad3f17955e38536acc3ad81d5';
 
 /// See also [seasonDetail].
 @ProviderFor(seasonDetail)
@@ -455,25 +622,17 @@ class _SeasonDetailProviderElement
 String _$watchedEpisodesBySeasonHash() =>
     r'eed4d8ae81e39a0b3218270cbe597ac9b56b7502';
 
-/// Emette una mappa stagione→episodi per i soli episodi marcati come visti.
-///
-/// Copied from [watchedEpisodesBySeason].
+/// See also [watchedEpisodesBySeason].
 @ProviderFor(watchedEpisodesBySeason)
 const watchedEpisodesBySeasonProvider = WatchedEpisodesBySeasonFamily();
 
-/// Emette una mappa stagione→episodi per i soli episodi marcati come visti.
-///
-/// Copied from [watchedEpisodesBySeason].
+/// See also [watchedEpisodesBySeason].
 class WatchedEpisodesBySeasonFamily
     extends Family<AsyncValue<Map<int, Set<int>>>> {
-  /// Emette una mappa stagione→episodi per i soli episodi marcati come visti.
-  ///
-  /// Copied from [watchedEpisodesBySeason].
+  /// See also [watchedEpisodesBySeason].
   const WatchedEpisodesBySeasonFamily();
 
-  /// Emette una mappa stagione→episodi per i soli episodi marcati come visti.
-  ///
-  /// Copied from [watchedEpisodesBySeason].
+  /// See also [watchedEpisodesBySeason].
   WatchedEpisodesBySeasonProvider call(
     int dbShowId,
   ) {
@@ -506,14 +665,10 @@ class WatchedEpisodesBySeasonFamily
   String? get name => r'watchedEpisodesBySeasonProvider';
 }
 
-/// Emette una mappa stagione→episodi per i soli episodi marcati come visti.
-///
-/// Copied from [watchedEpisodesBySeason].
+/// See also [watchedEpisodesBySeason].
 class WatchedEpisodesBySeasonProvider
     extends AutoDisposeStreamProvider<Map<int, Set<int>>> {
-  /// Emette una mappa stagione→episodi per i soli episodi marcati come visti.
-  ///
-  /// Copied from [watchedEpisodesBySeason].
+  /// See also [watchedEpisodesBySeason].
   WatchedEpisodesBySeasonProvider(
     int dbShowId,
   ) : this._internal(
@@ -603,24 +758,16 @@ class _WatchedEpisodesBySeasonProviderElement
 
 String _$watchedCountHash() => r'4fae0b2b7d28bd88218200a9c13e9bc32918bdd5';
 
-/// Emette il conteggio totale degli episodi visti per una serie (usato nel card).
-///
-/// Copied from [watchedCount].
+/// See also [watchedCount].
 @ProviderFor(watchedCount)
 const watchedCountProvider = WatchedCountFamily();
 
-/// Emette il conteggio totale degli episodi visti per una serie (usato nel card).
-///
-/// Copied from [watchedCount].
+/// See also [watchedCount].
 class WatchedCountFamily extends Family<AsyncValue<int>> {
-  /// Emette il conteggio totale degli episodi visti per una serie (usato nel card).
-  ///
-  /// Copied from [watchedCount].
+  /// See also [watchedCount].
   const WatchedCountFamily();
 
-  /// Emette il conteggio totale degli episodi visti per una serie (usato nel card).
-  ///
-  /// Copied from [watchedCount].
+  /// See also [watchedCount].
   WatchedCountProvider call(
     int dbShowId,
   ) {
@@ -653,13 +800,9 @@ class WatchedCountFamily extends Family<AsyncValue<int>> {
   String? get name => r'watchedCountProvider';
 }
 
-/// Emette il conteggio totale degli episodi visti per una serie (usato nel card).
-///
-/// Copied from [watchedCount].
+/// See also [watchedCount].
 class WatchedCountProvider extends AutoDisposeStreamProvider<int> {
-  /// Emette il conteggio totale degli episodi visti per una serie (usato nel card).
-  ///
-  /// Copied from [watchedCount].
+  /// See also [watchedCount].
   WatchedCountProvider(
     int dbShowId,
   ) : this._internal(
@@ -746,24 +889,16 @@ class _WatchedCountProviderElement extends AutoDisposeStreamProviderElement<int>
 String _$seasonEpisodeCountsHash() =>
     r'1f4601adce963053f5915980ce8504a85557fff8';
 
-/// Mappa stagione→episodeCount letta dal DB locale (nessuna chiamata API).
-///
-/// Copied from [seasonEpisodeCounts].
+/// See also [seasonEpisodeCounts].
 @ProviderFor(seasonEpisodeCounts)
 const seasonEpisodeCountsProvider = SeasonEpisodeCountsFamily();
 
-/// Mappa stagione→episodeCount letta dal DB locale (nessuna chiamata API).
-///
-/// Copied from [seasonEpisodeCounts].
+/// See also [seasonEpisodeCounts].
 class SeasonEpisodeCountsFamily extends Family<AsyncValue<Map<int, int>>> {
-  /// Mappa stagione→episodeCount letta dal DB locale (nessuna chiamata API).
-  ///
-  /// Copied from [seasonEpisodeCounts].
+  /// See also [seasonEpisodeCounts].
   const SeasonEpisodeCountsFamily();
 
-  /// Mappa stagione→episodeCount letta dal DB locale (nessuna chiamata API).
-  ///
-  /// Copied from [seasonEpisodeCounts].
+  /// See also [seasonEpisodeCounts].
   SeasonEpisodeCountsProvider call(
     int dbShowId,
   ) {
@@ -796,14 +931,10 @@ class SeasonEpisodeCountsFamily extends Family<AsyncValue<Map<int, int>>> {
   String? get name => r'seasonEpisodeCountsProvider';
 }
 
-/// Mappa stagione→episodeCount letta dal DB locale (nessuna chiamata API).
-///
-/// Copied from [seasonEpisodeCounts].
+/// See also [seasonEpisodeCounts].
 class SeasonEpisodeCountsProvider
     extends AutoDisposeFutureProvider<Map<int, int>> {
-  /// Mappa stagione→episodeCount letta dal DB locale (nessuna chiamata API).
-  ///
-  /// Copied from [seasonEpisodeCounts].
+  /// See also [seasonEpisodeCounts].
   SeasonEpisodeCountsProvider(
     int dbShowId,
   ) : this._internal(
@@ -891,10 +1022,7 @@ class _SeasonEpisodeCountsProviderElement
 String _$watchingShowsWithEpisodesHash() =>
     r'f09eebcbc7a15c3d83e9882916ca088711690279';
 
-/// Emette serie+episodi visti in un'unica query JOIN (elimina gli skeleton
-/// del tab "Da Vedere" causati dai N stream separati per card).
-///
-/// Copied from [watchingShowsWithEpisodes].
+/// See also [watchingShowsWithEpisodes].
 @ProviderFor(watchingShowsWithEpisodes)
 final watchingShowsWithEpisodesProvider =
     AutoDisposeStreamProvider<List<ShowWithWatchedEpisodes>>.internal(
@@ -911,12 +1039,9 @@ final watchingShowsWithEpisodesProvider =
 // ignore: unused_element
 typedef WatchingShowsWithEpisodesRef
     = AutoDisposeStreamProviderRef<List<ShowWithWatchedEpisodes>>;
-String _$upcomingEpisodesHash() => r'cb7d365e883671cae7542671b0dc8efe242a6ca7';
+String _$upcomingEpisodesHash() => r'9ef2d6b0b75441f8ec4ff2225856c8a5380ba1fb';
 
-/// Calcola la lista degli episodi in uscita per tutte le serie tracciate.
-/// Legge next_episode_to_air da TMDB (già incluso nella risposta di showDetail).
-///
-/// Copied from [upcomingEpisodes].
+/// See also [upcomingEpisodes].
 @ProviderFor(upcomingEpisodes)
 final upcomingEpisodesProvider =
     AutoDisposeFutureProvider<List<UpcomingEpisodeInfo>>.internal(
@@ -934,7 +1059,7 @@ final upcomingEpisodesProvider =
 typedef UpcomingEpisodesRef
     = AutoDisposeFutureProviderRef<List<UpcomingEpisodeInfo>>;
 String _$trackedShowsNotifierHash() =>
-    r'68b57cbc1a73bd56d7e3e143a3e14b3e9b8e246b';
+    r'894d29726401761037fde1c84a4bd66a1cf271fa';
 
 /// See also [TrackedShowsNotifier].
 @ProviderFor(TrackedShowsNotifier)

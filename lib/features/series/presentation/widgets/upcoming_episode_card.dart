@@ -11,11 +11,15 @@ class UpcomingEpisodeCard extends StatelessWidget {
   final TmdbNextEpisode episode;
   final DateTime airDate;
 
+  /// Precise airing time from AniList (non-null for anime with exact schedule).
+  final DateTime? preciseAirTime;
+
   const UpcomingEpisodeCard({
     super.key,
     required this.show,
     required this.episode,
     required this.airDate,
+    this.preciseAirTime,
   });
 
   String get _imageUrl {
@@ -31,25 +35,34 @@ class UpcomingEpisodeCard extends StatelessWidget {
   String get _airDateLabel {
     final today = DateTime.now();
     final todayMid = DateTime(today.year, today.month, today.day);
-    final diff = airDate.difference(todayMid).inDays;
+    final airMid = DateTime(airDate.year, airDate.month, airDate.day);
+    final diff = airMid.difference(todayMid).inDays;
 
-    if (diff == 0) return 'Oggi';
-    if (diff == 1) return 'Domani';
-    if (diff <= 7) return 'Tra $diff giorni';
+    // Precise time suffix for anime
+    String timeSuffix = '';
+    if (preciseAirTime != null) {
+      final h = preciseAirTime!.hour.toString().padLeft(2, '0');
+      final m = preciseAirTime!.minute.toString().padLeft(2, '0');
+      timeSuffix = ' alle $h:$m';
+    }
+
+    if (diff == 0) return 'Oggi$timeSuffix';
+    if (diff == 1) return 'Domani$timeSuffix';
+    if (diff <= 7) return 'Tra $diff giorni$timeSuffix';
 
     const months = [
       'gen', 'feb', 'mar', 'apr', 'mag', 'giu',
       'lug', 'ago', 'set', 'ott', 'nov', 'dic',
     ];
-    final suffix =
-        airDate.year != today.year ? ' ${airDate.year}' : '';
-    return '${airDate.day} ${months[airDate.month - 1]}$suffix';
+    final suffix = airDate.year != today.year ? ' ${airDate.year}' : '';
+    return '${airDate.day} ${months[airDate.month - 1]}$suffix$timeSuffix';
   }
 
   Color get _badgeColor {
     final today = DateTime.now();
     final todayMid = DateTime(today.year, today.month, today.day);
-    final diff = airDate.difference(todayMid).inDays;
+    final airMid = DateTime(airDate.year, airDate.month, airDate.day);
+    final diff = airMid.difference(todayMid).inDays;
     if (diff == 0) return const Color(0xFF4CAF50);
     if (diff <= 2) return AppColors.accent;
     return AppColors.textSecondary;
@@ -60,9 +73,17 @@ class UpcomingEpisodeCard extends StatelessWidget {
   String get _imageBadgeLabel {
     final today = DateTime.now();
     final todayMid = DateTime(today.year, today.month, today.day);
-    final diff = airDate.difference(todayMid).inDays;
+    final airMid = DateTime(airDate.year, airDate.month, airDate.day);
+    final diff = airMid.difference(todayMid).inDays;
 
-    if (diff == 0) return 'Oggi';
+    if (diff == 0) {
+      if (preciseAirTime != null) {
+        final h = preciseAirTime!.hour.toString().padLeft(2, '0');
+        final m = preciseAirTime!.minute.toString().padLeft(2, '0');
+        return '$h:$m';
+      }
+      return 'Oggi';
+    }
     if (diff == 1) return 'Domani';
 
     const months = [
@@ -76,7 +97,8 @@ class UpcomingEpisodeCard extends StatelessWidget {
   Color get _imageBadgeColor {
     final today = DateTime.now();
     final todayMid = DateTime(today.year, today.month, today.day);
-    final diff = airDate.difference(todayMid).inDays;
+    final airMid = DateTime(airDate.year, airDate.month, airDate.day);
+    final diff = airMid.difference(todayMid).inDays;
     if (diff == 0) return const Color(0xFF4CAF50);
     return AppColors.accent;
   }

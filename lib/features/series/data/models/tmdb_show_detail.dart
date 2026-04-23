@@ -1,4 +1,5 @@
 import '../../../../core/constants.dart';
+import 'normalized_anime_season.dart';
 import 'tmdb_episode.dart';
 import 'tmdb_season.dart';
 
@@ -37,7 +38,6 @@ class TmdbNextEpisode {
     );
   }
 
-  /// Converte in TmdbEpisode per riusare showEpisodeDetailSheet.
   TmdbEpisode toTmdbEpisode() => TmdbEpisode(
         episodeNumber: episodeNumber,
         name: name,
@@ -61,8 +61,10 @@ class TmdbShowDetail {
   final double? voteAverage;
   final String? firstAirDate;
   final List<String> genres;
+  final List<String> originCountries;
   final List<TmdbSeason> seasons;
   final TmdbNextEpisode? nextEpisodeToAir;
+  final List<NormalizedAnimeSeason>? animeSeasonsData;
 
   const TmdbShowDetail({
     required this.id,
@@ -77,8 +79,10 @@ class TmdbShowDetail {
     this.voteAverage,
     this.firstAirDate,
     required this.genres,
+    required this.originCountries,
     required this.seasons,
     this.nextEpisodeToAir,
+    this.animeSeasonsData,
   });
 
   factory TmdbShowDetail.fromJson(
@@ -109,15 +113,52 @@ class TmdbShowDetail {
       genres: ((it['genres'] as List<dynamic>?) ?? [])
           .map((g) => (g as Map<String, dynamic>)['name'] as String)
           .toList(),
+      originCountries:
+          ((it['origin_country'] as List<dynamic>?) ?? []).cast<String>(),
       seasons: rawSeasons
           .map((s) => TmdbSeason.fromJson(s as Map<String, dynamic>))
-          .where((s) => s.seasonNumber > 0) // exclude Season 0 (Speciali)
+          .where((s) => s.seasonNumber > 0)
           .toList(),
       nextEpisodeToAir: it['next_episode_to_air'] != null
           ? TmdbNextEpisode.fromJson(
               it['next_episode_to_air'] as Map<String, dynamic>)
           : null,
     );
+  }
+
+  TmdbShowDetail copyWith({
+    List<TmdbSeason>? seasons,
+    List<NormalizedAnimeSeason>? animeSeasonsData,
+  }) =>
+      TmdbShowDetail(
+        id: id,
+        name: name,
+        overview: overview,
+        posterPath: posterPath,
+        backdropPath: backdropPath,
+        status: status,
+        inProduction: inProduction,
+        numberOfSeasons: numberOfSeasons,
+        numberOfEpisodes: numberOfEpisodes,
+        voteAverage: voteAverage,
+        firstAirDate: firstAirDate,
+        genres: genres,
+        originCountries: originCountries,
+        seasons: seasons ?? this.seasons,
+        nextEpisodeToAir: nextEpisodeToAir,
+        animeSeasonsData: animeSeasonsData ?? this.animeSeasonsData,
+      );
+
+  // ── Computed ──────────────────────────────────────────────────────────────
+
+  bool get isAnime {
+    final asianCountries = {'JP', 'KR', 'CN', 'TW', 'HK'};
+    final isAnimation = genres.any((g) {
+      final lower = g.toLowerCase();
+      return lower == 'animation' || lower == 'animazione';
+    });
+    final isAsian = originCountries.any(asianCountries.contains);
+    return isAnimation && isAsian;
   }
 
   String? get posterUrl =>

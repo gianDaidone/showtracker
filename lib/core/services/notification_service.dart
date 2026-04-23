@@ -29,8 +29,10 @@ class NotificationService {
         ?.requestNotificationsPermission();
   }
 
-  /// Pianifica una notifica alle 13:00 del giorno di uscita dell'episodio.
-  /// Se l'orario è già passato la notifica viene ignorata.
+  /// Pianifica una notifica per l'uscita di un episodio.
+  ///
+  /// Per serie normali (TMDB): alle 09:00 del giorno di uscita.
+  /// Per anime (AniList): all'orario preciso se [useExactTime] è true.
   static Future<void> schedule({
     required int tmdbId,
     required String showTitle,
@@ -38,11 +40,12 @@ class NotificationService {
     required int episodeNumber,
     required String episodeName,
     required DateTime airDate,
+    bool useExactTime = false,
   }) async {
     try {
-      final scheduledAt = DateTime(
-        airDate.year, airDate.month, airDate.day, 9, 0,
-      );
+      final scheduledAt = useExactTime
+          ? airDate
+          : DateTime(airDate.year, airDate.month, airDate.day, 9, 0);
       if (!scheduledAt.isAfter(DateTime.now())) return;
 
       final sNum = seasonNumber.toString().padLeft(2, '0');

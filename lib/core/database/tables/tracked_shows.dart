@@ -15,5 +15,7 @@ class TrackedShows extends Table {
   /// Stato TMDB della serie: "Returning Series", "Ended", "Canceled", ecc.
   /// Usato per calcolare il TTL della cache episodi in modo intelligente.
   TextColumn get tmdbStatus => text().nullable()();
+  BoolColumn get isAnime =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get addedAt => dateTime()();
 }

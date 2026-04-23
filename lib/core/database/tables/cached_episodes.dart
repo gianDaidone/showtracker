@@ -12,6 +12,8 @@ class CachedEpisodes extends Table {
   TextColumn get stillPath => text().nullable()();
   TextColumn get airDate => text().nullable()();
   RealColumn get voteAverage => real().nullable()();
+  IntColumn get absoluteEpisodeNumber => integer().nullable()();
+  DateTimeColumn get airingAt => dateTime().nullable()();
   DateTimeColumn get cachedAt => dateTime()();
 
   @override

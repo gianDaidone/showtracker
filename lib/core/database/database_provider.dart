@@ -22,3 +22,7 @@ final gamesDaoProvider = Provider<GamesDao>((ref) {
 final cacheDaoProvider = Provider<CacheDao>((ref) {
   return ref.watch(databaseProvider).cacheDao;
 });
+
+final animeCacheDaoProvider = Provider<AnimeCacheDao>((ref) {
+  return ref.watch(databaseProvider).animeCacheDao;
+});
