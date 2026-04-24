@@ -547,12 +547,26 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
               DateTime(airingAt.year, airingAt.month, airingAt.day);
           if (airMidnight.isBefore(todayMidnight)) continue;
 
+          // Try to get episode name from season detail (uses SQLite cache,
+          // falls back to TMDB fetch if not cached yet).
+          String episodeName = '';
+          try {
+            final seasonDetail = await ref.read(seasonDetailProvider(
+              showId: show.tmdbId,
+              seasonNumber: animeSeason.seasonNumber,
+            ).future);
+            final ep = seasonDetail.episodes
+                ?.where((e) => e.episodeNumber == nextAiring.episode)
+                .firstOrNull;
+            if (ep != null && ep.name.isNotEmpty) episodeName = ep.name;
+          } catch (_) {}
+
           results.add(UpcomingEpisodeInfo(
             show: show,
             episode: TmdbNextEpisode(
               seasonNumber: animeSeason.seasonNumber,
               episodeNumber: nextAiring.episode,
-              name: '',
+              name: episodeName,
               airDate: airingAt.toIso8601String(),
             ),
             airDate: airMidnight,
@@ -572,9 +586,35 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
           DateTime(airDate.year, airDate.month, airDate.day);
       if (airMidnight.isBefore(todayMidnight)) continue;
 
+      // TMDB's show-detail endpoint often returns an empty name or a generic
+      // placeholder (e.g. "Episodio 5") in next_episode_to_air. Fetch the
+      // season detail (cached after first load) to get the real episode name.
+      String episodeName = next.name;
+      final _placeholderRe = RegExp(r'^Episodio\s+\d+$|^Episode\s+\d+$', caseSensitive: false);
+      if (episodeName.isEmpty || _placeholderRe.hasMatch(episodeName.trim())) {
+        try {
+          final seasonDetail = await ref.read(seasonDetailProvider(
+            showId: show.tmdbId,
+            seasonNumber: next.seasonNumber,
+          ).future);
+          final ep = seasonDetail.episodes
+              ?.where((e) => e.episodeNumber == next.episodeNumber)
+              .firstOrNull;
+          if (ep != null && ep.name.isNotEmpty) episodeName = ep.name;
+        } catch (_) {}
+      }
+
       results.add(UpcomingEpisodeInfo(
         show: show,
-        episode: next,
+        episode: TmdbNextEpisode(
+          seasonNumber: next.seasonNumber,
+          episodeNumber: next.episodeNumber,
+          name: episodeName,
+          overview: next.overview,
+          stillPath: next.stillPath,
+          airDate: next.airDate,
+          voteAverage: next.voteAverage,
+        ),
         airDate: airMidnight,
       ));
     } catch (_) {

@@ -10,44 +10,72 @@ import 'widgets/upcoming_episode_card.dart';
 /// Schermata principale del tab Serie.
 /// Due tab: "Da Vedere" (prossimo episodio per serie in visione)
 /// e "In Uscita" (episodi futuri delle serie tracciate).
-class NextEpisodesScreen extends ConsumerWidget {
+class NextEpisodesScreen extends ConsumerStatefulWidget {
   const NextEpisodesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NextEpisodesScreen> createState() => _NextEpisodesScreenState();
+}
+
+class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    // Invalidate "In Uscita" whenever the user switches to it so the episode
+    // names are always fresh (they may have been cached by opening a detail page).
+    if (_tabController.index == 1 && !_tabController.indexIsChanging) {
+      ref.invalidate(upcomingEpisodesProvider);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final allShowsAsync = ref.watch(trackedShowsNotifierProvider);
     final totalCount = allShowsAsync.valueOrNull?.length ?? 0;
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // ── Header ────────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
-                child: _SeriesHeader(totalCount: totalCount),
-              ),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── Header ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+              child: _SeriesHeader(totalCount: totalCount),
+            ),
 
-              // ── TabBar ────────────────────────────────────────────────
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 20, 16, 0),
-                child: _SeriesTabBar(),
-              ),
+            // ── TabBar ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              child: _SeriesTabBar(controller: _tabController),
+            ),
 
-              // ── TabBarView ────────────────────────────────────────────
-              const Expanded(
-                child: TabBarView(
-                  children: [
-                    _DaVedereTab(),
-                    _InUscitaTab(),
-                  ],
-                ),
+            // ── TabBarView ────────────────────────────────────────────
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: const [
+                  _DaVedereTab(),
+                  _InUscitaTab(),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -57,7 +85,8 @@ class NextEpisodesScreen extends ConsumerWidget {
 // ── TabBar ────────────────────────────────────────────────────────────────────
 
 class _SeriesTabBar extends StatelessWidget {
-  const _SeriesTabBar();
+  final TabController controller;
+  const _SeriesTabBar({required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +96,7 @@ class _SeriesTabBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: TabBar(
+        controller: controller,
         tabs: const [
           Tab(text: 'Da Vedere'),
           Tab(text: 'In Uscita'),
