@@ -437,9 +437,43 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
   Future<void> rescheduleNotification(TmdbShowDetail detail) =>
       _scheduleNotification(detail);
 
+  /// Fetches the show detail and re-schedules the notification.
+  /// Errors are swallowed — notification scheduling is best-effort.
+  Future<void> rescheduleNotificationById(int tmdbId) async {
+    try {
+      final detail = await ref.read(showDetailProvider(tmdbId).future);
+      await _scheduleNotification(detail);
+    } catch (_) {}
+  }
+
+  /// Reschedules notifications for every actively-tracked show. Acts as a
+  /// safety net on app startup: if a previous schedule attempt silently
+  /// skipped because TMDB's `next_episode_to_air` was still pointing at the
+  /// just-aired episode, this re-runs the logic with now-current data.
+  Future<void> rescheduleAllNotifications() async {
+    final shows = await ref.read(showsDaoProvider).getAll();
+    for (final show in shows) {
+      if (show.status == MediaStatus.completed ||
+          show.status == MediaStatus.dropped) {
+        continue;
+      }
+      try {
+        final detail = await ref.read(showDetailProvider(show.tmdbId).future);
+        await _scheduleNotification(detail);
+      } catch (_) {}
+    }
+  }
+
   Future<void> _scheduleNotification(TmdbShowDetail detail) async {
-    // Anime: use AniList precise airingAt if available
-    if (detail.isAnime && detail.animeSeasonsData != null) {
+    // Anime: use AniList precise airingAt if available.
+    //
+    // We deliberately do NOT fall through to the 09:00 TMDB path when AniList
+    // data is missing or stale: 09:00 would be wrong for most anime (which
+    // typically air evening JST ≈ early afternoon Europe), and overwriting an
+    // already-correct precise notification with a 09:00 one is worse than
+    // leaving the existing schedule untouched.
+    if (detail.isAnime) {
+      if (detail.animeSeasonsData == null) return;
       for (final animeSeason in detail.animeSeasonsData!) {
         final nextAiring = animeSeason.nextAiringEpisode;
         if (nextAiring == null) continue;
@@ -457,23 +491,59 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
         );
         return;
       }
+      return;
     }
 
-    // Standard TMDB scheduling at 09:00
+    // Standard TMDB scheduling at 09:00.
+    //
+    // TMDB's `next_episode_to_air` lags: for several hours after an episode
+    // airs it still points to the just-aired episode. Scheduling at 09:00 of
+    // an already-elapsed day silently bails out in NotificationService.schedule,
+    // leaving the show without a future notification. To work around this we
+    // cross-reference with the season's full episode list and pick the first
+    // episode whose 09:00 air time is still in the future.
     final next = detail.nextEpisodeToAir;
-    if (next?.airDate != null) {
-      final airDate = DateTime.tryParse(next!.airDate!);
-      if (airDate != null) {
-        await NotificationService.schedule(
-          tmdbId: detail.id,
-          showTitle: detail.name,
-          seasonNumber: next.seasonNumber,
-          episodeNumber: next.episodeNumber,
-          episodeName: next.name,
-          airDate: airDate,
-        );
+    if (next == null || next.airDate == null) return;
+
+    final now = DateTime.now();
+    int targetSeason = next.seasonNumber;
+    int targetEpisode = next.episodeNumber;
+    String targetName = next.name;
+    String? targetAirDate = next.airDate;
+
+    try {
+      final season = await ref.read(seasonDetailProvider(
+        showId: detail.id,
+        seasonNumber: next.seasonNumber,
+      ).future);
+      TmdbEpisode? futureEp;
+      for (final ep in season.episodes ?? const <TmdbEpisode>[]) {
+        if (ep.airDate == null) continue;
+        final ad = DateTime.tryParse(ep.airDate!);
+        if (ad == null) continue;
+        final scheduledAt = DateTime(ad.year, ad.month, ad.day, 9, 0);
+        if (!scheduledAt.isAfter(now)) continue;
+        if (futureEp == null || ep.episodeNumber < futureEp.episodeNumber) {
+          futureEp = ep;
+        }
       }
-    }
+      if (futureEp != null) {
+        targetEpisode = futureEp.episodeNumber;
+        targetName = futureEp.name;
+        targetAirDate = futureEp.airDate;
+      }
+    } catch (_) {}
+
+    final airDate = DateTime.tryParse(targetAirDate!);
+    if (airDate == null) return;
+    await NotificationService.schedule(
+      tmdbId: detail.id,
+      showTitle: detail.name,
+      seasonNumber: targetSeason,
+      episodeNumber: targetEpisode,
+      episodeName: targetName,
+      airDate: airDate,
+    );
   }
 }
 

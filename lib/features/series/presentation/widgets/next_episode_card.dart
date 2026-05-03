@@ -63,6 +63,9 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
             widget.showData.show.id, season, episode,
             watched: true,
           );
+      ref
+          .read(trackedShowsNotifierProvider.notifier)
+          .rescheduleNotificationById(widget.showData.show.tmdbId);
       if (!mounted) return;
       setState(() => _markState = _MarkState.success);
       await Future.delayed(const Duration(milliseconds: 700));
@@ -124,11 +127,11 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       seasonNumber: nextSeason,
     ));
 
-    // Mentre i dati stagione non sono ancora disponibili non mostriamo nulla:
-    // evita che la card appaia come skeleton e poi sparisca se l'episodio
-    // non è ancora uscito. Le card "pop in" solo quando sappiamo cosa mostrare.
+    // Mentre i dati stagione non sono ancora disponibili mostriamo uno scheletro
+    // della stessa forma della card finale: l'utente vede subito tutte le card
+    // della lista (placeholder) e capisce che il caricamento è in corso.
     if (!seasonAsync.hasValue && !seasonAsync.hasError) {
-      return const SizedBox.shrink();
+      return const _SkeletonCard();
     }
 
     final nextEpisode = seasonAsync
@@ -480,6 +483,61 @@ class _SkeletonLine extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
         ),
       );
+}
+
+// Scheletro mostrato mentre i dati della stagione si caricano. Ricalca il
+// layout della card reale (immagine + info + bottone circolare) così la lista
+// appare subito completa e le card si "riempiono" sul posto.
+class _SkeletonCard extends StatelessWidget {
+  const _SkeletonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: const SizedBox(
+                width: 96,
+                height: 80,
+                child: ColoredBox(color: AppColors.divider),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _SkeletonLine(width: 110, height: 10),
+                  SizedBox(height: 8),
+                  _SkeletonLine(width: 60, height: 18),
+                  SizedBox(height: 7),
+                  _SkeletonLine(width: 160, height: 14),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.divider,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _EpisodeBadge extends StatelessWidget {
