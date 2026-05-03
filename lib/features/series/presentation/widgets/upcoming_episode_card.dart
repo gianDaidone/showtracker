@@ -46,7 +46,7 @@ class UpcomingEpisodeCard extends StatelessWidget {
       timeSuffix = ' alle $h:$m';
     }
 
-    if (diff == 0) return 'Oggi$timeSuffix';
+    if (diff == 0) return 'Oggi';
     if (diff == 1) return 'Domani$timeSuffix';
     if (diff <= 7) return 'Tra $diff giorni$timeSuffix';
 
@@ -77,12 +77,10 @@ class UpcomingEpisodeCard extends StatelessWidget {
     final diff = airMid.difference(todayMid).inDays;
 
     if (diff == 0) {
-      if (preciseAirTime != null) {
-        final h = preciseAirTime!.hour.toString().padLeft(2, '0');
-        final m = preciseAirTime!.minute.toString().padLeft(2, '0');
-        return '$h:$m';
-      }
-      return 'Oggi';
+      final time = preciseAirTime ?? DateTime(airDate.year, airDate.month, airDate.day, 9, 0);
+      final h = time.hour.toString().padLeft(2, '0');
+      final m = time.minute.toString().padLeft(2, '0');
+      return '$h:$m';
     }
     if (diff == 1) return 'Domani';
 
