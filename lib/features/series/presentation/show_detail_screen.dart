@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/database/database_provider.dart';
 import '../../../core/services/app_toast.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/models/tmdb_show_detail.dart';
@@ -17,15 +18,21 @@ class ShowDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(showDetailProvider(tmdbId));
 
+    // Mantieni i dati precedenti durante un refresh (es. quando l'utente
+    // tocca l'icona "Aggiorna dati anime"): la pagina resta visibile e
+    // l'icona stessa mostra lo spinner finché non arrivano i dati nuovi.
+    final detail = detailAsync.valueOrNull;
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: detailAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.accent),
-        ),
-        error: (e, _) => _ErrorBody(error: e.toString()),
-        data: (detail) => _DetailBody(detail: detail),
-      ),
+      body: detail != null
+          ? _DetailBody(detail: detail)
+          : detailAsync.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: AppColors.accent),
+              ),
+              error: (e, _) => _ErrorBody(error: e.toString()),
+              data: (_) => const SizedBox.shrink(),
+            ),
     );
   }
 }
@@ -47,6 +54,24 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     // Reschedule anime notification once when the detail page opens so that
     // stale cached nextAiringEpisode data doesn't block scheduling.
     if (widget.detail.isAnime && widget.detail.animeSeasonsData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref
+            .read(trackedShowsNotifierProvider.notifier)
+            .rescheduleNotification(widget.detail);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(_DetailBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Quando i dati anime arrivano per la prima volta dopo un refresh
+    // (animeSeasonsData passa da null a popolato), riprogramma la notifica
+    // con l'orario preciso AniList: initState non si rinnova sui rebuild.
+    final wasMissing = oldWidget.detail.animeSeasonsData == null;
+    final isPresent = widget.detail.animeSeasonsData != null;
+    if (widget.detail.isAnime && wasMissing && isPresent) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ref
@@ -136,6 +161,9 @@ class _BackdropAppBar extends StatelessWidget {
       pinned: true,
       backgroundColor: AppColors.background,
       surfaceTintColor: Colors.transparent,
+      actions: [
+        _RefreshButton(tmdbId: detail.id, isAnime: detail.isAnime),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: detail.backdropUrl != null
             ? CachedNetworkImage(
@@ -161,6 +189,86 @@ class _BackdropAppBar extends StatelessWidget {
                 ),
               )
             : const ColoredBox(color: AppColors.surface),
+      ),
+    );
+  }
+}
+
+// ── Refresh button ────────────────────────────────────────────────────────────
+
+class _RefreshButton extends ConsumerStatefulWidget {
+  final int tmdbId;
+  final bool isAnime;
+  const _RefreshButton({required this.tmdbId, required this.isAnime});
+
+  @override
+  ConsumerState<_RefreshButton> createState() => _RefreshButtonState();
+}
+
+class _RefreshButtonState extends ConsumerState<_RefreshButton> {
+  bool _refreshing = false;
+
+  Future<void> _refresh() async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+
+    if (mounted) {
+      AppToast.show('Aggiornamento dati...', type: ToastType.info);
+    }
+
+    try {
+      await Future.wait([
+        Future(() async {
+          // Clear standard TMDB episode cache so we fetch fresh data.
+          await ref.read(cacheDaoProvider).clearCacheForShow(widget.tmdbId);
+          
+          if (widget.isAnime) {
+            await ref
+                .read(animeCacheDaoProvider)
+                .clearAnimeCacheForShow(widget.tmdbId);
+            ref.invalidate(animeDataProvider(widget.tmdbId));
+          }
+          // The invalidate might not be async, but Future.wait takes futures.
+          // Reading the provider future forces us to wait for it to resolve
+          // if we wanted to await the new data. However, ref.invalidate is sync.
+          // Let's just do it inside this future block so we don't block the UI thread.
+          ref.invalidate(showDetailProvider(widget.tmdbId));
+        }),
+        Future.delayed(const Duration(seconds: 3)),
+      ]);
+
+      if (mounted) {
+        AppToast.show('Aggiornamento Completato', type: ToastType.success);
+      }
+    } catch (_) {
+      if (mounted) {
+        AppToast.show('Aggiornamento non riuscito', type: ToastType.error);
+      }
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: IconButton(
+        onPressed: _refreshing ? null : _refresh,
+        tooltip: 'Aggiorna dati',
+        icon: _refreshing
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.accent,
+                ),
+              )
+            : const Icon(
+                Icons.refresh_rounded,
+                color: AppColors.textPrimary,
+              ),
       ),
     );
   }

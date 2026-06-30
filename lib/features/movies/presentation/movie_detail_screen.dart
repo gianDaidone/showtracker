@@ -74,10 +74,15 @@ class _DetailBody extends ConsumerWidget {
 
 // ── Backdrop AppBar ───────────────────────────────────────────────────────────
 
-class _BackdropAppBar extends StatelessWidget {
+class _BackdropAppBar extends ConsumerStatefulWidget {
   final TmdbMovieDetail detail;
   const _BackdropAppBar({required this.detail});
 
+  @override
+  ConsumerState<_BackdropAppBar> createState() => _BackdropAppBarState();
+}
+
+class _BackdropAppBarState extends ConsumerState<_BackdropAppBar> {
   @override
   Widget build(BuildContext context) {
     return SliverAppBar(
@@ -85,10 +90,13 @@ class _BackdropAppBar extends StatelessWidget {
       pinned: true,
       backgroundColor: AppColors.background,
       surfaceTintColor: Colors.transparent,
+      actions: [
+        _RefreshButton(tmdbId: widget.detail.id),
+      ],
       flexibleSpace: FlexibleSpaceBar(
-        background: detail.backdropUrl != null
+        background: widget.detail.backdropUrl != null
             ? CachedNetworkImage(
-                imageUrl: detail.backdropUrl!,
+                imageUrl: widget.detail.backdropUrl!,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>
                     const ColoredBox(color: AppColors.surface),
@@ -111,6 +119,72 @@ class _BackdropAppBar extends StatelessWidget {
                 ),
               )
             : const ColoredBox(color: AppColors.surface),
+      ),
+    );
+  }
+}
+
+// ── Refresh button ────────────────────────────────────────────────────────────
+
+class _RefreshButton extends ConsumerStatefulWidget {
+  final int tmdbId;
+  const _RefreshButton({required this.tmdbId});
+
+  @override
+  ConsumerState<_RefreshButton> createState() => _RefreshButtonState();
+}
+
+class _RefreshButtonState extends ConsumerState<_RefreshButton> {
+  bool _refreshing = false;
+
+  Future<void> _refresh() async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+
+    if (mounted) {
+      AppToast.show('Aggiornamento dati...', type: ToastType.info);
+    }
+
+    try {
+      await Future.wait([
+        Future(() async {
+          ref.invalidate(movieDetailProvider(widget.tmdbId));
+        }),
+        Future.delayed(const Duration(seconds: 3)),
+      ]);
+
+      if (mounted) {
+        AppToast.show('Aggiornamento Completato', type: ToastType.success);
+      }
+    } catch (_) {
+      if (mounted) {
+        AppToast.show('Aggiornamento non riuscito', type: ToastType.error);
+      }
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: IconButton(
+        onPressed: _refreshing ? null : _refresh,
+        tooltip: 'Aggiorna dati',
+        icon: _refreshing
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.accent,
+                ),
+              )
+            : const Icon(
+                Icons.refresh_rounded,
+                color: AppColors.textPrimary,
+              ),
       ),
     );
   }

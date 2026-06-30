@@ -71,7 +71,7 @@ class _DetailBody extends ConsumerWidget {
       slivers: [
         // ── Carosello screenshot ─────────────────────────────────────────
         SliverToBoxAdapter(
-          child: _ScreenshotCarousel(frames: frames),
+          child: _ScreenshotCarousel(frames: frames, rawgId: detail.id),
         ),
 
         SliverToBoxAdapter(
@@ -218,7 +218,8 @@ class _DetailBody extends ConsumerWidget {
 
 class _ScreenshotCarousel extends StatefulWidget {
   final List<String> frames;
-  const _ScreenshotCarousel({required this.frames});
+  final int rawgId;
+  const _ScreenshotCarousel({required this.frames, required this.rawgId});
 
   @override
   State<_ScreenshotCarousel> createState() => _ScreenshotCarouselState();
@@ -320,7 +321,7 @@ class _ScreenshotCarouselState extends State<_ScreenshotCarousel> {
             ),
           ),
 
-        // ── Back button ───────────────────────────────────────────────────
+        // ── Back button ───────────────────────────────────────────────────────
         Positioned(
           top: MediaQuery.of(context).padding.top + 8,
           left: 12,
@@ -338,7 +339,82 @@ class _ScreenshotCarouselState extends State<_ScreenshotCarousel> {
             ),
           ),
         ),
+
+        // ── Refresh button ────────────────────────────────────────────────────
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 8,
+          right: 12,
+          child: _RefreshButton(rawgId: widget.rawgId),
+        ),
       ],
+    );
+  }
+}
+
+// ── Refresh button ────────────────────────────────────────────────────────────
+
+class _RefreshButton extends ConsumerStatefulWidget {
+  final int rawgId;
+  const _RefreshButton({required this.rawgId});
+
+  @override
+  ConsumerState<_RefreshButton> createState() => _RefreshButtonState();
+}
+
+class _RefreshButtonState extends ConsumerState<_RefreshButton> {
+  bool _refreshing = false;
+
+  Future<void> _refresh() async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+
+    if (mounted) {
+      AppToast.show('Aggiornamento dati...', type: ToastType.info);
+    }
+
+    try {
+      await Future.wait([
+        Future(() async {
+          ref.invalidate(gameDetailProvider(widget.rawgId));
+          ref.invalidate(gameScreenshotsProvider(widget.rawgId));
+        }),
+        Future.delayed(const Duration(seconds: 3)),
+      ]);
+
+      if (mounted) {
+        AppToast.show('Aggiornamento Completato', type: ToastType.success);
+      }
+    } catch (_) {
+      if (mounted) {
+        AppToast.show('Aggiornamento non riuscito', type: ToastType.error);
+      }
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _refreshing ? null : _refresh,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.black.withAlpha(140),
+          shape: BoxShape.circle,
+        ),
+        child: _refreshing
+            ? const Padding(
+                padding: EdgeInsets.all(9),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.accent,
+                ),
+              )
+            : const Icon(Icons.refresh_rounded,
+                color: Colors.white, size: 20),
+      ),
     );
   }
 }
