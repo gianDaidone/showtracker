@@ -203,18 +203,37 @@ class _BacklogTabState extends ConsumerState<_BacklogTab>
                 !g.releaseDate!.isAfter(now))
             .toList();
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: backlog.isEmpty
-                  ? const _EmptyBacklog()
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(top: 12, bottom: 24),
-                      itemCount: backlog.length,
-                      itemBuilder: (_, i) => _GameCard(game: backlog[i]),
+        if (backlog.isEmpty) return const _EmptyBacklog();
+
+        return CustomScrollView(
+          slivers: [
+            const SliverPadding(padding: EdgeInsets.only(top: 12)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+                  ),
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(
+                    'Da Giocare (${backlog.length})',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
+                  ),
+                ),
+              ),
             ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _GameCard(game: backlog[index]),
+                childCount: backlog.length,
+              ),
+            ),
+            const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
           ],
         );
       },
@@ -259,19 +278,80 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
             return a.releaseDate!.compareTo(b.releaseDate!);
           });
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: upcoming.isEmpty
-                  ? const _EmptyInUscita()
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(top: 12, bottom: 24),
-                      itemCount: upcoming.length,
-                      itemBuilder: (_, i) =>
-                          _UpcomingGameCard(game: upcoming[i]),
+        if (upcoming.isEmpty) return const _EmptyInUscita();
+
+        final now = DateTime.now();
+        final threshold = now.add(const Duration(days: 30));
+
+        final prossimamente = <TrackedGame>[];
+        final inArrivo = <TrackedGame>[];
+
+        for (final game in upcoming) {
+          if (game.releaseDate == null || game.releaseDate!.isAfter(threshold) || game.releaseDate!.isAtSameMomentAs(threshold)) {
+            inArrivo.add(game);
+          } else {
+            prossimamente.add(game);
+          }
+        }
+
+        return CustomScrollView(
+          slivers: [
+            const SliverPadding(padding: EdgeInsets.only(top: 12)),
+            if (prossimamente.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(left: BorderSide(color: Colors.orange, width: 4)),
                     ),
-            ),
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      'Prossimamente (${prossimamente.length})',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _UpcomingGameCard(game: prossimamente[index], isFarFuture: false),
+                  childCount: prossimamente.length,
+                ),
+              ),
+            ],
+            if (inArrivo.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(left: BorderSide(color: Colors.grey, width: 4)),
+                    ),
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      'In Arrivo (${inArrivo.length})',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _UpcomingGameCard(game: inArrivo[index], isFarFuture: true),
+                  childCount: inArrivo.length,
+                ),
+              ),
+            ],
+            const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
           ],
         );
       },
@@ -336,29 +416,24 @@ class _GiocatiTabState extends ConsumerState<_GiocatiTab>
                 itemBuilder: (_, i) {
                   final item = items[i];
                   if (item is _SectionItem) {
+                    final isCompletati = item.title.startsWith('Completati');
+                    final color = isCompletati ? Colors.green : Colors.red;
                     return Padding(
                       padding: EdgeInsets.fromLTRB(
-                          16, item.topMargin ? 16 : 12, 16, 8),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 3,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: AppColors.accent,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
+                          20, item.topMargin ? 16 : 12, 20, 8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border(left: BorderSide(color: color, width: 4)),
+                        ),
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text(
+                          item.title,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            item.title,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     );
                   }
@@ -535,7 +610,8 @@ class _GameCardState extends ConsumerState<_GameCard> {
 
 class _UpcomingGameCard extends StatelessWidget {
   final TrackedGame game;
-  const _UpcomingGameCard({required this.game});
+  final bool isFarFuture;
+  const _UpcomingGameCard({required this.game, this.isFarFuture = false});
 
   @override
   Widget build(BuildContext context) {
@@ -570,7 +646,7 @@ class _UpcomingGameCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     if (game.releaseDate != null)
-                      _ReleaseDateBadge(date: game.releaseDate!)
+                      _ReleaseDateBadge(date: game.releaseDate!, isFarFuture: isFarFuture)
                     else
                       const _TbaBadge(),
                     if (platforms.isNotEmpty) ...[
@@ -601,7 +677,8 @@ class _UpcomingGameCard extends StatelessWidget {
 
 class _ReleaseDateBadge extends StatelessWidget {
   final DateTime date;
-  const _ReleaseDateBadge({required this.date});
+  final bool isFarFuture;
+  const _ReleaseDateBadge({required this.date, this.isFarFuture = false});
 
   static const _months = [
     'gen', 'feb', 'mar', 'apr', 'mag', 'giu',
@@ -625,22 +702,23 @@ class _ReleaseDateBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = isFarFuture ? Colors.grey : AppColors.accent;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.accent.withAlpha(30),
-        border: Border.all(color: AppColors.accent.withAlpha(120)),
+        color: color.withAlpha(30),
+        border: Border.all(color: color.withAlpha(120)),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.calendar_today, color: AppColors.accent, size: 10),
+          Icon(Icons.calendar_today, color: color, size: 10),
           const SizedBox(width: 4),
           Text(
             '$_formatted · $_countdown',
-            style: const TextStyle(
-              color: AppColors.accent,
+            style: TextStyle(
+              color: color,
               fontWeight: FontWeight.bold,
               fontSize: 10,
               letterSpacing: 0.2,

@@ -281,21 +281,104 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
           ),
         ),
       ),
-      data: (items) => items.isEmpty
-          ? const _EmptyUpcoming()
-          : ListView.builder(
-              padding: const EdgeInsets.only(top: 12, bottom: 24),
-              itemCount: items.length,
-              itemBuilder: (_, i) {
-                final info = items[i];
-                return UpcomingEpisodeCard(
-                  show: info.show,
-                  episode: info.episode,
-                  airDate: info.airDate,
-                  preciseAirTime: info.preciseAirTime,
-                );
-              },
-            ),
+      data: (items) {
+        if (items.isEmpty) {
+          return const _EmptyUpcoming();
+        }
+
+        final now = DateTime.now();
+        final threshold = now.add(const Duration(days: 30));
+
+        final prossimamente = <UpcomingEpisodeInfo>[];
+        final inArrivo = <UpcomingEpisodeInfo>[];
+
+        for (final info in items) {
+          if (info.airDate.isAfter(threshold) || info.airDate.isAtSameMomentAs(threshold)) {
+            inArrivo.add(info);
+          } else {
+            prossimamente.add(info);
+          }
+        }
+
+        return CustomScrollView(
+          slivers: [
+            const SliverPadding(padding: EdgeInsets.only(top: 12)),
+            if (prossimamente.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+                    ),
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      'Prossimamente (${prossimamente.length})',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final info = prossimamente[index];
+                    return UpcomingEpisodeCard(
+                      show: info.show,
+                      episode: info.episode,
+                      airDate: info.airDate,
+                      preciseAirTime: info.preciseAirTime,
+                      isFarFuture: false,
+                    );
+                  },
+                  childCount: prossimamente.length,
+                ),
+              ),
+            ],
+            if (inArrivo.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(left: BorderSide(color: Colors.grey, width: 4)),
+                    ),
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      'In Arrivo (${inArrivo.length})',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final info = inArrivo[index];
+                    return UpcomingEpisodeCard(
+                      show: info.show,
+                      episode: info.episode,
+                      airDate: info.airDate,
+                      preciseAirTime: info.preciseAirTime,
+                      isFarFuture: true,
+                    );
+                  },
+                  childCount: inArrivo.length,
+                ),
+              ),
+            ],
+            const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
+          ],
+        );
+      },
     );
   }
 }

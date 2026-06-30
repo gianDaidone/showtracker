@@ -11,8 +11,8 @@ class UpcomingEpisodeCard extends StatelessWidget {
   final TmdbNextEpisode episode;
   final DateTime airDate;
 
-  /// Precise airing time from AniList (non-null for anime with exact schedule).
   final DateTime? preciseAirTime;
+  final bool isFarFuture;
 
   const UpcomingEpisodeCard({
     super.key,
@@ -20,6 +20,7 @@ class UpcomingEpisodeCard extends StatelessWidget {
     required this.episode,
     required this.airDate,
     this.preciseAirTime,
+    this.isFarFuture = false,
   });
 
   String get _imageUrl {
@@ -93,6 +94,7 @@ class UpcomingEpisodeCard extends StatelessWidget {
   }
 
   Color get _imageBadgeColor {
+    if (isFarFuture) return const Color(0xFF424242);
     final today = DateTime.now();
     final todayMid = DateTime(today.year, today.month, today.day);
     final airMid = DateTime(airDate.year, airDate.month, airDate.day);
@@ -182,7 +184,7 @@ class UpcomingEpisodeCard extends StatelessWidget {
                   children: [
                     // Titolo serie
                     Text(
-                      show.title,
+                      '${show.title} (${show.totalEpisodes ?? '?'})',
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
@@ -200,15 +202,15 @@ class UpcomingEpisodeCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.accent.withAlpha(30),
+                            color: isFarFuture ? Colors.grey.withAlpha(30) : AppColors.accent.withAlpha(30),
                             border:
-                                Border.all(color: AppColors.accent.withAlpha(120)),
+                                Border.all(color: isFarFuture ? Colors.grey.withAlpha(120) : AppColors.accent.withAlpha(120)),
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(
                             'S${pad(episode.seasonNumber)}E${pad(episode.episodeNumber)}',
-                            style: const TextStyle(
-                              color: AppColors.accent,
+                            style: TextStyle(
+                              color: isFarFuture ? Colors.grey : AppColors.accent,
                               fontWeight: FontWeight.bold,
                               fontSize: 11,
                               letterSpacing: 0.4,

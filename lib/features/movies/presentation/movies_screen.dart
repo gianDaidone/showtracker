@@ -199,10 +199,36 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
                 (m.releaseDate == null || !m.releaseDate!.isAfter(now)))
             .toList();
         if (toWatch.isEmpty) return const _EmptyDaVedere();
-        return ListView.builder(
-          padding: const EdgeInsets.only(top: 12, bottom: 24),
-          itemCount: toWatch.length,
-          itemBuilder: (_, i) => _WatchlistMovieCard(movie: toWatch[i]),
+        return CustomScrollView(
+          slivers: [
+            const SliverPadding(padding: EdgeInsets.only(top: 12)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+                  ),
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(
+                    'Da Vedere (${toWatch.length})',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _WatchlistMovieCard(movie: toWatch[index]),
+                childCount: toWatch.length,
+              ),
+            ),
+            const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
+          ],
         );
       },
     );
@@ -242,13 +268,84 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
           ),
         ),
       ),
-      data: (movies) => movies.isEmpty
-          ? const _EmptyInUscita()
-          : ListView.builder(
-              padding: const EdgeInsets.only(top: 12, bottom: 24),
-              itemCount: movies.length,
-              itemBuilder: (_, i) => _UpcomingMovieCard(movie: movies[i]),
-            ),
+      data: (movies) {
+        if (movies.isEmpty) return const _EmptyInUscita();
+
+        final now = DateTime.now();
+        final threshold = now.add(const Duration(days: 30));
+
+        final prossimamente = <TrackedMovy>[];
+        final inArrivo = <TrackedMovy>[];
+
+        for (final movie in movies) {
+          if (movie.releaseDate != null && (movie.releaseDate!.isAfter(threshold) || movie.releaseDate!.isAtSameMomentAs(threshold))) {
+            inArrivo.add(movie);
+          } else {
+            prossimamente.add(movie);
+          }
+        }
+
+        return CustomScrollView(
+          slivers: [
+            const SliverPadding(padding: EdgeInsets.only(top: 12)),
+            if (prossimamente.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+                    ),
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      'Prossimamente (${prossimamente.length})',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _UpcomingMovieCard(movie: prossimamente[index], isFarFuture: false),
+                  childCount: prossimamente.length,
+                ),
+              ),
+            ],
+            if (inArrivo.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(left: BorderSide(color: Colors.grey, width: 4)),
+                    ),
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      'In Arrivo (${inArrivo.length})',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _UpcomingMovieCard(movie: inArrivo[index], isFarFuture: true),
+                  childCount: inArrivo.length,
+                ),
+              ),
+            ],
+            const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
+          ],
+        );
+      },
     );
   }
 }
@@ -347,7 +444,8 @@ class _WatchlistMovieCardState extends ConsumerState<_WatchlistMovieCard> {
 
 class _UpcomingMovieCard extends StatelessWidget {
   final TrackedMovy movie;
-  const _UpcomingMovieCard({required this.movie});
+  final bool isFarFuture;
+  const _UpcomingMovieCard({required this.movie, this.isFarFuture = false});
 
   @override
   Widget build(BuildContext context) {
@@ -381,7 +479,7 @@ class _UpcomingMovieCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     if (movie.releaseDate != null)
-                      _ReleaseDateBadge(date: movie.releaseDate!),
+                      _ReleaseDateBadge(date: movie.releaseDate!, isFarFuture: isFarFuture),
                   ],
                 ),
               ),
@@ -398,7 +496,8 @@ class _UpcomingMovieCard extends StatelessWidget {
 
 class _ReleaseDateBadge extends StatelessWidget {
   final DateTime date;
-  const _ReleaseDateBadge({required this.date});
+  final bool isFarFuture;
+  const _ReleaseDateBadge({required this.date, this.isFarFuture = false});
 
   static const _months = [
     'gen', 'feb', 'mar', 'apr', 'mag', 'giu',
@@ -422,23 +521,24 @@ class _ReleaseDateBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = isFarFuture ? Colors.grey : AppColors.accent;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.accent.withAlpha(30),
-        border: Border.all(color: AppColors.accent.withAlpha(120)),
+        color: color.withAlpha(30),
+        border: Border.all(color: color.withAlpha(120)),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.calendar_today,
-              color: AppColors.accent, size: 11),
+          Icon(Icons.calendar_today,
+              color: color, size: 11),
           const SizedBox(width: 4),
           Text(
             '$_formatted · $_countdown',
-            style: const TextStyle(
-              color: AppColors.accent,
+            style: TextStyle(
+              color: color,
               fontWeight: FontWeight.bold,
               fontSize: 11,
               letterSpacing: 0.2,
