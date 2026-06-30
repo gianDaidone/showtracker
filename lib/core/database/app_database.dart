@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -110,6 +110,9 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(cachedEpisodes, cachedEpisodes.airingAt);
             await m.createTable(yunaCache);
             await m.createTable(animeSeasonCache);
+          }
+          if (from < 10) {
+            await m.addColumn(trackedShows, trackedShows.lastWatchedAt);
           }
         },
       );

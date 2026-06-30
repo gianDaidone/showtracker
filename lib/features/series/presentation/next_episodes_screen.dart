@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/series_providers.dart';
 import 'widgets/next_episode_card.dart';
@@ -158,13 +159,91 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
           ),
         ),
       ),
-      data: (shows) => shows.isEmpty
-          ? _EmptyWatching(totalCount: totalCount)
-          : ListView.builder(
-              padding: const EdgeInsets.only(top: 12, bottom: 24),
-              itemCount: shows.length,
-              itemBuilder: (_, i) => NextEpisodeCard(showData: shows[i]),
-            ),
+      data: (shows) {
+        if (shows.isEmpty) {
+          return _EmptyWatching(totalCount: totalCount);
+        }
+
+        final now = DateTime.now();
+        final threshold = now.subtract(const Duration(days: 30));
+
+        final daVedere = <ShowWithWatchedEpisodes>[];
+        final nonVisti = <ShowWithWatchedEpisodes>[];
+
+        for (final showData in shows) {
+          final lastWatchedAt = showData.show.lastWatchedAt;
+          if (lastWatchedAt != null && lastWatchedAt.isBefore(threshold)) {
+            nonVisti.add(showData);
+          } else {
+            daVedere.add(showData);
+          }
+        }
+
+        return CustomScrollView(
+          slivers: [
+            const SliverPadding(padding: EdgeInsets.only(top: 12)),
+            if (daVedere.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+                    ),
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      'Da Vedere (${daVedere.length})',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => NextEpisodeCard(
+                    showData: daVedere[index],
+                  ),
+                  childCount: daVedere.length,
+                ),
+              ),
+            ],
+            if (nonVisti.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(left: BorderSide(color: Colors.grey, width: 4)),
+                    ),
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      'Non visti da tempo (${nonVisti.length})',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => NextEpisodeCard(
+                    showData: nonVisti[index],
+                  ),
+                  childCount: nonVisti.length,
+                ),
+              ),
+            ],
+            const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
+          ],
+        );
+      },
     );
   }
 }

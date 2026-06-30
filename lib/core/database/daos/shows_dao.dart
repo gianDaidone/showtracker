@@ -67,6 +67,11 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
     int episode, {
     bool watched = true,
   }) async {
+    if (watched) {
+      await (update(trackedShows)..where((t) => t.id.equals(showId)))
+          .write(TrackedShowsCompanion(lastWatchedAt: Value(DateTime.now())));
+    }
+
     final updated = await (update(trackedEpisodes)
           ..where(
             (t) =>
@@ -172,6 +177,11 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
     int targetSeason,
     int targetEpisode,
   ) async {
+    if (targetSeason > 1 || targetEpisode > 1) {
+      await (update(trackedShows)..where((t) => t.id.equals(showId)))
+          .write(TrackedShowsCompanion(lastWatchedAt: Value(DateTime.now())));
+    }
+    
     final seasonCounts = await getSeasonCounts(showId);
     await batch((b) {
       for (int s = 1; s <= targetSeason; s++) {

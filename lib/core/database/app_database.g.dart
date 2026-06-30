@@ -93,6 +93,12 @@ class $TrackedShowsTable extends TrackedShows
   late final GeneratedColumn<DateTime> addedAt = GeneratedColumn<DateTime>(
       'added_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _lastWatchedAtMeta =
+      const VerificationMeta('lastWatchedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastWatchedAt =
+      GeneratedColumn<DateTime>('last_watched_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -107,7 +113,8 @@ class $TrackedShowsTable extends TrackedShows
         totalEpisodes,
         tmdbStatus,
         isAnime,
-        addedAt
+        addedAt,
+        lastWatchedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -182,6 +189,12 @@ class $TrackedShowsTable extends TrackedShows
     } else if (isInserting) {
       context.missing(_addedAtMeta);
     }
+    if (data.containsKey('last_watched_at')) {
+      context.handle(
+          _lastWatchedAtMeta,
+          lastWatchedAt.isAcceptableOrUnknown(
+              data['last_watched_at']!, _lastWatchedAtMeta));
+    }
     return context;
   }
 
@@ -218,6 +231,8 @@ class $TrackedShowsTable extends TrackedShows
           .read(DriftSqlType.bool, data['${effectivePrefix}is_anime'])!,
       addedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}added_at'])!,
+      lastWatchedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_watched_at']),
     );
   }
 
@@ -247,6 +262,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
   final String? tmdbStatus;
   final bool isAnime;
   final DateTime addedAt;
+  final DateTime? lastWatchedAt;
   const TrackedShow(
       {required this.id,
       required this.tmdbId,
@@ -260,7 +276,8 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       this.totalEpisodes,
       this.tmdbStatus,
       required this.isAnime,
-      required this.addedAt});
+      required this.addedAt,
+      this.lastWatchedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -294,6 +311,9 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
     }
     map['is_anime'] = Variable<bool>(isAnime);
     map['added_at'] = Variable<DateTime>(addedAt);
+    if (!nullToAbsent || lastWatchedAt != null) {
+      map['last_watched_at'] = Variable<DateTime>(lastWatchedAt);
+    }
     return map;
   }
 
@@ -326,6 +346,9 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           : Value(tmdbStatus),
       isAnime: Value(isAnime),
       addedAt: Value(addedAt),
+      lastWatchedAt: lastWatchedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastWatchedAt),
     );
   }
 
@@ -347,6 +370,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       tmdbStatus: serializer.fromJson<String?>(json['tmdbStatus']),
       isAnime: serializer.fromJson<bool>(json['isAnime']),
       addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+      lastWatchedAt: serializer.fromJson<DateTime?>(json['lastWatchedAt']),
     );
   }
   @override
@@ -367,6 +391,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       'tmdbStatus': serializer.toJson<String?>(tmdbStatus),
       'isAnime': serializer.toJson<bool>(isAnime),
       'addedAt': serializer.toJson<DateTime>(addedAt),
+      'lastWatchedAt': serializer.toJson<DateTime?>(lastWatchedAt),
     };
   }
 
@@ -383,7 +408,8 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           Value<int?> totalEpisodes = const Value.absent(),
           Value<String?> tmdbStatus = const Value.absent(),
           bool? isAnime,
-          DateTime? addedAt}) =>
+          DateTime? addedAt,
+          Value<DateTime?> lastWatchedAt = const Value.absent()}) =>
       TrackedShow(
         id: id ?? this.id,
         tmdbId: tmdbId ?? this.tmdbId,
@@ -400,6 +426,8 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
         tmdbStatus: tmdbStatus.present ? tmdbStatus.value : this.tmdbStatus,
         isAnime: isAnime ?? this.isAnime,
         addedAt: addedAt ?? this.addedAt,
+        lastWatchedAt:
+            lastWatchedAt.present ? lastWatchedAt.value : this.lastWatchedAt,
       );
   TrackedShow copyWithCompanion(TrackedShowsCompanion data) {
     return TrackedShow(
@@ -423,6 +451,9 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           data.tmdbStatus.present ? data.tmdbStatus.value : this.tmdbStatus,
       isAnime: data.isAnime.present ? data.isAnime.value : this.isAnime,
       addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+      lastWatchedAt: data.lastWatchedAt.present
+          ? data.lastWatchedAt.value
+          : this.lastWatchedAt,
     );
   }
 
@@ -441,7 +472,8 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           ..write('totalEpisodes: $totalEpisodes, ')
           ..write('tmdbStatus: $tmdbStatus, ')
           ..write('isAnime: $isAnime, ')
-          ..write('addedAt: $addedAt')
+          ..write('addedAt: $addedAt, ')
+          ..write('lastWatchedAt: $lastWatchedAt')
           ..write(')'))
         .toString();
   }
@@ -460,7 +492,8 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       totalEpisodes,
       tmdbStatus,
       isAnime,
-      addedAt);
+      addedAt,
+      lastWatchedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -477,7 +510,8 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           other.totalEpisodes == this.totalEpisodes &&
           other.tmdbStatus == this.tmdbStatus &&
           other.isAnime == this.isAnime &&
-          other.addedAt == this.addedAt);
+          other.addedAt == this.addedAt &&
+          other.lastWatchedAt == this.lastWatchedAt);
 }
 
 class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
@@ -494,6 +528,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
   final Value<String?> tmdbStatus;
   final Value<bool> isAnime;
   final Value<DateTime> addedAt;
+  final Value<DateTime?> lastWatchedAt;
   const TrackedShowsCompanion({
     this.id = const Value.absent(),
     this.tmdbId = const Value.absent(),
@@ -508,6 +543,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     this.tmdbStatus = const Value.absent(),
     this.isAnime = const Value.absent(),
     this.addedAt = const Value.absent(),
+    this.lastWatchedAt = const Value.absent(),
   });
   TrackedShowsCompanion.insert({
     this.id = const Value.absent(),
@@ -523,6 +559,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     this.tmdbStatus = const Value.absent(),
     this.isAnime = const Value.absent(),
     required DateTime addedAt,
+    this.lastWatchedAt = const Value.absent(),
   })  : tmdbId = Value(tmdbId),
         title = Value(title),
         status = Value(status),
@@ -541,6 +578,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     Expression<String>? tmdbStatus,
     Expression<bool>? isAnime,
     Expression<DateTime>? addedAt,
+    Expression<DateTime>? lastWatchedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -556,6 +594,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       if (tmdbStatus != null) 'tmdb_status': tmdbStatus,
       if (isAnime != null) 'is_anime': isAnime,
       if (addedAt != null) 'added_at': addedAt,
+      if (lastWatchedAt != null) 'last_watched_at': lastWatchedAt,
     });
   }
 
@@ -572,7 +611,8 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       Value<int?>? totalEpisodes,
       Value<String?>? tmdbStatus,
       Value<bool>? isAnime,
-      Value<DateTime>? addedAt}) {
+      Value<DateTime>? addedAt,
+      Value<DateTime?>? lastWatchedAt}) {
     return TrackedShowsCompanion(
       id: id ?? this.id,
       tmdbId: tmdbId ?? this.tmdbId,
@@ -587,6 +627,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       tmdbStatus: tmdbStatus ?? this.tmdbStatus,
       isAnime: isAnime ?? this.isAnime,
       addedAt: addedAt ?? this.addedAt,
+      lastWatchedAt: lastWatchedAt ?? this.lastWatchedAt,
     );
   }
 
@@ -633,6 +674,9 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     if (addedAt.present) {
       map['added_at'] = Variable<DateTime>(addedAt.value);
     }
+    if (lastWatchedAt.present) {
+      map['last_watched_at'] = Variable<DateTime>(lastWatchedAt.value);
+    }
     return map;
   }
 
@@ -651,7 +695,8 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
           ..write('totalEpisodes: $totalEpisodes, ')
           ..write('tmdbStatus: $tmdbStatus, ')
           ..write('isAnime: $isAnime, ')
-          ..write('addedAt: $addedAt')
+          ..write('addedAt: $addedAt, ')
+          ..write('lastWatchedAt: $lastWatchedAt')
           ..write(')'))
         .toString();
   }
@@ -3767,6 +3812,7 @@ typedef $$TrackedShowsTableCreateCompanionBuilder = TrackedShowsCompanion
   Value<String?> tmdbStatus,
   Value<bool> isAnime,
   required DateTime addedAt,
+  Value<DateTime?> lastWatchedAt,
 });
 typedef $$TrackedShowsTableUpdateCompanionBuilder = TrackedShowsCompanion
     Function({
@@ -3783,6 +3829,7 @@ typedef $$TrackedShowsTableUpdateCompanionBuilder = TrackedShowsCompanion
   Value<String?> tmdbStatus,
   Value<bool> isAnime,
   Value<DateTime> addedAt,
+  Value<DateTime?> lastWatchedAt,
 });
 
 final class $$TrackedShowsTableReferences
@@ -3871,6 +3918,9 @@ class $$TrackedShowsTableFilterComposer
 
   ColumnFilters<DateTime> get addedAt => $composableBuilder(
       column: $table.addedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastWatchedAt => $composableBuilder(
+      column: $table.lastWatchedAt, builder: (column) => ColumnFilters(column));
 
   Expression<bool> trackedEpisodesRefs(
       Expression<bool> Function($$TrackedEpisodesTableFilterComposer f) f) {
@@ -3964,6 +4014,10 @@ class $$TrackedShowsTableOrderingComposer
 
   ColumnOrderings<DateTime> get addedAt => $composableBuilder(
       column: $table.addedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastWatchedAt => $composableBuilder(
+      column: $table.lastWatchedAt,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$TrackedShowsTableAnnotationComposer
@@ -4013,6 +4067,9 @@ class $$TrackedShowsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get addedAt =>
       $composableBuilder(column: $table.addedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastWatchedAt => $composableBuilder(
+      column: $table.lastWatchedAt, builder: (column) => column);
 
   Expression<T> trackedEpisodesRefs<T extends Object>(
       Expression<T> Function($$TrackedEpisodesTableAnnotationComposer a) f) {
@@ -4094,6 +4151,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             Value<String?> tmdbStatus = const Value.absent(),
             Value<bool> isAnime = const Value.absent(),
             Value<DateTime> addedAt = const Value.absent(),
+            Value<DateTime?> lastWatchedAt = const Value.absent(),
           }) =>
               TrackedShowsCompanion(
             id: id,
@@ -4109,6 +4167,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             tmdbStatus: tmdbStatus,
             isAnime: isAnime,
             addedAt: addedAt,
+            lastWatchedAt: lastWatchedAt,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -4124,6 +4183,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             Value<String?> tmdbStatus = const Value.absent(),
             Value<bool> isAnime = const Value.absent(),
             required DateTime addedAt,
+            Value<DateTime?> lastWatchedAt = const Value.absent(),
           }) =>
               TrackedShowsCompanion.insert(
             id: id,
@@ -4139,6 +4199,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             tmdbStatus: tmdbStatus,
             isAnime: isAnime,
             addedAt: addedAt,
+            lastWatchedAt: lastWatchedAt,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

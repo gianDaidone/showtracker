@@ -207,7 +207,7 @@ class _SearchShowsProviderElement
   String get query => (origin as SearchShowsProvider).query;
 }
 
-String _$animeDataHash() => r'933a869ae021e5733970e0ffc856aea728749f55';
+String _$animeDataHash() => r'c3398489bd63f8c691e29f44b833d6f16c0059d1';
 
 /// See also [animeData].
 @ProviderFor(animeData)
@@ -341,7 +341,7 @@ class _AnimeDataProviderElement
   int get tmdbId => (origin as AnimeDataProvider).tmdbId;
 }
 
-String _$showDetailHash() => r'4a1f40a9f0717c77d0f9aac591466f7a182f883a';
+String _$showDetailHash() => r'4cdbb471ff887b94c8dc8ab65d866db7bd77769c';
 
 /// See also [showDetail].
 @ProviderFor(showDetail)
@@ -472,7 +472,7 @@ class _ShowDetailProviderElement
   int get tmdbId => (origin as ShowDetailProvider).tmdbId;
 }
 
-String _$seasonDetailHash() => r'd9c5bf2611e75e9ad3f17955e38536acc3ad81d5';
+String _$seasonDetailHash() => r'23cf1c87fcf4354cef2c2aa359611a1dc5f8983a';
 
 /// See also [seasonDetail].
 @ProviderFor(seasonDetail)
@@ -1039,7 +1039,7 @@ final watchingShowsWithEpisodesProvider =
 // ignore: unused_element
 typedef WatchingShowsWithEpisodesRef
     = AutoDisposeStreamProviderRef<List<ShowWithWatchedEpisodes>>;
-String _$upcomingEpisodesHash() => r'9ef2d6b0b75441f8ec4ff2225856c8a5380ba1fb';
+String _$upcomingEpisodesHash() => r'35e9bbac9aacaed09bcfeb0de21479b42aa29f29';
 
 /// See also [upcomingEpisodes].
 @ProviderFor(upcomingEpisodes)
@@ -1059,7 +1059,7 @@ final upcomingEpisodesProvider =
 typedef UpcomingEpisodesRef
     = AutoDisposeFutureProviderRef<List<UpcomingEpisodeInfo>>;
 String _$trackedShowsNotifierHash() =>
-    r'894d29726401761037fde1c84a4bd66a1cf271fa';
+    r'c8361e1a045de45bb45ebdcb57fac549a9db21cb';
 
 /// See also [TrackedShowsNotifier].
 @ProviderFor(TrackedShowsNotifier)

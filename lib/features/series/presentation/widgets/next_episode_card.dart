@@ -221,7 +221,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      show.title,
+                      '${show.title} (${total ?? '?'})',
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
@@ -343,7 +343,7 @@ class _CompletedContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          show.title,
+          '${show.title} (${show.totalEpisodes ?? '?'})',
           style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,

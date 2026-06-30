@@ -18,4 +18,5 @@ class TrackedShows extends Table {
   BoolColumn get isAnime =>
       boolean().withDefault(const Constant(false))();
   DateTimeColumn get addedAt => dateTime()();
+  DateTimeColumn get lastWatchedAt => dateTime().nullable()();
 }
