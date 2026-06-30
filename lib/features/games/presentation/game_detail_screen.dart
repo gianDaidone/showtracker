@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/services/app_toast.dart';
+import '../../../core/widgets/animated_refresh_button.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/models/rawg_game_detail.dart';
 import '../providers/games_providers.dart';
@@ -341,15 +342,11 @@ class _RefreshButton extends ConsumerStatefulWidget {
 }
 
 class _RefreshButtonState extends ConsumerState<_RefreshButton> {
-  bool _refreshing = false;
+  RefreshState _state = RefreshState.idle;
 
   Future<void> _refresh() async {
-    if (_refreshing) return;
-    setState(() => _refreshing = true);
-
-    if (mounted) {
-      AppToast.show('Aggiornamento dati...', type: ToastType.info);
-    }
+    if (_state != RefreshState.idle) return;
+    setState(() => _state = RefreshState.refreshing);
 
     try {
       await Future.wait([
@@ -357,43 +354,29 @@ class _RefreshButtonState extends ConsumerState<_RefreshButton> {
           ref.invalidate(gameDetailProvider(widget.rawgId));
           ref.invalidate(gameScreenshotsProvider(widget.rawgId));
         }),
-        Future.delayed(const Duration(seconds: 3)),
+        Future.delayed(const Duration(milliseconds: 1500)),
       ]);
 
       if (mounted) {
-        AppToast.show('Aggiornamento Completato', type: ToastType.success);
+        setState(() => _state = RefreshState.success);
+        await Future.delayed(const Duration(milliseconds: 1500));
       }
     } catch (_) {
       if (mounted) {
-        AppToast.show('Aggiornamento non riuscito', type: ToastType.error);
+        setState(() => _state = RefreshState.error);
+        await Future.delayed(const Duration(milliseconds: 1500));
       }
     } finally {
-      if (mounted) setState(() => _refreshing = false);
+      if (mounted) setState(() => _state = RefreshState.idle);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _refreshing ? null : _refresh,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.black.withAlpha(140),
-          shape: BoxShape.circle,
-        ),
-        child: _refreshing
-            ? const Padding(
-                padding: EdgeInsets.all(9),
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.accent,
-                ),
-              )
-            : const Icon(Icons.refresh_rounded,
-                color: Colors.white, size: 20),
-      ),
+    return AnimatedRefreshButton(
+      state: _state,
+      onPressed: _refresh,
+      idleBackgroundColor: Colors.black.withAlpha(140),
     );
   }
 }
