@@ -231,7 +231,23 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6),
-                    _EpisodeBadge(season: nextSeason, episode: nextEp),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final detail = ref.watch(showDetailProvider(show.tmdbId)).valueOrNull;
+                        String? seasonName;
+                        if (detail != null && detail.isAnime) {
+                          final sSeason = detail.seasons.where((s) => s.seasonNumber == nextSeason).firstOrNull;
+                          if (sSeason != null && sSeason.name != null) {
+                            seasonName = sSeason.name!.split(' · ').first.trim();
+                          }
+                        }
+                        return _EpisodeBadge(
+                          season: nextSeason, 
+                          episode: nextEp,
+                          seasonName: seasonName,
+                        );
+                      },
+                    ),
                     if (episodeTitle != null) ...[
                       const SizedBox(height: 5),
                       Text(
@@ -558,10 +574,21 @@ class _SkeletonCard extends StatelessWidget {
 class _EpisodeBadge extends StatelessWidget {
   final int season;
   final int episode;
-  const _EpisodeBadge({required this.season, required this.episode});
+  final String? seasonName;
+  const _EpisodeBadge({required this.season, required this.episode, this.seasonName});
 
   @override
   Widget build(BuildContext context) {
+    String label;
+    if (seasonName != null) {
+      final baseName = seasonName!.split(' · ').first.trim();
+      var abbr = baseName.replaceAll(RegExp(r'^(Stagione|Season)\s*', caseSensitive: false), 'S');
+      abbr = abbr.replaceAll(RegExp(r'\s*Parte\s*', caseSensitive: false), ' P');
+      label = '$abbr E${episode.toString().padLeft(2, '0')}';
+    } else {
+      label = 'S${season.toString().padLeft(2, '0')}E${episode.toString().padLeft(2, '0')}';
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -570,8 +597,7 @@ class _EpisodeBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        'S${season.toString().padLeft(2, '0')}'
-        'E${episode.toString().padLeft(2, '0')}',
+        label,
         style: const TextStyle(
           color: AppColors.accent,
           fontWeight: FontWeight.bold,

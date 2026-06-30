@@ -333,6 +333,7 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                       airDate: info.airDate,
                       preciseAirTime: info.preciseAirTime,
                       isFarFuture: false,
+                      seasonName: info.seasonName,
                     );
                   },
                   childCount: prossimamente.length,
@@ -369,6 +370,7 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                       airDate: info.airDate,
                       preciseAirTime: info.preciseAirTime,
                       isFarFuture: true,
+                      seasonName: info.seasonName,
                     );
                   },
                   childCount: inArrivo.length,

@@ -13,6 +13,7 @@ class UpcomingEpisodeCard extends StatelessWidget {
 
   final DateTime? preciseAirTime;
   final bool isFarFuture;
+  final String? seasonName;
 
   const UpcomingEpisodeCard({
     super.key,
@@ -21,6 +22,7 @@ class UpcomingEpisodeCard extends StatelessWidget {
     required this.airDate,
     this.preciseAirTime,
     this.isFarFuture = false,
+    this.seasonName,
   });
 
   String get _imageUrl {
@@ -207,14 +209,29 @@ class UpcomingEpisodeCard extends StatelessWidget {
                                 Border.all(color: isFarFuture ? Colors.grey.withAlpha(120) : AppColors.accent.withAlpha(120)),
                             borderRadius: BorderRadius.circular(5),
                           ),
-                          child: Text(
-                            'S${pad(episode.seasonNumber)}E${pad(episode.episodeNumber)}',
-                            style: TextStyle(
-                              color: isFarFuture ? Colors.grey : AppColors.accent,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                              letterSpacing: 0.4,
-                            ),
+                          child: Builder(
+                            builder: (context) {
+                              String label;
+                              if (seasonName != null) {
+                                // Extract base name (remove " · Winter 2024" etc)
+                                final baseName = seasonName!.split(' · ').first.trim();
+                                var abbr = baseName.replaceAll(RegExp(r'^(Stagione|Season)\s*', caseSensitive: false), 'S');
+                                abbr = abbr.replaceAll(RegExp(r'\s*Parte\s*', caseSensitive: false), ' P');
+                                label = '$abbr E${pad(episode.episodeNumber)}';
+                              } else {
+                                label = 'S${pad(episode.seasonNumber)}E${pad(episode.episodeNumber)}';
+                              }
+
+                              return Text(
+                                label,
+                                style: TextStyle(
+                                  color: isFarFuture ? Colors.grey : AppColors.accent,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  letterSpacing: 0.4,
+                                ),
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(width: 8),

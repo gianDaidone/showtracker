@@ -55,13 +55,39 @@ class AnimeDataMerger {
     // TMDB often groups multiple cours into fewer seasons; AniList always
     // splits correctly. tmdbSeasons is used only for positional mapping below.
 
-    // 3. Build normalized seasons with positional TMDB season mapping
+    // 3. Build normalized seasons with smart TMDB season mapping based on episode counts
     final result = <NormalizedAnimeSeason>[];
+    int tmdbIdx = 0;
+    int currentGroupSum = 0;
+
     for (var i = 0; i < filtered.length; i++) {
       final media = filtered[i];
-      // Positional mapping: AniList season i → TMDB seasons[i]
-      final tmdbSeasonNumber =
-          i < tmdbSeasons.length ? tmdbSeasons[i].seasonNumber : (i + 1);
+      int tmdbSeasonNumber;
+      
+      if (tmdbIdx < tmdbSeasons.length) {
+        final tmdbSeason = tmdbSeasons[tmdbIdx];
+        tmdbSeasonNumber = tmdbSeason.seasonNumber;
+        
+        final eps = media.episodes ?? 0;
+        currentGroupSum += eps;
+        
+        // If TMDB episode count is > 0 and we've reached it (allowing a diff of 2 for OVAs)
+        if (tmdbSeason.episodeCount > 0 && 
+            (currentGroupSum == tmdbSeason.episodeCount || 
+             (currentGroupSum - tmdbSeason.episodeCount).abs() <= 2)) {
+          tmdbIdx++;
+          currentGroupSum = 0;
+        } else if (eps == 0 && tmdbSeason.episodeCount == 0) {
+          // Both have 0 episodes (upcoming), assume they match
+          tmdbIdx++;
+          currentGroupSum = 0;
+        }
+      } else {
+        // Fallback if we run out of TMDB seasons (unlikely since AniList splits more)
+        tmdbSeasonNumber = tmdbSeasons.isNotEmpty 
+            ? tmdbSeasons.last.seasonNumber + (i - filtered.length + 1)
+            : i + 1;
+      }
 
       result.add(NormalizedAnimeSeason(
         seasonNumber: i + 1,
@@ -76,6 +102,28 @@ class AnimeDataMerger {
         averageScore: media.averageScore,
         nextAiringEpisode: media.nextAiringEpisode,
         streamingEpisodes: media.streamingEpisodes,
+      ));
+    }
+
+    // 4. Fallback: append any remaining TMDB seasons that weren't consumed.
+    // This perfectly catches upcoming seasons (like Season 3) that are on TMDB
+    // but not yet mapped by Yuna / AniList.
+    for (var i = tmdbIdx; i < tmdbSeasons.length; i++) {
+      final tmdbSeason = tmdbSeasons[i];
+      
+      result.add(NormalizedAnimeSeason(
+        seasonNumber: result.length + 1,
+        tmdbSeasonNumber: tmdbSeason.seasonNumber,
+        anilistId: -1, // Fallback ID indicates missing AniList mapping
+        episodeCount: tmdbSeason.episodeCount,
+        status: 'NOT_YET_RELEASED',
+        season: null,
+        seasonYear: null,
+        titleRomaji: tmdbSeason.name,
+        titleEnglish: tmdbSeason.name,
+        averageScore: null,
+        nextAiringEpisode: null,
+        streamingEpisodes: [],
       ));
     }
 
