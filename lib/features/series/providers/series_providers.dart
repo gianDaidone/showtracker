@@ -9,6 +9,7 @@ import '../data/anilist_service.dart';
 import '../data/anime_data_merger.dart';
 import '../data/tmdb_service.dart';
 import '../data/yuna_service.dart';
+import '../data/models/anilist_media.dart';
 import '../data/models/normalized_anime_season.dart';
 import '../data/models/tmdb_show.dart';
 import '../data/models/tmdb_show_detail.dart';
@@ -89,14 +90,29 @@ Future<List<NormalizedAnimeSeason>?> animeData(
     // 2b. If Yuna has no mapping, try searching by title
     if (anilistIds.isEmpty) {
       final detail = await tmdbSvc.getShowDetails(tmdbId);
-      final found = await anilistSvc.searchByTitle(detail.name);
+      final found = await _searchAniListByTmdbTitles(anilistSvc, detail);
       if (found != null) anilistIds = [found.id];
     }
 
     if (anilistIds.isEmpty) return null;
 
     // 2c. Fetch AniList media for each ID
-    final anilistMedia = await anilistSvc.fetchBatch(anilistIds);
+    var anilistMedia = await anilistSvc.fetchBatch(anilistIds);
+
+    // 2c-bis. Resilienza: se gli ID Yuna non hanno restituito media validi
+    // (mapping obsoleto, ID errati, anime appena annunciato non ancora
+    // indicizzato) riprova con la ricerca per titolo prima di arrenderti.
+    if (anilistMedia.isEmpty) {
+      final detail = await tmdbSvc.getShowDetails(tmdbId);
+      final found = await _searchAniListByTmdbTitles(anilistSvc, detail);
+      if (found != null) {
+        anilistMedia = [found];
+        // Sostituisci il mapping Yuna stale con l'ID corretto trovato per
+        // titolo, così le successive richieste passano subito da AniList.
+        await animeCacheDao.saveYunaIds(tmdbId, [found.id]);
+      }
+    }
+
     if (anilistMedia.isEmpty) return null;
 
     // 2d. Merge with TMDB season structure
@@ -115,6 +131,25 @@ Future<List<NormalizedAnimeSeason>?> animeData(
   } catch (_) {
     return null;
   }
+}
+
+/// Cerca l'anime su AniList provando prima il nome localizzato (TMDB it-IT
+/// con fallback en-US) poi il `original_name` (di solito il titolo nativo:
+/// per anime giapponesi è la forma in romaji o in giapponese, che AniList
+/// indicizza meglio del titolo localizzato).
+Future<AniListMedia?> _searchAniListByTmdbTitles(
+  AniListService anilistSvc,
+  TmdbShowDetail detail,
+) async {
+  if (detail.name.isNotEmpty) {
+    final found = await anilistSvc.searchByTitle(detail.name);
+    if (found != null) return found;
+  }
+  final original = detail.originalName;
+  if (original != null && original.isNotEmpty && original != detail.name) {
+    return anilistSvc.searchByTitle(original);
+  }
+  return null;
 }
 
 // ── Show detail (enriched with AniList for anime) ─────────────────────────────
