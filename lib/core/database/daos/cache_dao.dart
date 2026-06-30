@@ -37,4 +37,9 @@ class CacheDao extends DatabaseAccessor<AppDatabase> with _$CacheDaoMixin {
       }
     });
   }
+
+  /// Rimuove tutti gli episodi in cache per una specifica serie (utile per refresh manuali).
+  Future<void> clearCacheForShow(int tmdbShowId) async {
+    await (delete(cachedEpisodes)..where((t) => t.tmdbShowId.equals(tmdbShowId))).go();
+  }
 }

@@ -90,4 +90,16 @@ class AnimeCacheDao extends DatabaseAccessor<AppDatabase>
       }
     });
   }
+
+  /// Cancella tutta la cache anime (Yuna mapping + season cache) per un dato
+  /// show. Usato quando AniList ha aggiunto nuove stagioni ma il record in
+  /// cache è ancora valido e non si rifresca da solo.
+  Future<void> clearAnimeCacheForShow(int tmdbId) async {
+    await transaction(() async {
+      await (delete(animeSeasonCache)
+            ..where((t) => t.tmdbShowId.equals(tmdbId)))
+          .go();
+      await (delete(yunaCache)..where((t) => t.tmdbId.equals(tmdbId))).go();
+    });
+  }
 }
