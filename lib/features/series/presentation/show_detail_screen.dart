@@ -100,18 +100,29 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
               children: [
                 _Header(detail: detail),
                 const SizedBox(height: 16),
-                if (detail.overview?.isNotEmpty == true) ...[
-                  _Overview(text: detail.overview!),
-                  const SizedBox(height: 16),
-                ],
                 _TrackButton(detail: detail, trackedShow: trackedShow),
                 if (trackedShow != null) ...[
                   const SizedBox(height: 8),
                   _StatusSelector(trackedShow: trackedShow),
                 ],
                 const SizedBox(height: 24),
+                _InfoBox(detail: detail),
+                const SizedBox(height: 24),
+                if (detail.overview?.isNotEmpty == true) ...[
+                  const Text(
+                    'Trama',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _Overview(text: detail.overview!),
+                  const SizedBox(height: 24),
+                ],
                 const Text(
-                  'Stagioni',
+                  'Episodi',
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 18,
@@ -310,21 +321,45 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Text(
+                detail.name,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
-                  Expanded(
-                    child: Text(
-                      detail.name,
+                  if (detail.voteAverage != null && detail.voteAverage! > 0)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star, color: AppColors.accent, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          detail.voteAverage!.toStringAsFixed(1),
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (detail.year != null)
+                    Text(
+                      '${detail.year}',
                       style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
                       ),
                     ),
-                  ),
-                  if (detail.isAnime) ...[
-                    const SizedBox(width: 8),
+                  if (detail.isAnime)
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 7, vertical: 3),
@@ -344,51 +379,24 @@ class _Header extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ],
                 ],
               ),
-              if (detail.year != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '${detail.year}',
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-              ],
-              const SizedBox(height: 6),
-              Text(
-                detail.statusLabel,
-                style: const TextStyle(
-                  color: AppColors.accent,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 6),
-              _MetaRow(detail: detail),
               if (detail.genres.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  detail.genres.take(3).join(' · '),
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-              if (detail.voteAverage != null && detail.voteAverage! > 0) ...[
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.star, color: AppColors.accent, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      detail.voteAverage!.toStringAsFixed(1),
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: detail.genres.map((g) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ],
+                    child: Text(
+                      g,
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                    ),
+                  )).toList(),
                 ),
               ],
             ],
@@ -399,25 +407,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _MetaRow extends StatelessWidget {
-  final TmdbShowDetail detail;
-  const _MetaRow({required this.detail});
 
-  @override
-  Widget build(BuildContext context) {
-    final parts = <String>[
-      if (detail.numberOfSeasons != null)
-        '${detail.numberOfSeasons} stagion${detail.numberOfSeasons == 1 ? "e" : "i"}',
-      if (detail.numberOfEpisodes != null)
-        '${detail.numberOfEpisodes} episodi',
-    ];
-    if (parts.isEmpty) return const SizedBox.shrink();
-    return Text(
-      parts.join(' · '),
-      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-    );
-  }
-}
 
 // ── Overview ──────────────────────────────────────────────────────────────────
 
@@ -629,6 +619,97 @@ class _ErrorBody extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Info Box ──────────────────────────────────────────────────────────────────
+
+class _InfoBox extends StatelessWidget {
+  final TmdbShowDetail detail;
+  const _InfoBox({required this.detail});
+
+  @override
+  Widget build(BuildContext context) {
+    Color statusColor;
+    final s = detail.statusLabel.toLowerCase();
+    if (s.contains('corso') || s.contains('returning') || s.contains('airing')) {
+      statusColor = Colors.greenAccent;
+    } else if (s.contains('terminat') || s.contains('ended') || s.contains('completa')) {
+      statusColor = Colors.blueAccent;
+    } else if (s.contains('cancellat') || s.contains('eliminat') || s.contains('canceled')) {
+      statusColor = Colors.redAccent;
+    } else {
+      statusColor = Colors.orangeAccent;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _InfoItem(
+            label: 'Stagioni',
+            value: '${detail.numberOfSeasons ?? "-"}',
+          ),
+          _InfoItem(
+            label: 'Episodi',
+            value: '${detail.numberOfEpisodes ?? "-"}',
+          ),
+          Column(
+            children: [
+              const Text(
+                'Stato',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              Tooltip(
+                message: detail.statusLabel,
+                triggerMode: TooltipTriggerMode.tap,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoItem extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoItem({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      ],
     );
   }
 }

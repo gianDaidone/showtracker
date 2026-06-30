@@ -53,16 +53,27 @@ class _DetailBody extends ConsumerWidget {
               children: [
                 _Header(detail: detail),
                 const SizedBox(height: 16),
-                if (detail.overview?.isNotEmpty == true) ...[
-                  _Overview(text: detail.overview!),
-                  const SizedBox(height: 16),
-                ],
                 _TrackButton(detail: detail, trackedMovie: trackedMovie),
                 if (trackedMovie != null) ...[
                   const SizedBox(height: 8),
                   _StatusSelector(trackedMovie: trackedMovie),
                 ],
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+                _InfoBox(detail: detail),
+                const SizedBox(height: 24),
+                if (detail.overview?.isNotEmpty == true) ...[
+                  const Text(
+                    'Trama',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _Overview(text: detail.overview!),
+                  const SizedBox(height: 32),
+                ],
               ],
             ),
           ),
@@ -235,47 +246,54 @@ class _Header extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              if (detail.year != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '${detail.year}',
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-              ],
-              if (detail.runtimeFormatted != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  detail.runtimeFormatted!,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-              if (detail.genres.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  detail.genres.take(3).join(' · '),
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-              if (detail.voteAverage != null && detail.voteAverage! > 0) ...[
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.star, color: AppColors.accent, size: 16),
-                    const SizedBox(width: 4),
+              const SizedBox(height: 6),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  if (detail.voteAverage != null && detail.voteAverage! > 0)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star, color: AppColors.accent, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          detail.voteAverage!.toStringAsFixed(1),
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (detail.year != null)
                     Text(
-                      detail.voteAverage!.toStringAsFixed(1),
+                      '${detail.year}',
                       style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
                       ),
                     ),
-                  ],
+                ],
+              ),
+              if (detail.genres.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: detail.genres.map((g) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      g,
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                    ),
+                  )).toList(),
                 ),
               ],
             ],
@@ -505,6 +523,48 @@ class _ErrorBody extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Info Box ──────────────────────────────────────────────────────────────────
+
+class _InfoBox extends StatelessWidget {
+  final TmdbMovieDetail detail;
+  const _InfoBox({required this.detail});
+
+  @override
+  Widget build(BuildContext context) {
+    if (detail.runtimeFormatted == null) return const SizedBox.shrink();
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Column(
+            children: [
+              const Text(
+                'Durata',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                detail.runtimeFormatted!,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

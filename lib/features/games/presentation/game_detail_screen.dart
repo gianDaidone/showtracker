@@ -85,103 +85,82 @@ class _DetailBody extends ConsumerWidget {
                   detail.name,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
 
-                // Info chips (anno, rating, playtime)
+                // Rating and Year
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
-                    if (detail.year != null)
-                      _InfoChip(
-                          icon: Icons.calendar_today,
-                          label: '${detail.year}'),
                     if (detail.voteAverage > 0)
-                      _InfoChip(
-                          icon: Icons.star,
-                          label:
-                              '${detail.voteAverage.toStringAsFixed(1)}/10'),
-                    if (detail.playtime != null && detail.playtime! > 0)
-                      _InfoChip(
-                          icon: Icons.timer_outlined,
-                          label: '~${detail.playtime}h'),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star, color: AppColors.accent, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            detail.voteAverage.toStringAsFixed(1),
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (detail.year != null)
+                      Text(
+                        '${detail.year}',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                      ),
                   ],
                 ),
+                
+                // Generi
+                if (detail.genres.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: detail.genres.map((g) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        g,
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                      ),
+                    )).toList(),
+                  ),
+                ],
 
                 const SizedBox(height: 16),
 
                 // Pulsante aggiungi / rimuovi
                 _TrackButton(detail: detail, trackedGame: trackedGame),
 
-                // Piattaforme
-                if (detail.platforms.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  _Section(
-                    title: 'Piattaforme',
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: detail.platforms
-                          .map((p) => _Tag(label: p))
-                          .toList(),
-                    ),
-                  ),
-                ],
-
-                // Generi
-                if (detail.genres.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _Section(
-                    title: 'Generi',
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: detail.genres
-                          .map((g) => _Tag(label: g))
-                          .toList(),
-                    ),
-                  ),
-                ],
-
-                // Sviluppatori
-                if (detail.developers.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _Section(
-                    title: 'Sviluppatori',
-                    child: Text(
-                      detail.developers.join(', '),
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 14),
-                    ),
-                  ),
-                ],
-
-                // Publisher
-                if (detail.publishers.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  _Section(
-                    title: 'Publisher',
-                    child: Text(
-                      detail.publishers.join(', '),
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 14),
-                    ),
-                  ),
-                ],
+                const SizedBox(height: 24),
+                _InfoBox(detail: detail),
+                const SizedBox(height: 24),
 
                 // Descrizione
                 if (detail.overview?.isNotEmpty == true) ...[
-                  const SizedBox(height: 20),
                   const Text(
-                    'Descrizione',
+                    'Trama',
                     style: TextStyle(
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 18,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -485,37 +464,6 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _InfoChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: AppColors.accent, size: 13),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _Tag extends StatelessWidget {
   final String label;
@@ -627,6 +575,86 @@ class _ErrorBody extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Info Box ──────────────────────────────────────────────────────────────────
+
+class _InfoBox extends StatelessWidget {
+  final RawgGameDetail detail;
+  const _InfoBox({required this.detail});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _InfoItem(
+              label: 'Sviluppatore',
+              value: detail.developers.isNotEmpty 
+                  ? detail.developers.join(', ')
+                  : '-',
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _InfoItem(
+              label: 'Publisher',
+              value: detail.publishers.isNotEmpty 
+                  ? detail.publishers.join(', ')
+                  : '-',
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _InfoItem(
+              label: 'Piattaforme',
+              value: detail.platforms.isNotEmpty 
+                  ? detail.platforms.join(', ')
+                  : '-',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoItem extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoItem({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }
