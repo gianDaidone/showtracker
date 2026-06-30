@@ -86,14 +86,43 @@ class _SearchScreenState extends State<SearchScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Logo ─────────────────────────────────────────────────────
+            // ── Header ───────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Center(
-                child: SvgPicture.asset(
-                  'assets/images/tmdb_logo.svg',
-                  height: 26,
-                ),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          final route = switch (widget.initialFilter) {
+                            'game' => '/games',
+                            'movie' => '/movies',
+                            _ => '/series',
+                          };
+                          context.go(route);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        color: Colors.transparent,
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: AppColors.textPrimary,
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SvgPicture.asset(
+                    'assets/images/tmdb_logo.svg',
+                    height: 18, // Più piccolo e centrato
+                  ),
+                ],
               ),
             ),
 
@@ -248,18 +277,18 @@ class _FilterBadge extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: active ? AppColors.accent : AppColors.surface,
+          color: active ? AppColors.divider.withAlpha(120) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: active
               ? null
-              : Border.all(color: AppColors.divider, width: 1),
+              : Border.all(color: AppColors.divider.withAlpha(50)),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: active ? Colors.black : AppColors.textSecondary,
+            color: active ? AppColors.accent : AppColors.textSecondary,
             fontWeight: active ? FontWeight.bold : FontWeight.w500,
             fontSize: 13,
           ),
@@ -440,11 +469,9 @@ class _Results extends ConsumerWidget {
           ),
         ),
         Expanded(
-          child: ListView.separated(
+          child: ListView.builder(
             padding: const EdgeInsets.only(bottom: 24),
             itemCount: results.length,
-            separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: AppColors.divider),
             itemBuilder: (_, i) => _ResultTile(result: results[i]),
           ),
         ),
@@ -472,36 +499,54 @@ class _ResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      onTap: () => _onTap(context),
-      leading: _Thumbnail(url: result.imageUrl, type: result.type),
-      title: Text(
-        result.title,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w600,
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: InkWell(
+        onTap: () => _onTap(context),
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _Thumbnail(url: result.imageUrl, type: result.type),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      result.title,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    if (result.subtitle?.isNotEmpty == true) ...[
+                      Text(
+                        result.subtitle!,
+                        style: const TextStyle(
+                            color: AppColors.textSecondary, fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    _TypeBadge(type: result.type),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+            ],
+          ),
         ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (result.subtitle?.isNotEmpty == true) ...[
-            const SizedBox(height: 2),
-            Text(
-              result.subtitle!,
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 12),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          const SizedBox(height: 4),
-          _TypeBadge(type: result.type),
-        ],
       ),
     );
   }
@@ -571,10 +616,10 @@ class _Thumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     final resolved = _resolvedUrl;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(8),
       child: SizedBox(
-        width: 46,
-        height: 68,
+        width: 64,
+        height: 96,
         child: resolved != null
             ? CachedNetworkImage(
                 imageUrl: resolved,

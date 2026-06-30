@@ -169,7 +169,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
             : null;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
@@ -191,7 +191,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
         },
         borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -223,9 +223,9 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
                     Text(
                       '${show.title} (${total ?? '?'})',
                       style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -253,9 +253,9 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
                       Text(
                         episodeTitle,
                         style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -290,13 +290,13 @@ class _CircularMarkButton extends StatelessWidget {
   static const _green = Color(0xFF4CAF50);
 
   Color get _bgColor => switch (state) {
-        _MarkState.idle => AppColors.divider,
+        _MarkState.idle => Colors.transparent,
         _MarkState.marking => _green,
         _MarkState.success => AppColors.accent,
       };
 
   Color get _iconColor =>
-      state == _MarkState.idle ? AppColors.textSecondary : Colors.white;
+      state == _MarkState.idle ? AppColors.accent : Colors.white;
 
   @override
   Widget build(BuildContext context) {
@@ -305,14 +305,14 @@ class _CircularMarkButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeInOut,
-        width: 40,
-        height: 40,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: _bgColor,
           border: state == _MarkState.idle
               ? Border.all(
-                  color: AppColors.textSecondary.withAlpha(80),
+                  color: AppColors.accent.withAlpha(120),
                   width: 1.5,
                 )
               : null,
@@ -328,7 +328,7 @@ class _CircularMarkButton extends StatelessWidget {
                   )
                 : Icon(
                     state == _MarkState.success
-                        ? Icons.check_circle
+                        ? Icons.check
                         : Icons.check,
                     size: 18,
                     color: _iconColor,
@@ -590,19 +590,18 @@ class _EpisodeBadge extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.accent.withAlpha(30),
-        border: Border.all(color: AppColors.accent.withAlpha(120)),
-        borderRadius: BorderRadius.circular(6),
+        color: AppColors.divider.withAlpha(80),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         label,
         style: const TextStyle(
-          color: AppColors.accent,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-          letterSpacing: 0.5,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+          fontSize: 11,
+          letterSpacing: 0.3,
         ),
       ),
     );

@@ -80,16 +80,17 @@ class _GamesHeader extends StatelessWidget {
         GestureDetector(
           onTap: () => context.push('/games/list'),
           child: Container(
-            width: 54,
-            height: 54,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
-              color: AppColors.accent,
-              borderRadius: BorderRadius.circular(14),
+              color: Colors.transparent,
+              border: Border.all(color: AppColors.divider, width: 1.5),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(
               Icons.videogame_asset_rounded,
-              color: Colors.black,
-              size: 28,
+              color: AppColors.accent,
+              size: 24,
             ),
           ),
         ),
@@ -138,9 +139,11 @@ class _GamesTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 46,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.divider, width: 1),
       ),
       child: TabBar(
         tabs: const [
@@ -148,21 +151,25 @@ class _GamesTabBar extends StatelessWidget {
           Tab(text: 'In Uscita'),
           Tab(text: 'Giocati'),
         ],
-        labelColor: Colors.black,
-        unselectedLabelColor: AppColors.textSecondary,
+        labelColor: AppColors.textPrimary,
+        unselectedLabelColor: AppColors.textSecondary.withAlpha(120),
         indicator: BoxDecoration(
-          color: AppColors.accent,
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.white.withAlpha(24),
+          borderRadius: BorderRadius.circular(22),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
+        splashFactory: NoSplash.splashFactory,
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
         labelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          letterSpacing: 0.3,
         ),
         unselectedLabelStyle: const TextStyle(
           fontWeight: FontWeight.w500,
-          fontSize: 13,
+          fontSize: 14,
+          letterSpacing: 0.3,
         ),
         padding: const EdgeInsets.all(4),
       ),
@@ -540,14 +547,14 @@ class _GameCardState extends ConsumerState<_GameCard> {
     final isDropped = game.status == MediaStatus.dropped;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: () => context.push('/games/detail/${game.rawgId}'),
         borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -564,7 +571,7 @@ class _GameCardState extends ConsumerState<_GameCard> {
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 16,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -618,14 +625,14 @@ class _UpcomingGameCard extends StatelessWidget {
     final platforms = _decodePlatforms(game.platforms);
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: () => context.push('/games/detail/${game.rawgId}'),
         borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: Row(
             children: [
               _Cover(url: game.coverUrl),
@@ -702,29 +709,20 @@ class _ReleaseDateBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isFarFuture ? Colors.grey : AppColors.accent;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withAlpha(30),
-        border: Border.all(color: color.withAlpha(120)),
-        borderRadius: BorderRadius.circular(6),
+        color: AppColors.divider.withAlpha(80),
+        borderRadius: BorderRadius.circular(4),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.calendar_today, color: color, size: 10),
-          const SizedBox(width: 4),
-          Text(
-            '$_formatted · $_countdown',
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 10,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ],
+      child: Text(
+        '$_formatted · $_countdown',
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+          fontSize: 11,
+          letterSpacing: 0.3,
+        ),
       ),
     );
   }
@@ -736,18 +734,18 @@ class _TbaBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.textSecondary.withAlpha(30),
-        border: Border.all(color: AppColors.textSecondary.withAlpha(80)),
-        borderRadius: BorderRadius.circular(6),
+        color: AppColors.divider.withAlpha(80),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: const Text(
         'Data da annunciare',
         style: TextStyle(
           color: AppColors.textSecondary,
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
+          letterSpacing: 0.3,
         ),
       ),
     );
@@ -874,10 +872,10 @@ class _ActionButton extends StatelessWidget {
   });
 
   Color get _bgColor {
-    if (isLoading) return AppColors.divider;
+    if (isLoading) return Colors.transparent;
     if (isPlayed) return AppColors.accent;
     if (isDropped) return const Color(0xFFF44336);
-    return AppColors.divider;
+    return Colors.transparent;
   }
 
   Widget get _icon {
@@ -890,12 +888,12 @@ class _ActionButton extends StatelessWidget {
       );
     }
     if (isPlayed) {
-      return const Icon(Icons.check, color: Colors.black, size: 18);
+      return const Icon(Icons.check, color: Colors.white, size: 18);
     }
     if (isDropped) {
       return const Icon(Icons.flag, color: Colors.white, size: 18);
     }
-    return const Icon(Icons.check, color: AppColors.textSecondary, size: 18);
+    return const Icon(Icons.check, color: AppColors.accent, size: 18);
   }
 
   @override
@@ -904,13 +902,13 @@ class _ActionButton extends StatelessWidget {
       onTap: isLoading ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 38,
-        height: 38,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: _bgColor,
           border: (!isPlayed && !isDropped && !isLoading)
-              ? Border.all(color: AppColors.textSecondary.withAlpha(80),
+              ? Border.all(color: AppColors.accent.withAlpha(120),
                   width: 1.5)
               : null,
         ),

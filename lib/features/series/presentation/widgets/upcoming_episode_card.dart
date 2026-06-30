@@ -111,7 +111,7 @@ class UpcomingEpisodeCard extends StatelessWidget {
     String pad(int n) => n.toString().padLeft(2, '0');
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
@@ -127,7 +127,7 @@ class UpcomingEpisodeCard extends StatelessWidget {
           episode: episode.toTmdbEpisode(),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -188,9 +188,9 @@ class UpcomingEpisodeCard extends StatelessWidget {
                     Text(
                       '${show.title} (${show.totalEpisodes ?? '?'})',
                       style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -202,12 +202,10 @@ class UpcomingEpisodeCard extends StatelessWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isFarFuture ? Colors.grey.withAlpha(30) : AppColors.accent.withAlpha(30),
-                            border:
-                                Border.all(color: isFarFuture ? Colors.grey.withAlpha(120) : AppColors.accent.withAlpha(120)),
-                            borderRadius: BorderRadius.circular(5),
+                            color: AppColors.divider.withAlpha(80),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Builder(
                             builder: (context) {
@@ -224,11 +222,11 @@ class UpcomingEpisodeCard extends StatelessWidget {
 
                               return Text(
                                 label,
-                                style: TextStyle(
-                                  color: isFarFuture ? Colors.grey : AppColors.accent,
-                                  fontWeight: FontWeight.bold,
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
                                   fontSize: 11,
-                                  letterSpacing: 0.4,
+                                  letterSpacing: 0.3,
                                 ),
                               );
                             },
@@ -256,9 +254,9 @@ class UpcomingEpisodeCard extends StatelessWidget {
                           ? episode.name
                           : 'Titolo non disponibile',
                       style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,

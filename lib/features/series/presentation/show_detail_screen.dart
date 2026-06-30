@@ -154,6 +154,13 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
               trackedShow: trackedShow,
             ),
           ),
+        if (trackedShow != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: _RemoveShowButton(detail: detail, trackedShow: trackedShow),
+            ),
+          ),
         const SliverToBoxAdapter(child: SizedBox(height: 32)),
       ],
     );
@@ -370,14 +377,18 @@ class _Header extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 6,
                   children: detail.genres.map((g) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
+                      color: AppColors.divider.withAlpha(80),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       g,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   )).toList(),
                 ),
@@ -449,44 +460,31 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
 
   @override
   Widget build(BuildContext context) {
-    final isTracked = widget.trackedShow != null;
+    if (widget.trackedShow != null) return const SizedBox.shrink();
 
     return SizedBox(
       width: double.infinity,
-      child: isTracked
-          ? OutlinedButton.icon(
-              onPressed: _loading ? null : _remove,
-              icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-              label: const Text(
-                'Rimuovi dalla libreria',
-                style: TextStyle(color: Colors.redAccent),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.redAccent),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            )
-          : FilledButton.icon(
-              onPressed: _loading ? null : _add,
-              icon: _loading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.black,
-                      ),
-                    )
-                  : const Icon(Icons.add, color: Colors.black),
-              label: const Text(
-                'Aggiungi alla libreria',
-                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
+      child: FilledButton.icon(
+        onPressed: _loading ? null : _add,
+        icon: _loading
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.black,
+                ),
+              )
+            : const Icon(Icons.add, color: Colors.black),
+        label: const Text(
+          'Aggiungi alla libreria',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.accent,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
     );
   }
 
@@ -501,6 +499,37 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+}
+
+// ── Remove button (Secondary Action) ──────────────────────────────────────────
+
+class _RemoveShowButton extends ConsumerStatefulWidget {
+  final TmdbShowDetail detail;
+  final TrackedShow trackedShow;
+  const _RemoveShowButton({required this.detail, required this.trackedShow});
+
+  @override
+  ConsumerState<_RemoveShowButton> createState() => _RemoveShowButtonState();
+}
+
+class _RemoveShowButtonState extends ConsumerState<_RemoveShowButton> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: TextButton.icon(
+        onPressed: _loading ? null : _remove,
+        icon: const Icon(Icons.delete_outline, size: 18),
+        label: const Text('Rimuovi dalla libreria'),
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.redAccent,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
   }
 
   Future<void> _remove() async {
@@ -532,7 +561,7 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
     try {
       await ref
           .read(trackedShowsNotifierProvider.notifier)
-          .removeShow(widget.trackedShow!.id);
+          .removeShow(widget.trackedShow.id);
     } catch (_) {
       AppToast.show('Impossibile rimuovere "${widget.detail.name}"');
     } finally {
@@ -554,22 +583,26 @@ class _StatusSelector extends ConsumerWidget {
       child: Row(
         children: MediaStatus.values.map((s) {
           final selected = trackedShow.status == s;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(s.label),
-              selected: selected,
-              selectedColor: AppColors.accent,
-              backgroundColor: AppColors.surface,
-              labelStyle: TextStyle(
-                color: selected ? Colors.black : AppColors.textSecondary,
-                fontWeight:
-                    selected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 12,
+          return GestureDetector(
+            onTap: () => ref
+                .read(trackedShowsNotifierProvider.notifier)
+                .updateStatus(trackedShow.id, s),
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: selected ? AppColors.divider.withAlpha(120) : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                border: selected ? null : Border.all(color: AppColors.divider.withAlpha(50)),
               ),
-              onSelected: (_) => ref
-                  .read(trackedShowsNotifierProvider.notifier)
-                  .updateStatus(trackedShow.id, s),
+              child: Text(
+                s.label,
+                style: TextStyle(
+                  color: selected ? AppColors.accent : AppColors.textSecondary,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
             ),
           );
         }).toList(),
@@ -649,17 +682,13 @@ class _InfoBox extends StatelessWidget {
                 'Stato',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
-              const SizedBox(height: 8),
-              Tooltip(
-                message: detail.statusLabel,
-                triggerMode: TooltipTriggerMode.tap,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    shape: BoxShape.circle,
-                  ),
+              const SizedBox(height: 4),
+              Text(
+                detail.statusLabel,
+                style: TextStyle(
+                  color: statusColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
                 ),
               ),
             ],

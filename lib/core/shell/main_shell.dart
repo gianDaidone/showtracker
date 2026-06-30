@@ -17,10 +17,10 @@ class _MainShellState extends State<MainShell> {
   int _lastSectionIndex = 0;
 
   static const _tabs = [
-    (icon: Icons.tv, label: 'Serie'),
-    (icon: Icons.movie, label: 'Film'),
-    (icon: Icons.videogame_asset, label: 'Giochi'),
-    if (kDebugMode) (icon: Icons.bug_report, label: 'Debug'),
+    (icon: Icons.tv_outlined, activeIcon: Icons.tv_rounded, label: 'Serie'),
+    (icon: Icons.movie_outlined, activeIcon: Icons.movie, label: 'Film'),
+    (icon: Icons.videogame_asset_outlined, activeIcon: Icons.videogame_asset, label: 'Giochi'),
+    if (kDebugMode) (icon: Icons.bug_report_outlined, activeIcon: Icons.bug_report, label: 'Debug'),
   ];
 
   @override
@@ -60,24 +60,6 @@ class _MainShellState extends State<MainShell> {
 
               return Stack(
                 children: [
-                  // Sfondo animato (il "badge")
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeOutBack,
-                    left: tabWidth * activeIndex,
-                    top: 0,
-                    bottom: 0,
-                    width: tabWidth,
-                    child: Padding(
-                      padding: const EdgeInsets.all(6.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.accent.withAlpha(35),
-                          borderRadius: BorderRadius.circular(26),
-                        ),
-                      ),
-                    ),
-                  ),
                   // Icone e testi
                   Row(
                     children: List.generate(_tabs.length, (index) {
@@ -102,14 +84,14 @@ class _MainShellState extends State<MainShell> {
                                 curve: Curves.easeOutBack,
                                 scale: isSelected ? 1.15 : 1.0,
                                 child: Icon(
-                                  t.icon,
+                                  isSelected ? t.activeIcon : t.icon,
                                   color: isSelected
                                       ? AppColors.accent
                                       : AppColors.textSecondary,
                                   size: 24,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 4),
                               AnimatedDefaultTextStyle(
                                 duration: const Duration(milliseconds: 300),
                                 style: TextStyle(
@@ -118,8 +100,8 @@ class _MainShellState extends State<MainShell> {
                                       : AppColors.textSecondary,
                                   fontSize: 11,
                                   fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
                                 ),
                                 child: Text(t.label),
                               ),

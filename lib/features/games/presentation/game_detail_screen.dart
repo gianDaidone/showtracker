@@ -421,26 +421,39 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
     final isTracked = widget.trackedGame != null;
     return SizedBox(
       width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: _loading ? null : _toggle,
-        icon: _loading
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.black),
-              )
-            : Icon(isTracked ? Icons.check : Icons.add),
-        label: Text(isTracked ? 'Nel backlog' : 'Aggiungi al backlog'),
-        style: FilledButton.styleFrom(
-          backgroundColor:
-              isTracked ? AppColors.accent.withAlpha(180) : AppColors.accent,
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
+      child: isTracked
+          ? OutlinedButton.icon(
+              onPressed: _loading ? null : _toggle,
+              icon: const Icon(Icons.check, color: AppColors.textSecondary),
+              label: const Text(
+                'Nel backlog',
+                style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.divider),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            )
+          : FilledButton.icon(
+              onPressed: _loading ? null : _toggle,
+              icon: _loading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+                    )
+                  : const Icon(Icons.add, color: AppColors.accent),
+              label: const Text(
+                'Aggiungi al backlog',
+                style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white.withAlpha(24),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
     );
   }
 }
@@ -455,16 +468,18 @@ class _Tag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.divider),
+        color: AppColors.divider.withAlpha(80),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style:
-            const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -576,35 +591,40 @@ class _InfoBox extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: _InfoItem(
-              label: 'Sviluppatore',
-              value: detail.developers.isNotEmpty 
-                  ? detail.developers.join(', ')
-                  : '-',
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _InfoItem(
+                  label: 'Sviluppatore',
+                  value: detail.developers.isNotEmpty 
+                      ? detail.developers.join(', ')
+                      : '-',
+                  align: TextAlign.start,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _InfoItem(
+                  label: 'Publisher',
+                  value: detail.publishers.isNotEmpty 
+                      ? detail.publishers.join(', ')
+                      : '-',
+                  align: TextAlign.start,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _InfoItem(
-              label: 'Publisher',
-              value: detail.publishers.isNotEmpty 
-                  ? detail.publishers.join(', ')
-                  : '-',
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _InfoItem(
-              label: 'Piattaforme',
-              value: detail.platforms.isNotEmpty 
-                  ? detail.platforms.join(', ')
-                  : '-',
-            ),
+          const SizedBox(height: 16),
+          _InfoItem(
+            label: 'Piattaforme',
+            value: detail.platforms.isNotEmpty 
+                ? detail.platforms.join(', ')
+                : '-',
+            align: TextAlign.start,
           ),
         ],
       ),
@@ -615,17 +635,18 @@ class _InfoBox extends StatelessWidget {
 class _InfoItem extends StatelessWidget {
   final String label;
   final String value;
-  const _InfoItem({required this.label, required this.value});
+  final TextAlign align;
+  const _InfoItem({required this.label, required this.value, this.align = TextAlign.center});
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: align == TextAlign.start ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       children: [
         Text(
           label,
           style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-          textAlign: TextAlign.center,
+          textAlign: align,
         ),
         const SizedBox(height: 4),
         Text(
@@ -634,8 +655,9 @@ class _InfoItem extends StatelessWidget {
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 13,
+            height: 1.4,
           ),
-          textAlign: TextAlign.center,
+          textAlign: align,
         ),
       ],
     );

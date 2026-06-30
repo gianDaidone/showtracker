@@ -92,9 +92,11 @@ class _SeriesTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 46,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.divider, width: 1),
       ),
       child: TabBar(
         controller: controller,
@@ -102,21 +104,25 @@ class _SeriesTabBar extends StatelessWidget {
           Tab(text: 'Da Vedere'),
           Tab(text: 'In Uscita'),
         ],
-        labelColor: Colors.black,
-        unselectedLabelColor: AppColors.textSecondary,
+        labelColor: AppColors.textPrimary,
+        unselectedLabelColor: AppColors.textSecondary.withAlpha(120),
         indicator: BoxDecoration(
-          color: AppColors.accent,
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.white.withAlpha(24),
+          borderRadius: BorderRadius.circular(22),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
+        splashFactory: NoSplash.splashFactory,
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
         labelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w600,
           fontSize: 14,
+          letterSpacing: 0.3,
         ),
         unselectedLabelStyle: const TextStyle(
           fontWeight: FontWeight.w500,
           fontSize: 14,
+          letterSpacing: 0.3,
         ),
         padding: const EdgeInsets.all(4),
       ),
@@ -398,16 +404,17 @@ class _SeriesHeader extends StatelessWidget {
         GestureDetector(
           onTap: () => context.push('/series/list'),
           child: Container(
-            width: 54,
-            height: 54,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
-              color: AppColors.accent,
-              borderRadius: BorderRadius.circular(14),
+              color: Colors.transparent,
+              border: Border.all(color: AppColors.divider, width: 1.5),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(
               Icons.tv_rounded,
-              color: Colors.black,
-              size: 28,
+              color: AppColors.accent,
+              size: 24,
             ),
           ),
         ),

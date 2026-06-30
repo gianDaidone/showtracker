@@ -69,16 +69,17 @@ class _MoviesHeader extends StatelessWidget {
         GestureDetector(
           onTap: () => context.push('/movies/list'),
           child: Container(
-            width: 54,
-            height: 54,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
-              color: AppColors.accent,
-              borderRadius: BorderRadius.circular(14),
+              color: Colors.transparent,
+              border: Border.all(color: AppColors.divider, width: 1.5),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(
               Icons.movie_rounded,
-              color: Colors.black,
-              size: 28,
+              color: AppColors.accent,
+              size: 24,
             ),
           ),
         ),
@@ -127,30 +128,36 @@ class _MoviesTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 46,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.divider, width: 1),
       ),
       child: TabBar(
         tabs: const [
           Tab(text: 'Da Vedere'),
           Tab(text: 'In Uscita'),
         ],
-        labelColor: Colors.black,
-        unselectedLabelColor: AppColors.textSecondary,
+        labelColor: AppColors.textPrimary,
+        unselectedLabelColor: AppColors.textSecondary.withAlpha(120),
         indicator: BoxDecoration(
-          color: AppColors.accent,
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.white.withAlpha(24),
+          borderRadius: BorderRadius.circular(22),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
+        splashFactory: NoSplash.splashFactory,
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
         labelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w600,
           fontSize: 14,
+          letterSpacing: 0.3,
         ),
         unselectedLabelStyle: const TextStyle(
           fontWeight: FontWeight.w500,
           fontSize: 14,
+          letterSpacing: 0.3,
         ),
         padding: const EdgeInsets.all(4),
       ),
@@ -385,14 +392,14 @@ class _WatchlistMovieCardState extends ConsumerState<_WatchlistMovieCard> {
   Widget build(BuildContext context) {
     final movie = widget.movie;
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: () => context.push('/movies/detail/${movie.tmdbId}'),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -407,13 +414,11 @@ class _WatchlistMovieCardState extends ConsumerState<_WatchlistMovieCard> {
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontSize: 16,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
-                    _StatusChip(status: movie.status),
                     if (movie.releaseYear != null) ...[
                       const SizedBox(height: 6),
                       Text(
@@ -450,14 +455,14 @@ class _UpcomingMovieCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: () => context.push('/movies/detail/${movie.tmdbId}'),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -472,7 +477,7 @@ class _UpcomingMovieCard extends StatelessWidget {
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontSize: 16,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -521,30 +526,20 @@ class _ReleaseDateBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isFarFuture ? Colors.grey : AppColors.accent;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withAlpha(30),
-        border: Border.all(color: color.withAlpha(120)),
-        borderRadius: BorderRadius.circular(6),
+        color: AppColors.divider.withAlpha(80),
+        borderRadius: BorderRadius.circular(4),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.calendar_today,
-              color: color, size: 11),
-          const SizedBox(width: 4),
-          Text(
-            '$_formatted · $_countdown',
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ],
+      child: Text(
+        '$_formatted · $_countdown',
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+          fontSize: 11,
+          letterSpacing: 0.3,
+        ),
       ),
     );
   }
@@ -561,13 +556,13 @@ class _CircularMarkButton extends StatelessWidget {
   static const _green = Color(0xFF4CAF50);
 
   Color get _bgColor => switch (state) {
-        _MarkState.idle => AppColors.divider,
+        _MarkState.idle => Colors.transparent,
         _MarkState.marking => _green,
         _MarkState.success => AppColors.accent,
       };
 
   Color get _iconColor =>
-      state == _MarkState.idle ? AppColors.textSecondary : Colors.white;
+      state == _MarkState.idle ? AppColors.accent : Colors.white;
 
   @override
   Widget build(BuildContext context) {
@@ -576,14 +571,14 @@ class _CircularMarkButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeInOut,
-        width: 40,
-        height: 40,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: _bgColor,
           border: state == _MarkState.idle
               ? Border.all(
-                  color: AppColors.textSecondary.withAlpha(80),
+                  color: AppColors.accent.withAlpha(120),
                   width: 1.5,
                 )
               : null,
@@ -599,7 +594,7 @@ class _CircularMarkButton extends StatelessWidget {
                   )
                 : Icon(
                     state == _MarkState.success
-                        ? Icons.check_circle
+                        ? Icons.check
                         : Icons.check,
                     size: 18,
                     color: _iconColor,
@@ -665,20 +660,19 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _colors[status] ?? AppColors.textSecondary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withAlpha(40),
-        border: Border.all(color: color.withAlpha(120)),
-        borderRadius: BorderRadius.circular(6),
+        color: AppColors.divider.withAlpha(80),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         status.label,
-        style: TextStyle(
-          color: color,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
           fontSize: 11,
           fontWeight: FontWeight.w600,
+          letterSpacing: 0.3,
         ),
       ),
     );

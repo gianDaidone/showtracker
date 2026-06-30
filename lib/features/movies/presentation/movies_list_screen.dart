@@ -163,61 +163,67 @@ class _MovieCard extends StatelessWidget {
         onTap: () => context.push('/movies/detail/${movie.tmdbId}'),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _Poster(path: movie.posterPath),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       movie.title,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontSize: 16,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     _StatusChip(status: movie.status),
-                    if (movie.releaseYear != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        '${movie.releaseYear}',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                    if (movie.userRating != null) ...[
-                      const SizedBox(height: 6),
+                    if (movie.releaseYear != null || movie.userRating != null) ...[
+                      const SizedBox(height: 10),
                       Row(
                         children: [
-                          const Icon(Icons.star,
-                              color: AppColors.accent, size: 14),
-                          const SizedBox(width: 3),
-                          Text(
-                            movie.userRating!.toStringAsFixed(1),
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                          if (movie.releaseYear != null) ...[
+                            Text(
+                              '${movie.releaseYear}',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
+                          ],
+                          if (movie.releaseYear != null && movie.userRating != null)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 6),
+                              child: Text('•', style: TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+                            ),
+                          if (movie.userRating != null) ...[
+                            const Icon(Icons.star, color: AppColors.accent, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              movie.userRating!.toStringAsFixed(1),
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right,
-                  color: AppColors.textSecondary, size: 20),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
             ],
           ),
         ),
@@ -280,18 +286,17 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _colors[status] ?? AppColors.textSecondary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withAlpha(40),
-        border: Border.all(color: color.withAlpha(120)),
-        borderRadius: BorderRadius.circular(6),
+        color: color.withAlpha(120),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         status.label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

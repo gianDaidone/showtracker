@@ -23,29 +23,30 @@ class ShowCard extends ConsumerWidget {
         onTap: () => context.push('/series/detail/${show.tmdbId}'),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _Poster(path: show.posterPath),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       show.title,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontSize: 16,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
-                    _StatusChip(status: show.status),
                     const SizedBox(height: 8),
+                    _StatusChip(status: show.status),
+                    const SizedBox(height: 10),
                     watchedAsync.when(
                       data: (watched) => _Progress(
                         watched: watched,
@@ -57,6 +58,7 @@ class ShowCard extends ConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               const Icon(Icons.chevron_right, color: AppColors.textSecondary),
             ],
           ),
@@ -124,15 +126,14 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _colors[status] ?? AppColors.textSecondary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withAlpha(40),
-        border: Border.all(color: color.withAlpha(120)),
-        borderRadius: BorderRadius.circular(6),
+        color: color.withAlpha(120),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         status.label,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -156,18 +157,18 @@ class _Progress extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6),
           child: LinearProgressIndicator(
             value: pct,
-            backgroundColor: AppColors.divider,
+            backgroundColor: Colors.white.withAlpha(30),
             valueColor: const AlwaysStoppedAnimation(AppColors.accent),
-            minHeight: 5,
+            minHeight: 6,
           ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: 6),
         Text(
           '$watched / $total ep.',
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
         ),
       ],
     );
