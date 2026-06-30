@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
+enum ToastType { error, success, info }
+
 class AppToast {
   static final navigatorKey = GlobalKey<NavigatorState>();
 
   static OverlayEntry? _current;
 
-  static void show(String message, {bool isError = true}) {
+  static void show(String message, {ToastType type = ToastType.error}) {
     final overlay = navigatorKey.currentState?.overlay;
     if (overlay == null) return;
 
@@ -17,7 +19,7 @@ class AppToast {
     entry = OverlayEntry(
       builder: (_) => _ToastBanner(
         message: message,
-        isError: isError,
+        type: type,
         onDone: () {
           entry.remove();
           if (_current == entry) _current = null;
@@ -33,12 +35,12 @@ class AppToast {
 
 class _ToastBanner extends StatefulWidget {
   final String message;
-  final bool isError;
+  final ToastType type;
   final VoidCallback onDone;
 
   const _ToastBanner({
     required this.message,
-    required this.isError,
+    required this.type,
     required this.onDone,
   });
 
@@ -60,12 +62,13 @@ class _ToastBannerState extends State<_ToastBanner>
       duration: const Duration(milliseconds: 280),
     );
     _slide = Tween<Offset>(
-      begin: const Offset(0, 1.5),
+      begin: const Offset(0, -1.5), // Anima dall'alto
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
 
     _ctrl.forward();
+    // Nascondi dopo un po'
     Future.delayed(const Duration(milliseconds: 3500), _dismiss);
   }
 
@@ -83,11 +86,27 @@ class _ToastBannerState extends State<_ToastBanner>
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).padding.bottom;
-    final color = widget.isError ? Colors.redAccent : AppColors.accent;
+    final top = MediaQuery.of(context).padding.top;
+    
+    final Color color;
+    final IconData icon;
+    switch (widget.type) {
+      case ToastType.error:
+        color = Colors.redAccent;
+        icon = Icons.error_outline;
+        break;
+      case ToastType.success:
+        color = AppColors.accent;
+        icon = Icons.check_circle_outline;
+        break;
+      case ToastType.info:
+        color = AppColors.accent;
+        icon = Icons.info_outline;
+        break;
+    }
 
     return Positioned(
-      bottom: bottom + 24,
+      top: top + 16,
       left: 16,
       right: 16,
       child: SlideTransition(
@@ -117,13 +136,17 @@ class _ToastBannerState extends State<_ToastBanner>
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      widget.isError
-                          ? Icons.error_outline
-                          : Icons.check_circle_outline,
-                      color: color,
-                      size: 20,
-                    ),
+                    if (widget.type == ToastType.info)
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: color,
+                        ),
+                      )
+                    else
+                      Icon(icon, color: color, size: 20),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
