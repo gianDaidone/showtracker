@@ -44,9 +44,15 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     final lastEp = watched[lastSeason]!.reduce((a, b) => a > b ? a : b);
     final nextEp = lastEp + 1;
     final countInSeason = seasonCounts[lastSeason];
-    // Se conosciamo il numero di episodi della stagione e lo abbiamo superato,
-    // passiamo alla stagione successiva.
-    if (countInSeason != null && nextEp > countInSeason) {
+    // Avanza alla stagione successiva solo se conosciamo il totale episodi
+    // della stagione corrente (>0) e l'abbiamo superato. Per anime in onda
+    // AniList può restituire episodes=null → episodeCount=0: in quel caso
+    // 0 significa "totale ignoto", non "stagione vuota", quindi non saltiamo.
+    final hasNextSeason = seasonCounts.containsKey(lastSeason + 1);
+    if (countInSeason != null &&
+        countInSeason > 0 &&
+        nextEp > countInSeason &&
+        hasNextSeason) {
       return (lastSeason + 1, 1);
     }
     return (lastSeason, nextEp);
@@ -134,15 +140,24 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       return const _SkeletonCard();
     }
 
-    final nextEpisode = seasonAsync
-        .valueOrNull
-        ?.episodes
+    final loadedEpisodes = seasonAsync.valueOrNull?.episodes;
+    final nextEpisode = loadedEpisodes
         ?.where((e) => e.episodeNumber == nextEp)
         .firstOrNull;
 
     // Se i dati della stagione sono caricati ma l'episodio non è ancora
     // uscito, non mostrare la card (l'episodio apparirà in "In Uscita").
     if (seasonAsync.hasValue && nextEpisode != null && !nextEpisode.hasAired) {
+      return const SizedBox.shrink();
+    }
+
+    // Utente in pari con una stagione in onda: la stagione ha episodi
+    // caricati ma l'episodio richiesto non esiste ancora. Nascondi la card,
+    // l'episodio apparirà in "In Uscita" quando verrà rilasciato.
+    if (seasonAsync.hasValue &&
+        nextEpisode == null &&
+        loadedEpisodes != null &&
+        loadedEpisodes.isNotEmpty) {
       return const SizedBox.shrink();
     }
 
