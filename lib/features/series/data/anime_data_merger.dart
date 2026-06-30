@@ -3,7 +3,14 @@ import 'models/normalized_anime_season.dart';
 import 'models/tmdb_season.dart';
 
 class AnimeDataMerger {
-  static const _mainFormats = {'TV', 'TV_SHORT'};
+  // Formati primari: trasmissioni TV "classiche".
+  static const _primaryFormats = {'TV', 'TV_SHORT'};
+  // Fallback: ONA (Original Net Animation), tipico delle produzioni
+  // streaming-first (Netflix, Crunchyroll Originals, ecc.). Lo usiamo solo se
+  // non esiste nessun entry TV/TV_SHORT, così per gli anime TV "normali"
+  // continuiamo a escludere gli ONA correlati (recap, extra, side-stories).
+  static const _fallbackFormats = {'ONA'};
+
   static const _seasonOrder = {
     'WINTER': 0,
     'SPRING': 1,
@@ -20,10 +27,16 @@ class AnimeDataMerger {
     required List<TmdbSeason> tmdbSeasons,
     required List<AniListMedia> anilistMedia,
   }) {
-    // 1. Filter to main formats only (no OVA, Movie, Special, ONA)
-    final filtered = anilistMedia
-        .where((m) => _mainFormats.contains(m.format))
+    // 1. Prefer TV/TV_SHORT; fallback su ONA se non c'è nessun entry TV
+    //    (anime streaming-only come Witch Hat Atelier hanno format=ONA).
+    var filtered = anilistMedia
+        .where((m) => _primaryFormats.contains(m.format))
         .toList();
+    if (filtered.isEmpty) {
+      filtered = anilistMedia
+          .where((m) => _fallbackFormats.contains(m.format))
+          .toList();
+    }
 
     if (filtered.isEmpty) return [];
 

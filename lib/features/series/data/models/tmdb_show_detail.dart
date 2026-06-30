@@ -51,6 +51,7 @@ class TmdbNextEpisode {
 class TmdbShowDetail {
   final int id;
   final String name;
+  final String? originalName;
   final String? overview;
   final String? posterPath;
   final String? backdropPath;
@@ -69,6 +70,7 @@ class TmdbShowDetail {
   const TmdbShowDetail({
     required this.id,
     required this.name,
+    this.originalName,
     this.overview,
     this.posterPath,
     this.backdropPath,
@@ -101,6 +103,9 @@ class TmdbShowDetail {
     return TmdbShowDetail(
       id: it['id'] as int,
       name: nonEmpty('name') ?? '',
+      originalName: (it['original_name'] as String?)?.isNotEmpty == true
+          ? it['original_name'] as String
+          : null,
       overview: nonEmpty('overview'),
       posterPath: it['poster_path'] as String?,
       backdropPath: it['backdrop_path'] as String?,
@@ -133,6 +138,7 @@ class TmdbShowDetail {
       TmdbShowDetail(
         id: id,
         name: name,
+        originalName: originalName,
         overview: overview,
         posterPath: posterPath,
         backdropPath: backdropPath,
