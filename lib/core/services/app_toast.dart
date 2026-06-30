@@ -69,7 +69,7 @@ class _ToastBannerState extends State<_ToastBanner>
 
     _ctrl.forward();
     // Nascondi dopo un po'
-    Future.delayed(const Duration(milliseconds: 3500), _dismiss);
+    Future.delayed(const Duration(milliseconds: 1500), _dismiss);
   }
 
   @override
@@ -109,11 +109,13 @@ class _ToastBannerState extends State<_ToastBanner>
       top: top + 16,
       left: 16,
       right: 16,
-      child: SlideTransition(
-        position: _slide,
-        child: FadeTransition(
-          opacity: _fade,
-          child: GestureDetector(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SlideTransition(
+          position: _slide,
+          child: FadeTransition(
+            opacity: _fade,
+            child: GestureDetector(
             onTap: _dismiss,
             child: Material(
               color: Colors.transparent,
@@ -148,7 +150,7 @@ class _ToastBannerState extends State<_ToastBanner>
                     else
                       Icon(icon, color: color, size: 20),
                     const SizedBox(width: 12),
-                    Expanded(
+                    Flexible(
                       child: Text(
                         widget.message,
                         style: const TextStyle(
@@ -163,6 +165,7 @@ class _ToastBannerState extends State<_ToastBanner>
               ),
             ),
           ),
+        ),
         ),
       ),
     );
