@@ -15,12 +15,16 @@ class EpisodeTile extends StatelessWidget {
   /// Apre la modale di dettaglio episodio.
   final VoidCallback? onTap;
 
+  /// Se true, indica che l'episodio esce in contemporanea con altri.
+  final bool isBatchRelease;
+
   const EpisodeTile({
     super.key,
     required this.episode,
     required this.isWatched,
     this.onToggle,
     this.onTap,
+    this.isBatchRelease = false,
   });
 
   @override
@@ -86,10 +90,10 @@ class EpisodeTile extends StatelessWidget {
 
       return Text(
         '$dayLabel alle $timeStr',
-        style: const TextStyle(
-          color: AppColors.accent,
+        style: TextStyle(
+          color: isBatchRelease ? Colors.orange : AppColors.accent,
           fontSize: 11,
-          fontWeight: FontWeight.w500,
+          fontWeight: isBatchRelease ? FontWeight.bold : FontWeight.w500,
         ),
       );
     }
@@ -98,9 +102,10 @@ class EpisodeTile extends StatelessWidget {
     if (episode.airDate != null) {
       return Text(
         _formatDate(episode.airDate!),
-        style: const TextStyle(
-          color: AppColors.textSecondary,
+        style: TextStyle(
+          color: isBatchRelease ? Colors.orange : AppColors.textSecondary,
           fontSize: 11,
+          fontWeight: isBatchRelease ? FontWeight.bold : FontWeight.normal,
         ),
       );
     }

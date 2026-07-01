@@ -61,12 +61,6 @@ class TmdbService {
 
   // ── Anime: redistribuisce gli episodi TMDB per stagione AniList ────────────
 
-  /// Fetches TMDB episodes and redistributes them according to AniList season
-  /// boundaries. Returns a map from AniList season number → redistributed episodes.
-  ///
-  /// Also enriches episode titles: if TMDB has a placeholder title ("Episodio 4"),
-  /// it is replaced with the real title from AniList streamingEpisodes (if available).
-  /// If AniList also lacks the title, the placeholder is kept as-is.
   Future<Map<int, List<TmdbEpisode>>> getAnimeEpisodesBySeason(
     int tmdbId,
     List<NormalizedAnimeSeason> animeSeasonsData,
@@ -75,17 +69,17 @@ class TmdbService {
 
     // 1. Fetch TMDB seasons
     final tmdbSeasonsMap = <int, List<TmdbEpisode>>{};
-    int maxTmdbSeason = 10; // Fetch up to 10 seasons to be safe
-    for (int tmdbSeasonNum = animeSeasonsData.first.tmdbSeasonNumber; tmdbSeasonNum <= maxTmdbSeason; tmdbSeasonNum++) {
+    final tmdbSeasonsToFetch = animeSeasonsData.map((s) => s.tmdbSeasonNumber).toSet();
+    
+    await Future.wait(tmdbSeasonsToFetch.map((tmdbSeasonNum) async {
       try {
         final season = await getSeasonDetails(tmdbId, tmdbSeasonNum);
         final eps = season.episodes;
-        if (eps == null || eps.isEmpty) break;
-        tmdbSeasonsMap[tmdbSeasonNum] = eps;
-      } catch (_) {
-        break;
-      }
-    }
+        if (eps != null && eps.isNotEmpty) {
+          tmdbSeasonsMap[tmdbSeasonNum] = eps;
+        }
+      } catch (_) {}
+    }));
 
     if (tmdbSeasonsMap.isEmpty) return {};
 
@@ -103,100 +97,105 @@ class TmdbService {
     }
 
     // 3. Smart group AniList seasons to TMDB seasons to handle OVA discrepancies
-    final adjustedCounts = <int, int>{}; // aniListSeason.seasonNumber -> adjusted count
-    int tmdbIdx = tmdbSeasonsMap.keys.first;
-    List<NormalizedAnimeSeason> currentGroup = [];
-    int currentGroupSum = 0;
+    final adjustedCounts = <int, int>{};
+    
+    // Group AniList seasons by tmdbSeasonNumber
+    final groupedAniSeasons = <int, List<NormalizedAnimeSeason>>{};
+    for (final s in animeSeasonsData) {
+      groupedAniSeasons.putIfAbsent(s.tmdbSeasonNumber, () => []).add(s);
+    }
 
-    for (int i = 0; i < animeSeasonsData.length; i++) {
-      final aniSeason = animeSeasonsData[i];
-      currentGroup.add(aniSeason);
-      currentGroupSum += aniSeason.episodeCount;
+    for (final entry in groupedAniSeasons.entries) {
+      final tmdbSeasonNum = entry.key;
+      final aniGroup = entry.value;
+      final tmdbEpsCount = tmdbSeasonsMap[tmdbSeasonNum]?.length ?? 0;
       
-      final tmdbEpsCount = tmdbSeasonsMap[tmdbIdx]?.length ?? 0;
+      int groupSum = aniGroup.fold(0, (sum, s) => sum + s.episodeCount);
       
-      if (tmdbEpsCount > 0) {
-        // If the sum exactly matches or is very close (diff <= 2, meaning OVA mismatch)
-        if (currentGroupSum == tmdbEpsCount || (currentGroupSum - tmdbEpsCount).abs() <= 2) {
-          // Match found! Adjust the first cour in the group to absorb the discrepancy
-          int diff = tmdbEpsCount - currentGroupSum;
-          for (int j = 0; j < currentGroup.length; j++) {
-            final s = currentGroup[j];
+      if (tmdbEpsCount > 0 && groupSum > 0) {
+        if (groupSum == tmdbEpsCount || (groupSum - tmdbEpsCount).abs() <= 2) {
+          int diff = tmdbEpsCount - groupSum;
+          for (int j = 0; j < aniGroup.length; j++) {
+            final s = aniGroup[j];
             if (j == 0) {
               adjustedCounts[s.seasonNumber] = s.episodeCount + diff;
             } else {
               adjustedCounts[s.seasonNumber] = s.episodeCount;
             }
           }
-          tmdbIdx++;
-          currentGroup = [];
-          currentGroupSum = 0;
           continue;
         }
       }
       
-      // If this is the last AniList season and we haven't matched, just use original counts
-      if (i == animeSeasonsData.length - 1 && currentGroup.isNotEmpty) {
-        for (final s in currentGroup) {
-          adjustedCounts[s.seasonNumber] = s.episodeCount;
-        }
+      for (final s in aniGroup) {
+        adjustedCounts[s.seasonNumber] = s.episodeCount;
       }
     }
 
-    // 4. Flatten TMDB episodes into a pool and distribute using adjusted counts
-    final pool = <TmdbEpisode>[];
-    for (final eps in tmdbSeasonsMap.values) {
-      pool.addAll(eps);
-    }
-
+    // 4. Distribute TMDB episodes into AniList seasons by matching tmdbSeasonNumber
     final result = <int, List<TmdbEpisode>>{};
-    var offset = 0;
     absoluteIdx = 1;
 
-    for (final animeSeason in animeSeasonsData) {
-      final count = adjustedCounts[animeSeason.seasonNumber] ?? animeSeason.episodeCount;
+    for (final entry in groupedAniSeasons.entries) {
+      final tmdbSeasonNum = entry.key;
+      final aniSeasons = entry.value;
+      final tmdbEpisodes = tmdbSeasonsMap[tmdbSeasonNum] ?? <TmdbEpisode>[];
       
-      // If we run out of pool, stop
-      if (offset >= pool.length) break;
-      
-      final actualTake = (offset + count <= pool.length) ? count : pool.length - offset;
-      final slice = pool.skip(offset).take(actualTake).toList();
-      final episodes = <TmdbEpisode>[];
-
-      for (var i = 0; i < slice.length; i++) {
-        final original = slice[i];
-        final relativeNum = i + 1;
-
-        var name = original.name;
-        if (_isPlaceholderTitle(name)) {
-          final realTitle = titleMap[absoluteIdx];
-          if (realTitle != null && realTitle.isNotEmpty) {
-            name = realTitle;
-          }
-        }
-
-        DateTime? airingAt;
-        final nextAiring = animeSeason.nextAiringEpisode;
-        if (nextAiring != null && relativeNum == nextAiring.episode) {
-          airingAt = nextAiring.airingDateTime;
-        }
-
-        episodes.add(TmdbEpisode(
-          episodeNumber: relativeNum,
-          name: name,
-          overview: original.overview,
-          stillPath: original.stillPath,
-          airDate: original.airDate,
-          voteAverage: original.voteAverage,
-          absoluteEpisodeNumber: absoluteIdx,
-          airingAt: airingAt,
-        ));
+      var offset = 0;
+      for (var i = 0; i < aniSeasons.length; i++) {
+        final animeSeason = aniSeasons[i];
+        int count = adjustedCounts[animeSeason.seasonNumber] ?? animeSeason.episodeCount;
         
-        absoluteIdx++;
-      }
+        // Se non conosciamo la durata (0) o se è l'ultimo cour del gruppo, 
+        // assegniamo tutti gli episodi rimanenti.
+        if (count == 0 || i == aniSeasons.length - 1) {
+          count = tmdbEpisodes.length - offset;
+        }
+        
+        // Se abbiamo bisogno di più episodi di quelli disponibili, prendiamo solo il rimanente.
+        if (count < 0) count = 0;
+        final actualTake = (offset + count <= tmdbEpisodes.length) 
+            ? count 
+            : tmdbEpisodes.length - offset;
+            
+        final slice = tmdbEpisodes.skip(offset).take(actualTake).toList();
+        final episodes = <TmdbEpisode>[];
 
-      result[animeSeason.seasonNumber] = episodes;
-      offset += actualTake;
+        for (var j = 0; j < slice.length; j++) {
+          final original = slice[j];
+          final relativeNum = j + 1;
+
+          var name = original.name;
+          if (_isPlaceholderTitle(name)) {
+            final realTitle = titleMap[absoluteIdx];
+            if (realTitle != null && realTitle.isNotEmpty) {
+              name = realTitle;
+            }
+          }
+
+          DateTime? airingAt;
+          final nextAiring = animeSeason.nextAiringEpisode;
+          if (nextAiring != null && relativeNum == nextAiring.episode) {
+            airingAt = nextAiring.airingDateTime;
+          }
+
+          episodes.add(TmdbEpisode(
+            episodeNumber: relativeNum,
+            name: name,
+            overview: original.overview,
+            stillPath: original.stillPath,
+            airDate: original.airDate,
+            voteAverage: original.voteAverage,
+            absoluteEpisodeNumber: absoluteIdx,
+            airingAt: airingAt,
+          ));
+          
+          absoluteIdx++;
+        }
+
+        result[animeSeason.seasonNumber] = episodes;
+        offset += actualTake;
+      }
     }
 
     return result;

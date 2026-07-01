@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -111,8 +111,12 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(yunaCache);
             await m.createTable(animeSeasonCache);
           }
-          if (from < 10) {
-            await m.addColumn(trackedShows, trackedShows.lastWatchedAt);
+          if (from < 11) {
+            try {
+              await m.addColumn(trackedShows, trackedShows.lastWatchedAt);
+            } catch (_) {
+              // Ignore if it already exists from a previous partial migration
+            }
           }
         },
       );

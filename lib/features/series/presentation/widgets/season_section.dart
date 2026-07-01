@@ -156,10 +156,35 @@ class _SeasonEpisodes extends ConsumerWidget {
             ),
           );
         }
+
+        // Calcola quali date hanno uscite multiple (batch release)
+        final batchDates = <String>{};
+        final dateCounts = <String, int>{};
+        for (final ep in episodes) {
+          // Usa solo la data (YYYY-MM-DD) per il conteggio
+          final key = ep.airingAt != null
+              ? '${ep.airingAt!.year}-${ep.airingAt!.month.toString().padLeft(2, '0')}-${ep.airingAt!.day.toString().padLeft(2, '0')}'
+              : ep.airDate;
+          if (key != null && key.isNotEmpty) {
+            dateCounts[key] = (dateCounts[key] ?? 0) + 1;
+          }
+        }
+        for (final entry in dateCounts.entries) {
+          if (entry.value > 1) {
+            batchDates.add(entry.key);
+          }
+        }
+
         return Column(
           children: episodes.map((ep) {
+            final key = ep.airingAt != null
+                ? '${ep.airingAt!.year}-${ep.airingAt!.month.toString().padLeft(2, '0')}-${ep.airingAt!.day.toString().padLeft(2, '0')}'
+                : ep.airDate;
+            final isBatch = key != null && batchDates.contains(key);
+
             return EpisodeTile(
               episode: ep,
+              isBatchRelease: isBatch,
               isWatched: watchedInSeason.contains(ep.episodeNumber),
               onToggle: trackedShow != null
                   ? (watched) {

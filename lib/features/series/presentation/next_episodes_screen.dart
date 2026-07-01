@@ -48,6 +48,7 @@ class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
   Widget build(BuildContext context) {
     final allShowsAsync = ref.watch(trackedShowsNotifierProvider);
     final totalCount = allShowsAsync.valueOrNull?.length ?? 0;
+    final isLoading = allShowsAsync.isLoading && !allShowsAsync.hasValue;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -57,7 +58,7 @@ class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
             // ── Header ────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
-              child: _SeriesHeader(totalCount: totalCount),
+              child: _SeriesHeader(totalCount: totalCount, isLoading: isLoading),
             ),
 
             // ── TabBar ────────────────────────────────────────────────
@@ -132,6 +133,75 @@ class _SeriesTabBar extends StatelessWidget {
 
 // ── Tab "Da Vedere" ───────────────────────────────────────────────────────────
 
+final visibleWatchingShowsProvider =
+    FutureProvider.autoDispose<List<ShowWithWatchedEpisodes>>((ref) async {
+  final watching = await ref.watch(watchingShowsWithEpisodesProvider.future);
+  if (watching.isEmpty) return [];
+
+  final visible = <ShowWithWatchedEpisodes>[];
+
+  for (final showData in watching) {
+    final show = showData.show;
+    final total = show.totalEpisodes;
+    final watchedCount = showData.watchedCount;
+
+    if (total != null && watchedCount >= total) {
+      visible.add(showData);
+      continue;
+    }
+
+    final seasonCounts =
+        await ref.watch(seasonEpisodeCountsProvider(show.id).future) ?? {};
+    
+    final watched = showData.watchedBySeason;
+    int nextSeason = 1;
+    int nextEp = 1;
+    
+    if (watched.isNotEmpty) {
+      final lastSeason = watched.keys.reduce((a, b) => a > b ? a : b);
+      final lastEp = watched[lastSeason]!.reduce((a, b) => a > b ? a : b);
+      nextEp = lastEp + 1;
+      final countInSeason = seasonCounts[lastSeason];
+      final hasNextSeason = seasonCounts.containsKey(lastSeason + 1);
+      if (countInSeason != null &&
+          countInSeason > 0 &&
+          nextEp > countInSeason &&
+          hasNextSeason) {
+        nextSeason = lastSeason + 1;
+        nextEp = 1;
+      } else {
+        nextSeason = lastSeason;
+      }
+    }
+
+    try {
+      final seasonDetail = await ref.watch(
+        seasonDetailProvider(showId: show.tmdbId, seasonNumber: nextSeason).future,
+      );
+      
+      final loadedEpisodes = seasonDetail.episodes;
+      final nextEpisode = loadedEpisodes
+          ?.where((e) => e.episodeNumber == nextEp)
+          .firstOrNull;
+
+      if (nextEpisode != null && !nextEpisode.hasAired) {
+        continue;
+      }
+      if (nextEpisode == null &&
+          loadedEpisodes != null &&
+          loadedEpisodes.isNotEmpty) {
+        continue;
+      }
+    } catch (_) {
+      // If fetching fails, we still show the card as a fallback
+    }
+
+    visible.add(showData);
+  }
+
+  return visible;
+});
+
 class _DaVedereTab extends ConsumerStatefulWidget {
   const _DaVedereTab();
 
@@ -147,13 +217,15 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final watchingAsync = ref.watch(watchingShowsWithEpisodesProvider);
+    final visibleAsync = ref.watch(visibleWatchingShowsProvider);
     final allShowsAsync = ref.watch(trackedShowsNotifierProvider);
     final totalCount = allShowsAsync.valueOrNull?.length ?? 0;
 
-    return watchingAsync.when(
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: AppColors.accent),
+    return visibleAsync.when(
+      skipLoadingOnReload: true,
+      loading: () => const _SkeletonListView(
+        title: 'Da Vedere',
+        borderColor: Colors.orange,
       ),
       error: (e, _) => Center(
         child: Padding(
@@ -166,8 +238,44 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
         ),
       ),
       data: (shows) {
-        if (shows.isEmpty) {
+        // We still need to know if they have ANY shows tracked to show the right empty state
+        final watchingRaw = ref.read(watchingShowsWithEpisodesProvider).valueOrNull ?? [];
+        if (watchingRaw.isEmpty && shows.isEmpty) {
           return _EmptyWatching(totalCount: totalCount);
+        }
+
+        if (shows.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.done_all,
+                    size: 64,
+                    color: Color(0xFF4CAF50),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Sei in pari!',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Hai visto tutti gli episodi disponibili delle tue serie. '
+                    'Controlla la scheda "In Uscita" per i prossimi episodi.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
         final now = DateTime.now();
@@ -274,8 +382,10 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
     final upcomingAsync = ref.watch(upcomingEpisodesProvider);
 
     return upcomingAsync.when(
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: AppColors.accent),
+      skipLoadingOnReload: true,
+      loading: () => const _SkeletonListView(
+        title: 'Prossimamente',
+        borderColor: Colors.orange,
       ),
       error: (e, _) => Center(
         child: Padding(
@@ -340,6 +450,7 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                       preciseAirTime: info.preciseAirTime,
                       isFarFuture: false,
                       seasonName: info.seasonName,
+                      additionalEpisodes: info.additionalEpisodes,
                     );
                   },
                   childCount: prossimamente.length,
@@ -377,6 +488,7 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                       preciseAirTime: info.preciseAirTime,
                       isFarFuture: true,
                       seasonName: info.seasonName,
+                      additionalEpisodes: info.additionalEpisodes,
                     );
                   },
                   childCount: inArrivo.length,
@@ -395,7 +507,8 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
 
 class _SeriesHeader extends StatelessWidget {
   final int totalCount;
-  const _SeriesHeader({required this.totalCount});
+  final bool isLoading;
+  const _SeriesHeader({required this.totalCount, this.isLoading = false});
 
   @override
   Widget build(BuildContext context) {
@@ -432,16 +545,26 @@ class _SeriesHeader extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
-                totalCount == 0
-                    ? 'Nessuna serie aggiunta'
-                    : '$totalCount '
-                        '${totalCount == 1 ? 'serie seguita' : 'serie seguite'}',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
+              isLoading
+                  ? Container(
+                      width: 100,
+                      height: 14,
+                      margin: const EdgeInsets.only(top: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.divider,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    )
+                  : Text(
+                      totalCount == 0
+                          ? 'Nessuna serie aggiunta'
+                          : '$totalCount '
+                              '${totalCount == 1 ? 'serie seguita' : 'serie seguite'}',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
             ],
           ),
         ),
@@ -557,6 +680,65 @@ class _EmptyUpcoming extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Skeleton Loader con Header ────────────────────────────────────────────────
+
+class _SkeletonListView extends StatelessWidget {
+  final String title;
+  final Color borderColor;
+
+  const _SkeletonListView({
+    required this.title,
+    required this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        const SliverPadding(padding: EdgeInsets.only(top: 12)),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(left: BorderSide(color: borderColor, width: 4)),
+              ),
+              padding: const EdgeInsets.only(left: 8),
+              child: Row(
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 36,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: AppColors.divider,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => const NextEpisodeSkeletonCard(),
+            childCount: 4,
+          ),
+        ),
+      ],
     );
   }
 }

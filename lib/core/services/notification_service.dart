@@ -58,6 +58,7 @@ class NotificationService {
     required String episodeName,
     required DateTime airDate,
     bool useExactTime = false,
+    String? seasonName,
   }) async {
     try {
       final scheduledAt = useExactTime
@@ -65,9 +66,14 @@ class NotificationService {
           : DateTime(airDate.year, airDate.month, airDate.day, 9, 0);
       if (!scheduledAt.isAfter(DateTime.now())) return;
 
-      final sNum = seasonNumber.toString().padLeft(2, '0');
       final eNum = episodeNumber.toString().padLeft(2, '0');
-      final body = 'S${sNum}E$eNum – $episodeName è disponibile oggi!';
+      final sText = seasonName != null && seasonName.isNotEmpty 
+          ? seasonName 
+          : 'S${seasonNumber.toString().padLeft(2, '0')}';
+          
+      final body = episodeName.isNotEmpty 
+          ? '$sText E$eNum – $episodeName è disponibile oggi!'
+          : '$sText E$eNum è disponibile oggi!';
 
       await _plugin.zonedSchedule(
         id: tmdbId,

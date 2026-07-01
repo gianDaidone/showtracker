@@ -27,10 +27,10 @@ class NextEpisodeCard extends ConsumerStatefulWidget {
 class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
   _MarkState _markState = _MarkState.idle;
 
-  /// Episodio "congelato" durante l'animazione del pulsante.
-  /// Non-null finché il pulsante non torna a idle, impedisce che la card
-  /// salti all'episodio successivo prima che l'animazione sia completata.
-  (int season, int episode)? _lockedEpisode;
+  /// L'intero ShowData "congelato" durante l'animazione del pulsante.
+  /// Impedisce che la card cambi numero episodi (+4 -> +3) o cambi episodio
+  /// prima che l'animazione sia completata.
+  ShowWithWatchedEpisodes? _lockedShowData;
 
   /// Calcola il prossimo episodio da guardare.
   /// [seasonCounts] è la mappa stagione→episodeCount dal DB locale:
@@ -62,31 +62,38 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     if (_markState != _MarkState.idle) return;
     setState(() {
       _markState = _MarkState.marking;
-      _lockedEpisode = (season, episode); // congela la card sull'episodio corrente
+      _lockedShowData = widget.showData; // congela l'intera card
     });
+    
+    final dao = ref.read(showsDaoProvider);
+    final notifier = ref.read(trackedShowsNotifierProvider.notifier);
+    final tmdbId = widget.showData.show.tmdbId;
+    final showId = widget.showData.show.id;
+
     try {
-      await ref.read(showsDaoProvider).markEpisodeWatched(
-            widget.showData.show.id, season, episode,
+      await dao.markEpisodeWatched(
+            showId, season, episode,
             watched: true,
           );
-      ref
-          .read(trackedShowsNotifierProvider.notifier)
-          .rescheduleNotificationById(widget.showData.show.tmdbId);
+      
+      notifier.rescheduleNotificationById(tmdbId);
+      
       if (!mounted) return;
+      // Mantieni lo stato di caricamento fino a quando non mostriamo il successo
       setState(() => _markState = _MarkState.success);
       await Future.delayed(const Duration(milliseconds: 700));
       if (mounted) {
         setState(() {
           _markState = _MarkState.idle;
-          _lockedEpisode = null; // sblocca: lo stream aggiorna la card
+          _lockedShowData = null; // sblocca la card, permettendo l'aggiornamento visivo
         });
       }
-    } catch (_) {
-      AppToast.show('Impossibile aggiornare l\'episodio');
+    } catch (e) {
+      AppToast.show('Errore: $e');
       if (mounted) {
         setState(() {
           _markState = _MarkState.idle;
-          _lockedEpisode = null;
+          _lockedShowData = null;
         });
       }
     }
@@ -100,9 +107,11 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
 
   @override
   Widget build(BuildContext context) {
-    final show = widget.showData.show;
-    final watchedBySeason = widget.showData.watchedBySeason;
-    final watchedCount = widget.showData.watchedCount;
+    // Usa i dati congelati se presenti, altrimenti i dati in tempo reale
+    final displayData = _lockedShowData ?? widget.showData;
+    final show = displayData.show;
+    final watchedBySeason = displayData.watchedBySeason;
+    final watchedCount = displayData.watchedCount;
     final total = show.totalEpisodes;
 
     // ── Tutti gli episodi visti ────────────────────────────────────────────
@@ -124,8 +133,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     final seasonCounts =
         ref.watch(seasonEpisodeCountsProvider(show.id)).valueOrNull ?? {};
 
-    final (nextSeason, nextEp) =
-        _lockedEpisode ?? _computeNext(watchedBySeason, seasonCounts);
+    final (nextSeason, nextEp) = _computeNext(watchedBySeason, seasonCounts);
 
     // Carica titolo e still dell'episodio dall'API (solo dati estetici).
     final seasonAsync = ref.watch(seasonDetailProvider(
@@ -137,7 +145,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     // della stessa forma della card finale: l'utente vede subito tutte le card
     // della lista (placeholder) e capisce che il caricamento è in corso.
     if (!seasonAsync.hasValue && !seasonAsync.hasError) {
-      return const _SkeletonCard();
+      return const NextEpisodeSkeletonCard();
     }
 
     final loadedEpisodes = seasonAsync.valueOrNull?.episodes;
@@ -220,15 +228,31 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '${show.title} (${total ?? '?'})',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            show.title,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          total != null ? '(+${total - watchedCount})' : '(+?)',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Consumer(
@@ -292,7 +316,7 @@ class _CircularMarkButton extends StatelessWidget {
   Color get _bgColor => switch (state) {
         _MarkState.idle => Colors.transparent,
         _MarkState.marking => _green,
-        _MarkState.success => AppColors.accent,
+        _MarkState.success => _green,
       };
 
   Color get _iconColor =>
@@ -321,18 +345,11 @@ class _CircularMarkButton extends StatelessWidget {
           child: SizedBox(
             width: 18,
             height: 18,
-            child: state == _MarkState.marking
-                ? const CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Colors.white,
-                  )
-                : Icon(
-                    state == _MarkState.success
-                        ? Icons.check
-                        : Icons.check,
-                    size: 18,
-                    color: _iconColor,
-                  ),
+            child: Icon(
+              Icons.check,
+              size: 18,
+              color: _iconColor,
+            ),
           ),
         ),
       ),
@@ -359,7 +376,7 @@ class _CompletedContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${show.title} (${show.totalEpisodes ?? '?'})',
+          show.title,
           style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
@@ -519,17 +536,17 @@ class _SkeletonLine extends StatelessWidget {
 // Scheletro mostrato mentre i dati della stagione si caricano. Ricalca il
 // layout della card reale (immagine + info + bottone circolare) così la lista
 // appare subito completa e le card si "riempiono" sul posto.
-class _SkeletonCard extends StatelessWidget {
-  const _SkeletonCard();
+class NextEpisodeSkeletonCard extends StatelessWidget {
+  const NextEpisodeSkeletonCard({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -547,18 +564,18 @@ class _SkeletonCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _SkeletonLine(width: 110, height: 10),
-                  SizedBox(height: 8),
+                  _SkeletonLine(width: 140, height: 16),
+                  SizedBox(height: 6),
                   _SkeletonLine(width: 60, height: 18),
-                  SizedBox(height: 7),
-                  _SkeletonLine(width: 160, height: 14),
+                  SizedBox(height: 5),
+                  _SkeletonLine(width: 160, height: 13),
                 ],
               ),
             ),
             const SizedBox(width: 10),
             Container(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.divider,
@@ -584,9 +601,13 @@ class _EpisodeBadge extends StatelessWidget {
       final baseName = seasonName!.split(' · ').first.trim();
       var abbr = baseName.replaceAll(RegExp(r'^(Stagione|Season)\s*', caseSensitive: false), 'S');
       abbr = abbr.replaceAll(RegExp(r'\s*Parte\s*', caseSensitive: false), ' P');
+      // Aggiungi padding alla stagione se a una sola cifra (S1 -> S01)
+      abbr = abbr.replaceAllMapped(RegExp(r'(S)(\d)(?!\d)'), (match) {
+        return '${match.group(1)}0${match.group(2)}';
+      });
       label = '$abbr E${episode.toString().padLeft(2, '0')}';
     } else {
-      label = 'S${season.toString().padLeft(2, '0')}E${episode.toString().padLeft(2, '0')}';
+      label = 'S${season.toString().padLeft(2, '0')} E${episode.toString().padLeft(2, '0')}';
     }
 
     return Container(

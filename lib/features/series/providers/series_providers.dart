@@ -33,12 +33,16 @@ class UpcomingEpisodeInfo {
   /// The formatted season name, useful for anime where season numbers are synthetic cours.
   final String? seasonName;
 
+  /// Other episodes of the same series releasing on the EXACT same day.
+  final List<TmdbEpisode> additionalEpisodes;
+
   const UpcomingEpisodeInfo({
     required this.show,
     required this.episode,
     required this.airDate,
     this.preciseAirTime,
     this.seasonName,
+    this.additionalEpisodes = const [],
   });
 }
 
@@ -312,42 +316,7 @@ Future<TmdbSeason> seasonDetail(
       }
 
       // Redistribution gave 0 episodes for this season (TMDB doesn't have the
-      // data yet). For airing/upcoming seasons, try fetching TMDB directly.
-      if (animeSeason.status == 'RELEASING' ||
-          animeSeason.status == 'NOT_YET_RELEASED') {
-        try {
-          final direct = await ref
-              .read(tmdbServiceProvider)
-              .getSeasonDetails(showId, animeSeason.tmdbSeasonNumber);
-          final rawEps = direct.episodes;
-          if (rawEps != null && rawEps.isNotEmpty) {
-            // Inject AniList precise airingAt into the next airing episode,
-            // since the raw TMDB fetch doesn't include this data.
-            final nextAiring = animeSeason.nextAiringEpisode;
-            if (nextAiring == null) return direct;
-            final enriched = rawEps.map((ep) {
-              if (ep.episodeNumber != nextAiring.episode) return ep;
-              return TmdbEpisode(
-                episodeNumber: ep.episodeNumber,
-                name: ep.name,
-                overview: ep.overview,
-                stillPath: ep.stillPath,
-                airDate: ep.airDate,
-                voteAverage: ep.voteAverage,
-                absoluteEpisodeNumber: ep.absoluteEpisodeNumber,
-                airingAt: nextAiring.airingDateTime,
-              );
-            }).toList();
-            return TmdbSeason(
-              seasonNumber: direct.seasonNumber,
-              episodeCount: direct.episodeCount,
-              name: direct.name,
-              episodes: enriched,
-            );
-          }
-        } catch (_) {}
-      }
-
+      // data yet, or they were all consumed by a previous cour).
       return TmdbSeason(seasonNumber: seasonNumber, episodeCount: 0);
     }
   }
@@ -545,6 +514,12 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
         final airingAt = nextAiring.airingDateTime;
         if (!airingAt.isAfter(DateTime.now())) continue;
 
+        String? seasonName;
+        final sSeason = detail.seasons.where((s) => s.seasonNumber == animeSeason.seasonNumber).firstOrNull;
+        if (sSeason != null && sSeason.name != null) {
+          seasonName = sSeason.name!.split(' · ').first.trim();
+        }
+
         await NotificationService.schedule(
           tmdbId: detail.id,
           showTitle: detail.name,
@@ -553,6 +528,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
           episodeName: '',
           airDate: airingAt,
           useExactTime: true,
+          seasonName: seasonName,
         );
         return;
       }
@@ -601,6 +577,13 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
 
     final airDate = DateTime.tryParse(targetAirDate!);
     if (airDate == null) return;
+
+    String? tmdbSeasonName;
+    final tSeason = detail.seasons.where((s) => s.seasonNumber == targetSeason).firstOrNull;
+    if (tSeason != null && tSeason.name != null) {
+      tmdbSeasonName = tSeason.name!.split(' · ').first.trim();
+    }
+
     await NotificationService.schedule(
       tmdbId: detail.id,
       showTitle: detail.name,
@@ -608,6 +591,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
       episodeNumber: targetEpisode,
       episodeName: targetName,
       airDate: airDate,
+      seasonName: tmdbSeasonName,
     );
   }
 }
@@ -686,6 +670,7 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
           // Try to get episode name from season detail (uses SQLite cache,
           // falls back to TMDB fetch if not cached yet).
           String episodeName = '';
+          List<TmdbEpisode> additionalEpisodes = [];
           try {
             final seasonDetail = await ref.read(seasonDetailProvider(
               showId: show.tmdbId,
@@ -695,6 +680,12 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
                 ?.where((e) => e.episodeNumber == nextAiring.episode)
                 .firstOrNull;
             if (ep != null && ep.name.isNotEmpty) episodeName = ep.name;
+            
+            if (seasonDetail.episodes != null && ep?.airDate != null) {
+               additionalEpisodes = seasonDetail.episodes!
+                   .where((e) => e.airDate == ep!.airDate && e.episodeNumber > nextAiring.episode)
+                   .toList();
+            }
           } catch (_) {}
 
           String? sName;
@@ -714,6 +705,7 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
             airDate: airMidnight,
             preciseAirTime: airingAt,
             seasonName: sName,
+            additionalEpisodes: additionalEpisodes,
           ));
           foundAnimeAiring = true;
           break;
@@ -742,23 +734,28 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
         }
       }
 
-      // TMDB's show-detail endpoint often returns an empty name or a generic
-      // placeholder (e.g. "Episodio 5") in next_episode_to_air. Fetch the
-      // season detail (cached after first load) to get the real episode name.
       String episodeName = next.name;
-      final _placeholderRe = RegExp(r'^Episodio\s+\d+$|^Episode\s+\d+$', caseSensitive: false);
-      if (episodeName.isEmpty || _placeholderRe.hasMatch(episodeName.trim())) {
-        try {
-          final seasonDetail = await ref.read(seasonDetailProvider(
-            showId: show.tmdbId,
-            seasonNumber: mappedSeasonNumber,
-          ).future);
-          final ep = seasonDetail.episodes
-              ?.where((e) => e.episodeNumber == next.episodeNumber)
-              .firstOrNull;
+      List<TmdbEpisode> additionalEpisodes = [];
+      final placeholderRe = RegExp(r'^Episodio\s+\d+$|^Episode\s+\d+$', caseSensitive: false);
+      try {
+        final seasonDetail = await ref.read(seasonDetailProvider(
+          showId: show.tmdbId,
+          seasonNumber: mappedSeasonNumber,
+        ).future);
+        final ep = seasonDetail.episodes
+            ?.where((e) => e.episodeNumber == next.episodeNumber)
+            .firstOrNull;
+            
+        if (episodeName.isEmpty || placeholderRe.hasMatch(episodeName.trim())) {
           if (ep != null && ep.name.isNotEmpty) episodeName = ep.name;
-        } catch (_) {}
-      }
+        }
+        
+        if (seasonDetail.episodes != null) {
+           additionalEpisodes = seasonDetail.episodes!
+               .where((e) => e.airDate == next.airDate && e.episodeNumber > next.episodeNumber)
+               .toList();
+        }
+      } catch (_) {}
 
       String? sName;
       if (detail.isAnime) {
@@ -781,6 +778,7 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
         ),
         airDate: airMidnight,
         seasonName: sName,
+        additionalEpisodes: additionalEpisodes,
       ));
     } catch (_) {
       // Ignora show non caricabili
