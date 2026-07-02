@@ -427,7 +427,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
               (detail.overview?.isNotEmpty ?? false) ? detail.overview : null,
             ),
             posterPath: Value(detail.posterPath),
-            status: const Value(MediaStatus.planToWatch),
+            status: const Value(MediaStatus.watching),
             totalSeasons: Value(detail.numberOfSeasons),
             totalEpisodes: Value(detail.numberOfEpisodes),
             tmdbStatus: Value(detail.status),

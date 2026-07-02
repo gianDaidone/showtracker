@@ -40,7 +40,7 @@ class TrackedMoviesNotifier extends _$TrackedMoviesNotifier {
               (detail.overview?.isNotEmpty ?? false) ? detail.overview : null,
             ),
             posterPath: Value(detail.posterPath),
-            status: const Value(MediaStatus.planToWatch),
+            status: const Value(MediaStatus.watching),
             releaseYear: Value(detail.year),
             releaseDate: Value(detail.releaseDateParsed),
             addedAt: Value(DateTime.now()),
