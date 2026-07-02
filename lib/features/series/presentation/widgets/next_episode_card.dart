@@ -183,6 +183,14 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       child: InkWell(
         onTap: () {
           if (nextEpisode != null) {
+            final detail = ref.read(showDetailProvider(show.tmdbId)).valueOrNull;
+            String? sName;
+            if (detail != null && detail.isAnime) {
+              final sSeason = detail.seasons.where((s) => s.seasonNumber == nextSeason).firstOrNull;
+              if (sSeason != null && sSeason.name != null) {
+                sName = sSeason.name!.split(' · ').first.trim();
+              }
+            }
             showEpisodeDetailSheet(
               context,
               showTitle: show.title,
@@ -192,6 +200,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
               season: nextSeason,
               episodeNum: nextEp,
               episode: nextEpisode,
+              seasonName: sName,
             );
           } else {
             context.push('/series/detail/${show.tmdbId}');

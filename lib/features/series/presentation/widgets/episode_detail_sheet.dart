@@ -54,6 +54,7 @@ void showEpisodeDetailSheet(
   required int season,
   required int episodeNum,
   required TmdbEpisode episode,
+  String? seasonName,
   // Null se la serie non è ancora tracciata (il pulsante segna non compare)
   TrackedShow? trackedShow,
 }) {
@@ -69,6 +70,7 @@ void showEpisodeDetailSheet(
       season: season,
       episodeNum: episodeNum,
       episode: episode,
+      seasonName: seasonName,
     ),
   );
 }
@@ -83,6 +85,7 @@ class _EpisodeDetailSheet extends ConsumerStatefulWidget {
   final int season;
   final int episodeNum;
   final TmdbEpisode episode;
+  final String? seasonName;
 
   const _EpisodeDetailSheet({
     required this.showTitle,
@@ -92,6 +95,7 @@ class _EpisodeDetailSheet extends ConsumerStatefulWidget {
     required this.season,
     required this.episodeNum,
     required this.episode,
+    this.seasonName,
   });
 
   @override
@@ -135,8 +139,11 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
       return;
     }
 
-    // Seleziona: spinner durante la verifica DB, poi eventuale modale.
-    setState(() => _isLoading = true);
+    // Seleziona: aggiornamento ottimistico immediato
+    setState(() {
+      _isLoading = true;
+      _localWatched = true;
+    });
     try {
       final dao = ref.read(showsDaoProvider);
       final hasMissing = await dao.hasMissingPreviousEpisodes(
@@ -144,7 +151,7 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
       );
 
       if (!mounted) return;
-      setState(() => _isLoading = false); // ferma spinner durante il dialog
+      setState(() => _isLoading = false);
 
       bool markAll = false;
       if (hasMissing) {
@@ -152,7 +159,10 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
           context: context,
           builder: (_) => const _PreviousEpisodesDialog(),
         );
-        if (choice == null || !mounted) return; // dismissed senza scelta
+        if (choice == null || !mounted) {
+          setState(() => _localWatched = null); // revert
+          return;
+        }
         markAll = choice;
       }
 
@@ -218,11 +228,7 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
           // ── Immagine header ──────────────────────────────────────────────
           _ImageHeader(
             imageUrl: _imageUrl,
-            isWatched: isWatched,
-            isLoading: _isLoading,
-            showMarkButton: widget.trackedShow != null,
             onClose: () => Navigator.pop(context),
-            onMark: () => _toggle(isWatched),
           ),
 
           // ── Contenuto scrollabile ────────────────────────────────────────
@@ -232,7 +238,7 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
                 left: 20,
                 right: 20,
                 top: 16,
-                bottom: MediaQuery.of(context).padding.bottom + 24,
+                bottom: widget.trackedShow != null ? 16 : MediaQuery.of(context).padding.bottom + 24,
               ),
               child: _ContentArea(
                 showTitle: widget.showTitle,
@@ -240,6 +246,7 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
                 season: widget.season,
                 episodeNum: widget.episodeNum,
                 episode: widget.episode,
+                seasonName: widget.seasonName,
                 onNavigate: () {
                   Navigator.pop(context);
                   context.push('/series/detail/${widget.showTmdbId}');
@@ -247,6 +254,64 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
               ),
             ),
           ),
+
+          // ── Action Button (Segna/Visto) a fine modale ────────────────────
+          if (widget.trackedShow != null)
+            Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: MediaQuery.of(context).padding.bottom > 0
+                    ? MediaQuery.of(context).padding.bottom + 8
+                    : 24,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _toggle(isWatched),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isWatched
+                        ? AppColors.accent
+                        : Colors.white.withOpacity(0.08),
+                    foregroundColor:
+                        isWatched ? Colors.white : AppColors.textPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: isWatched
+                          ? BorderSide.none
+                          : BorderSide(
+                              color: AppColors.textSecondary.withOpacity(0.3)),
+                    ),
+                  ),
+                  icon: Icon(
+                    isWatched ? Icons.check_circle : Icons.check,
+                    color: isWatched
+                        ? Colors.white
+                        : AppColors.textPrimary,
+                  ),
+                  label: Text(
+                    isWatched ? 'Visto' : 'Segna come Visto',
+                    style: TextStyle(
+                      color: isWatched ? Colors.white : AppColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -257,29 +322,14 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
 
 class _ImageHeader extends StatelessWidget {
   final String? imageUrl;
-  final bool isWatched;
-  final bool isLoading;
-  final bool showMarkButton;
   final VoidCallback onClose;
-  final VoidCallback onMark;
 
   const _ImageHeader({
     required this.imageUrl,
-    required this.isWatched,
-    required this.isLoading,
-    required this.showMarkButton,
     required this.onClose,
-    required this.onMark,
   });
 
   static const _imgHeight = 210.0;
-  static const _green = Color(0xFF4CAF50);
-
-  Color get _buttonColor {
-    if (isLoading) return _green;
-    if (isWatched) return AppColors.accent;
-    return Colors.transparent;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -337,63 +387,6 @@ class _ImageHeader extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Pulsante "Segna / Visto" (alto destra)
-            if (showMarkButton)
-              Positioned(
-                top: 14,
-                right: 14,
-                child: GestureDetector(
-                  onTap: isLoading ? null : onMark,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isLoading || isWatched
-                          ? _buttonColor.withAlpha(230)
-                          : Colors.black.withAlpha(178),
-                      borderRadius: BorderRadius.circular(20),
-                      border: (!isLoading && !isWatched)
-                          ? Border.all(
-                              color: AppColors.textSecondary.withAlpha(120))
-                          : null,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: isLoading
-                              ? const CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white)
-                              : Icon(
-                                  isWatched
-                                      ? Icons.check_circle
-                                      : Icons.check,
-                                  size: 16,
-                                  color: isWatched
-                                      ? Colors.white
-                                      : AppColors.textSecondary,
-                                ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          isWatched ? 'Visto' : 'Segna',
-                          style: TextStyle(
-                            color: isLoading || isWatched
-                                ? Colors.white
-                                : AppColors.textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -409,6 +402,7 @@ class _ContentArea extends StatelessWidget {
   final int season;
   final int episodeNum;
   final TmdbEpisode episode;
+  final String? seasonName;
   final VoidCallback onNavigate;
 
   const _ContentArea({
@@ -417,6 +411,7 @@ class _ContentArea extends StatelessWidget {
     required this.season,
     required this.episodeNum,
     required this.episode,
+    this.seasonName,
     required this.onNavigate,
   });
 
@@ -436,6 +431,18 @@ class _ContentArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String pad(int n) => n.toString().padLeft(2, '0');
+    String label;
+    if (seasonName != null) {
+      final baseName = seasonName!.split(' · ').first.trim();
+      var abbr = baseName.replaceAll(RegExp(r'^(Stagione|Season)\s*', caseSensitive: false), 'S');
+      abbr = abbr.replaceAll(RegExp(r'\s*Parte\s*', caseSensitive: false), ' P');
+      abbr = abbr.replaceAllMapped(RegExp(r'(S)(\d)(?!\d)'), (match) {
+        return '${match.group(1)}0${match.group(2)}';
+      });
+      label = '$abbr E${pad(episodeNum)}';
+    } else {
+      label = 'S${pad(season)} E${pad(episodeNum)}';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -475,7 +482,7 @@ class _ContentArea extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
-            'S${pad(season)}E${pad(episodeNum)}',
+            label,
             style: const TextStyle(
               color: AppColors.accent,
               fontWeight: FontWeight.bold,
@@ -534,10 +541,10 @@ class _ContentArea extends StatelessWidget {
             ],
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
 
         const Divider(color: AppColors.divider, height: 1),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
 
         // Trama
         const Text(
@@ -548,18 +555,58 @@ class _ContentArea extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          (episode.overview?.isNotEmpty ?? false)
+        const SizedBox(height: 12),
+        _Overview(
+          text: (episode.overview?.isNotEmpty ?? false)
               ? episode.overview!
               : 'Nessuna descrizione disponibile per questo episodio.',
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-            height: 1.6,
-          ),
         ),
       ],
+    );
+  }
+}
+
+// ── Trama Espandibile ─────────────────────────────────────────────────────────
+
+class _Overview extends StatefulWidget {
+  final String text;
+  const _Overview({required this.text});
+
+  @override
+  State<_Overview> createState() => _OverviewState();
+}
+
+class _OverviewState extends State<_Overview> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.text,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+              height: 1.8,
+            ),
+            maxLines: _expanded ? null : 4,
+            overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _expanded ? 'Mostra meno' : 'Mostra tutto',
+            style: const TextStyle(
+              color: AppColors.accent,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

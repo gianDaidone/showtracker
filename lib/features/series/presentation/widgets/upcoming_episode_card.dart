@@ -146,6 +146,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
           season: widget.episode.seasonNumber,
           episodeNum: widget.episode.episodeNumber,
           episode: widget.episode.toTmdbEpisode(),
+          seasonName: widget.seasonName,
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -207,7 +208,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                   children: [
                     // Titolo serie
                     Text(
-                      '${widget.show.title} (${widget.show.totalEpisodes ?? '?'})',
+                      widget.show.title,
                       style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 16,
@@ -391,6 +392,7 @@ class _SubEpisodeCard extends StatelessWidget {
           season: seasonNumber,
           episodeNum: episode.episodeNumber,
           episode: episode,
+          seasonName: seasonName,
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),

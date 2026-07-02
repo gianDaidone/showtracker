@@ -215,6 +215,7 @@ class _SeasonEpisodes extends ConsumerWidget {
                 season: season.seasonNumber,
                 episodeNum: ep.episodeNumber,
                 episode: ep,
+                seasonName: season.name,
               ),
             );
           }).toList(),
