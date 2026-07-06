@@ -114,19 +114,6 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     final watchedCount = displayData.watchedCount;
     final total = show.totalEpisodes;
 
-    // ── Tutti gli episodi visti ────────────────────────────────────────────
-    if (total != null && watchedCount >= total) {
-      return _CardShell(
-        show: show,
-        loading: false,
-        child: _CompletedContent(
-          show: show,
-          watchedCount: watchedCount,
-          onMarkCompleted: _markCompleted,
-        ),
-      );
-    }
-
     // ── Prossimo episodio ──────────────────────────────────────────────────
     // seasonCounts viene dal DB locale: nessuna chiamata API per
     // determinare il numero di stagione/episodio corretto.
@@ -157,6 +144,26 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     // uscito, non mostrare la card (l'episodio apparirà in "In Uscita").
     if (seasonAsync.hasValue && nextEpisode != null && !nextEpisode.hasAired) {
       return const SizedBox.shrink();
+    }
+
+    // ── Tutti gli episodi visti ────────────────────────────────────────────
+    // Se watchedCount >= total, assumiamo di aver visto tutto, A MENO CHE
+    // non ci sia un nextEpisode che è già andato in onda (il DB potrebbe avere
+    // un total obsoleto).
+    if (total != null && watchedCount >= total) {
+      if (seasonAsync.hasValue && nextEpisode != null && nextEpisode.hasAired) {
+        // Ignora il completamento, c'è un nuovo episodio da guardare!
+      } else {
+        return _CardShell(
+          show: show,
+          loading: false,
+          child: _CompletedContent(
+            show: show,
+            watchedCount: watchedCount,
+            onMarkCompleted: _markCompleted,
+          ),
+        );
+      }
     }
 
     // Utente in pari con una stagione in onda: la stagione ha episodi

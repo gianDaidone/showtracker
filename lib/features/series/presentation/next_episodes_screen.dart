@@ -145,11 +145,6 @@ final visibleWatchingShowsProvider =
     final total = show.totalEpisodes;
     final watchedCount = showData.watchedCount;
 
-    if (total != null && watchedCount >= total) {
-      visible.add(showData);
-      continue;
-    }
-
     final seasonCounts =
         await ref.watch(seasonEpisodeCountsProvider(show.id).future) ?? {};
     
@@ -187,6 +182,17 @@ final visibleWatchingShowsProvider =
       if (nextEpisode != null && !nextEpisode.hasAired) {
         continue;
       }
+
+      if (total != null && watchedCount >= total) {
+        if (nextEpisode != null && nextEpisode.hasAired) {
+          // Keep, will render episode card
+        } else {
+          // Keep, will render CompletedContent
+          visible.add(showData);
+          continue;
+        }
+      }
+
       if (nextEpisode == null &&
           loadedEpisodes != null &&
           loadedEpisodes.isNotEmpty) {
@@ -194,6 +200,10 @@ final visibleWatchingShowsProvider =
       }
     } catch (_) {
       // If fetching fails, we still show the card as a fallback
+      if (total != null && watchedCount >= total) {
+        visible.add(showData);
+        continue;
+      }
     }
 
     visible.add(showData);
