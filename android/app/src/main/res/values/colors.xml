@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="iconBackground">#161622</color>
+    <color name="widget_background">#12131C</color>
+    <color name="widget_accent">#FF9F0A</color>
+    <color name="widget_text_primary">#FFFFFF</color>
+    <color name="widget_text_secondary">#8E8E93</color>
+    <color name="widget_badge_bg">#E58A00</color>
+    <color name="black_overlay_start">#00000000</color>
+    <color name="black_overlay_end">#D912131C</color>
 </resources>

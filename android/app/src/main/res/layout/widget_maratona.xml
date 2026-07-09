@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_rounded_bg"
+    android:id="@+id/maratona_container">
+
+    <ImageView
+        android:id="@+id/img_poster_marathon"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/gradient_overlay" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="bottom">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_marathon_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Serie TV"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/tv_marathon_episode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="S02 E09: Il negozio"
+                android:textColor="@color/widget_text_secondary"
+                android:textSize="12sp"
+                android:maxLines="2"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <!-- Pulsante Freccia per aprire la serie -->
+        <ImageView
+            android:id="@+id/btn_open_show"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="12dp"
+            android:layout_gravity="center_vertical"
+            android:background="@drawable/bg_circle_orange"
+            android:padding="8dp"
+            android:src="@drawable/ic_arrow_right_white" 
+            android:contentDescription="Apri la serie" />
+    </LinearLayout>
+</RelativeLayout>

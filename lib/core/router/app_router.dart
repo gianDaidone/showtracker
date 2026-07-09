@@ -21,6 +21,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: AppToast.navigatorKey,
     initialLocation: '/series',
+    redirect: (context, state) {
+      if (state.uri.path == '/') {
+        return '/series';
+      }
+      return null;
+    },
     routes: [
       // ── Shell con bottom nav (stato preservato) ──────────────────────────
       StatefulShellRoute.indexedStack(
