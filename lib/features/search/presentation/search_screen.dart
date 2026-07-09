@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../games/providers/games_providers.dart';
 import '../../movies/providers/movies_providers.dart';
@@ -235,7 +236,7 @@ class _FilterBadges extends StatelessWidget {
     (type: _SearchFilter.all, label: 'Tutti'),
     (type: _SearchFilter.series, label: 'Serie TV'),
     (type: _SearchFilter.movie, label: 'Film'),
-    (type: _SearchFilter.game, label: 'Giochi'),
+    if (kEnableGames) (type: _SearchFilter.game, label: 'Giochi'),
   ];
 
   @override

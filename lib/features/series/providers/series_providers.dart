@@ -1,5 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:http/http.dart' as http;
+import '../../../core/network/tmdb_http_client.dart';
+import '../../auth/providers/auth_provider.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
@@ -49,7 +52,12 @@ class UpcomingEpisodeInfo {
 // ── Singleton services ────────────────────────────────────────────────────────
 
 @riverpod
-TmdbService tmdbService(TmdbServiceRef ref) => TmdbService();
+TmdbService tmdbService(TmdbServiceRef ref) {
+  final authState = ref.watch(authProvider);
+  final client = TmdbInterceptor(http.Client(), authState);
+  ref.onDispose(client.close);
+  return TmdbService(client);
+}
 
 @Riverpod(keepAlive: true)
 AniListService anilistService(AnilistServiceRef ref) {

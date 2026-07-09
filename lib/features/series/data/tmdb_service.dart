@@ -13,21 +13,19 @@ import '../../movies/data/models/tmdb_movie_detail.dart';
 
 class TmdbService {
   static const _base = 'https://api.themoviedb.org/3';
+  final http.Client _client;
+
+  TmdbService(this._client);
 
   Uri _uri(String path, [Map<String, String>? params]) {
-    if (kTmdbApiKey.isEmpty) {
-      throw Exception(
-        'TMDB API key non configurata.\n'
-        'Aggiungila in lib/core/constants.dart → kTmdbApiKey',
-      );
-    }
+    // La gestione dell'api_key e del session_id ora è delegata al TmdbInterceptor.
     return Uri.parse('$_base$path').replace(
-      queryParameters: {'api_key': kTmdbApiKey, ...?params},
+      queryParameters: params,
     );
   }
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
-    final response = await http.get(uri);
+    final response = await _client.get(uri);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('TMDB ${response.statusCode}: ${response.reasonPhrase}');
     }

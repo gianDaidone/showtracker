@@ -308,7 +308,7 @@ final upcomingMoviesProvider =
 // ignore: unused_element
 typedef UpcomingMoviesRef = AutoDisposeStreamProviderRef<List<TrackedMovy>>;
 String _$trackedMoviesNotifierHash() =>
-    r'c3942f2d77a62c950d7a8cb9cf0e2c9ffb411103';
+    r'24e1bb1d03e310975a2fb36440a9b6a1903baf81';
 
 /// See also [TrackedMoviesNotifier].
 @ProviderFor(TrackedMoviesNotifier)

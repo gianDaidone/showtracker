@@ -17,17 +17,39 @@ import '../../features/debug/debug_screen.dart';
 import '../shell/main_shell.dart';
 import '../services/app_toast.dart';
 
+import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/screens/onboarding_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
+
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authProvider);
+
   return GoRouter(
     navigatorKey: AppToast.navigatorKey,
     initialLocation: '/series',
     redirect: (context, state) {
+      if (authState.isLoading) return null;
+
+      final isGoingToOnboarding = state.matchedLocation == '/onboarding';
+
+      if (!authState.isAuthenticated && !isGoingToOnboarding) {
+        return '/onboarding';
+      }
+      
+      if (authState.isAuthenticated && isGoingToOnboarding) {
+        return '/series';
+      }
+
       if (state.uri.path == '/') {
         return '/series';
       }
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
       // ── Shell con bottom nav (stato preservato) ──────────────────────────
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -57,7 +79,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // ── 4° branch: Cerca (dentro la shell, senza voce nel nav bar) ──
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/settings',
+                builder: (context, state) => const SettingsScreen(),
+              ),
+            ],
+          ),
+          // ── 5° branch: Cerca (dentro la shell, senza voce nel nav bar) ──
           StatefulShellBranch(
             routes: [
               GoRoute(

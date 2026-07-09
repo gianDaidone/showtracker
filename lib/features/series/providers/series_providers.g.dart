@@ -6,7 +6,7 @@ part of 'series_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$tmdbServiceHash() => r'fde72afa43daff9ce1468f6c4438dab0b68b21b6';
+String _$tmdbServiceHash() => r'2fdcb3b4bcc9dbe90c3534c5852642dfef373f3c';
 
 /// See also [tmdbService].
 @ProviderFor(tmdbService)
@@ -341,7 +341,7 @@ class _AnimeDataProviderElement
   int get tmdbId => (origin as AnimeDataProvider).tmdbId;
 }
 
-String _$showDetailHash() => r'4cdbb471ff887b94c8dc8ab65d866db7bd77769c';
+String _$showDetailHash() => r'c7a23a4f2cef3235fea30b57863a8014ee2f55ec';
 
 /// See also [showDetail].
 @ProviderFor(showDetail)
@@ -472,7 +472,7 @@ class _ShowDetailProviderElement
   int get tmdbId => (origin as ShowDetailProvider).tmdbId;
 }
 
-String _$seasonDetailHash() => r'23cf1c87fcf4354cef2c2aa359611a1dc5f8983a';
+String _$seasonDetailHash() => r'f35b6f32b49c8c3124a0ce00de3bae9d2be79929';
 
 /// See also [seasonDetail].
 @ProviderFor(seasonDetail)
@@ -1039,7 +1039,7 @@ final watchingShowsWithEpisodesProvider =
 // ignore: unused_element
 typedef WatchingShowsWithEpisodesRef
     = AutoDisposeStreamProviderRef<List<ShowWithWatchedEpisodes>>;
-String _$upcomingEpisodesHash() => r'35e9bbac9aacaed09bcfeb0de21479b42aa29f29';
+String _$upcomingEpisodesHash() => r'01a7c574228fb463dd166caeb6a5eb07644bc14d';
 
 /// See also [upcomingEpisodes].
 @ProviderFor(upcomingEpisodes)
@@ -1059,7 +1059,7 @@ final upcomingEpisodesProvider =
 typedef UpcomingEpisodesRef
     = AutoDisposeFutureProviderRef<List<UpcomingEpisodeInfo>>;
 String _$trackedShowsNotifierHash() =>
-    r'c8361e1a045de45bb45ebdcb57fac549a9db21cb';
+    r'201a6ed7d60e3a149c43ba4664d6029456347e24';
 
 /// See also [TrackedShowsNotifier].
 @ProviderFor(TrackedShowsNotifier)

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../constants.dart';
 import '../theme/app_theme.dart';
 
 class MainShell extends StatefulWidget {
@@ -17,18 +18,18 @@ class _MainShellState extends State<MainShell> {
   int _lastSectionIndex = 0;
 
   static const _tabs = [
-    (icon: Icons.tv_outlined, activeIcon: Icons.tv_rounded, label: 'Serie'),
-    (icon: Icons.movie_outlined, activeIcon: Icons.movie, label: 'Film'),
-    (icon: Icons.videogame_asset_outlined, activeIcon: Icons.videogame_asset, label: 'Giochi'),
-    if (kDebugMode) (icon: Icons.bug_report_outlined, activeIcon: Icons.bug_report, label: 'Debug'),
+    (branch: 0, icon: Icons.tv_outlined, activeIcon: Icons.tv_rounded, label: 'Serie'),
+    (branch: 1, icon: Icons.movie_outlined, activeIcon: Icons.movie, label: 'Film'),
+    if (kEnableGames) (branch: 2, icon: Icons.videogame_asset_outlined, activeIcon: Icons.videogame_asset, label: 'Giochi'),
+    (branch: 3, icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profilo'),
+    if (kDebugMode) (branch: 5, icon: Icons.bug_report_outlined, activeIcon: Icons.bug_report, label: 'Debug'),
   ];
 
   @override
   Widget build(BuildContext context) {
     final currentIndex = widget.navigationShell.currentIndex;
-    final isSearch = currentIndex == 3;
-    // Il branch Debug è il 5° (indice 4); il tab nel nav bar è il 4° (indice 3).
-    final isDebug = kDebugMode && currentIndex == 4;
+    final isSearch = currentIndex == 4;
+    final isDebug = kDebugMode && currentIndex == 5;
 
     if (!isSearch && !isDebug) {
       _lastSectionIndex = currentIndex;
@@ -55,7 +56,7 @@ class _MainShellState extends State<MainShell> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final activeIndex =
-                  isSearch ? _lastSectionIndex : (isDebug ? 3 : currentIndex);
+                  isSearch ? _lastSectionIndex : currentIndex;
               final tabWidth = constraints.maxWidth / _tabs.length;
 
               return Stack(
@@ -64,16 +65,14 @@ class _MainShellState extends State<MainShell> {
                   Row(
                     children: List.generate(_tabs.length, (index) {
                       final t = _tabs[index];
-                      final isSelected = index == activeIndex;
+                      final isSelected = t.branch == activeIndex;
                       return Expanded(
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () {
-                            final branchIndex =
-                                (kDebugMode && index == 3) ? 4 : index;
                             widget.navigationShell.goBranch(
-                              branchIndex,
-                              initialLocation: branchIndex == currentIndex,
+                              t.branch,
+                              initialLocation: t.branch == currentIndex,
                             );
                           },
                           child: Column(

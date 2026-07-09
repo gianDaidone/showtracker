@@ -108,7 +108,7 @@ class ShowTrackerWidgetsManager {
          String? finalImgUrl = posterUrl;
          
          try {
-           final tmdb = TmdbService();
+           final tmdb = c.read(tmdbServiceProvider);
            final seasonDetails = await tmdb.getSeasonDetails(show.tmdbId, s);
            if (seasonDetails.episodes != null) {
              final ep = seasonDetails.episodes!.firstWhere((element) => element.episodeNumber == e);
