@@ -32,7 +32,7 @@ void main() async {
       (previous, next) {
         // Ignora gli stati di caricamento temporanei per evitare chiamate multiple
         if (!next.isLoading && next.hasValue) {
-          ShowTrackerWidgetsManager.updateWidgets(container: container);
+          ShowTrackerWidgetsManager.updateWidgets(container: container, watchingList: next.value);
         }
       },
     );

@@ -33,16 +33,7 @@ class ProssimamenteWidgetProvider : HomeWidgetProvider() {
                 setTextViewText(R.id.tv_countdown_1, widgetData.getString("upcoming_1_countdown", ""))
                 setTextViewText(R.id.tv_date_1, widgetData.getString("upcoming_1_date", ""))
                 
-                // Deep Link Card 1
-                val id1 = widgetData.getString("upcoming_1_id", "")
-                if (id1?.isNotEmpty() == true) {
-                    val intent1 = Intent(context, MainActivity::class.java).apply {
-                        data = Uri.parse("showtracker:///series/detail/$id1")
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    val pendingIntent1 = PendingIntent.getActivity(context, 1, intent1, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                    setOnClickPendingIntent(R.id.card_1, pendingIntent1)
-                }
+                // Deep Link Card 1 rimossa per far scattare solo il widget_root
                 
                 // Card 2
                 val imagePath2 = widgetData.getString("upcoming_2_image", "")
@@ -59,16 +50,14 @@ class ProssimamenteWidgetProvider : HomeWidgetProvider() {
                 setTextViewText(R.id.tv_countdown_2, widgetData.getString("upcoming_2_countdown", ""))
                 setTextViewText(R.id.tv_date_2, widgetData.getString("upcoming_2_date", ""))
                 
-                // Deep Link Card 2
-                val id2 = widgetData.getString("upcoming_2_id", "")
-                if (id2?.isNotEmpty() == true) {
-                    val intent2 = Intent(context, MainActivity::class.java).apply {
-                        data = Uri.parse("showtracker:///series/detail/$id2")
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    val pendingIntent2 = PendingIntent.getActivity(context, 2, intent2, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                    setOnClickPendingIntent(R.id.card_2, pendingIntent2)
+                // Deep Link Card 2 rimossa per far scattare solo il widget_root
+                // Deep Link root widget
+                val intentRoot = Intent(context, MainActivity::class.java).apply {
+                    data = Uri.parse("showtracker:///series?tab=1")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
+                val pendingIntentRoot = PendingIntent.getActivity(context, 0, intentRoot, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                setOnClickPendingIntent(R.id.widget_root, pendingIntentRoot)
             }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)

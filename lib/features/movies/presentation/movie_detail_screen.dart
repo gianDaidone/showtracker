@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/services/app_toast.dart';
@@ -110,6 +111,16 @@ class _BackdropAppBarState extends ConsumerState<_BackdropAppBar> {
       pinned: true,
       backgroundColor: AppColors.background,
       surfaceTintColor: Colors.transparent,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/movies');
+          }
+        },
+      ),
       actions: [
         _RefreshButton(tmdbId: widget.detail.id),
       ],

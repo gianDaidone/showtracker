@@ -12,6 +12,7 @@
         android:scaleType="centerCrop" />
 
     <ImageView
+        android:id="@+id/img_gradient_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/gradient_overlay" />

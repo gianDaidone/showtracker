@@ -42,7 +42,7 @@ class TmdbEpisode {
       episodeNumber: it['episode_number'] as int,
       name: name,
       overview: notEmpty('overview', it) ?? notEmpty('overview', en ?? {}),
-      stillPath: it['still_path'] as String?,
+      stillPath: (it['still_path'] as String?) ?? (en?['still_path'] as String?),
       airDate: it['air_date'] as String?,
       voteAverage: (it['vote_average'] as num?)?.toDouble(),
     );
@@ -61,5 +61,5 @@ class TmdbEpisode {
   }
 
   String? get stillUrl =>
-      stillPath != null ? '$kTmdbImageBase/w300$stillPath' : null;
+      stillPath != null ? '$kTmdbImageBase/w185$stillPath' : null;
 }

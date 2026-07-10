@@ -198,6 +198,18 @@ class SettingsScreen extends StatelessWidget {
                             height: 1.5,
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        const Divider(height: 1, color: AppColors.divider),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'A causa di questa unione di dati, la suddivisione e la nomenclatura delle stagioni e degli episodi potrebbero in alcuni casi non rispecchiare fedelmente le release ufficiali.',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                            height: 1.5,
+                          ),
+                        ),
                       ],
                     ),
                   ),

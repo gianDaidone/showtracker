@@ -32,7 +32,15 @@ class MaratonaWidgetProvider : HomeWidgetProvider() {
                     val bitmap = android.graphics.BitmapFactory.decodeFile(imagePath)
                     if (bitmap != null) {
                         setImageViewBitmap(R.id.img_poster_marathon, bitmap)
+                        setViewVisibility(R.id.img_poster_marathon, android.view.View.VISIBLE)
+                        setViewVisibility(R.id.img_gradient_overlay, android.view.View.VISIBLE)
+                    } else {
+                        setViewVisibility(R.id.img_poster_marathon, android.view.View.GONE)
+                        setViewVisibility(R.id.img_gradient_overlay, android.view.View.GONE)
                     }
+                } else {
+                    setViewVisibility(R.id.img_poster_marathon, android.view.View.GONE)
+                    setViewVisibility(R.id.img_gradient_overlay, android.view.View.GONE)
                 }
 
                 // Interazione: Apri l'app sul contenitore (Pagina di dettaglio)

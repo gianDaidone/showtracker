@@ -112,6 +112,17 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
     return result.read(countExpr) ?? 0;
   }
 
+  Future<void> updateShowMetadata(
+      int id, int? totalEpisodes, int? totalSeasons, String? status) async {
+    await (update(trackedShows)..where((t) => t.id.equals(id))).write(
+      TrackedShowsCompanion(
+        totalEpisodes: Value(totalEpisodes),
+        totalSeasons: Value(totalSeasons),
+        tmdbStatus: Value(status),
+      ),
+    );
+  }
+
   // ── Episodes: stream (reactive) ──────────────────────────────────────────
 
   Stream<List<TrackedEpisode>> watchEpisodesByShow(int showId) =>

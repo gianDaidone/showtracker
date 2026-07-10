@@ -88,12 +88,8 @@ class AnimeDataMerger {
         }
       } else {
         // Fallback if we run out of TMDB seasons (unlikely since AniList splits more)
-        tmdbSeasonNumber = tmdbSeasons.isNotEmpty 
-            ? tmdbSeasons.last.seasonNumber + (i - filtered.length + 1)
-            : i + 1;
-        maxMappedTmdbSeasonNumber = tmdbSeasonNumber > maxMappedTmdbSeasonNumber 
-            ? tmdbSeasonNumber 
-            : maxMappedTmdbSeasonNumber;
+        maxMappedTmdbSeasonNumber++;
+        tmdbSeasonNumber = maxMappedTmdbSeasonNumber;
       }
 
       result.add(NormalizedAnimeSeason(
@@ -117,6 +113,20 @@ class AnimeDataMerger {
     // but not yet mapped by Yuna / AniList.
     for (var i = tmdbIdx; i < tmdbSeasons.length; i++) {
       final tmdbSeason = tmdbSeasons[i];
+      
+      if (i == tmdbIdx && currentGroupSum > 0 && currentGroupSum < tmdbSeason.episodeCount) {
+        final remainingEps = tmdbSeason.episodeCount - currentGroupSum;
+        result.add(NormalizedAnimeSeason(
+          seasonNumber: result.length + 1,
+          tmdbSeasonNumber: tmdbSeason.seasonNumber,
+          anilistId: -1,
+          episodeCount: remainingEps,
+          status: 'FINISHED', // Fallback status
+          streamingEpisodes: const [],
+        ));
+        continue;
+      }
+      
       if (tmdbSeason.seasonNumber <= maxMappedTmdbSeasonNumber) continue;
       
       result.add(NormalizedAnimeSeason(

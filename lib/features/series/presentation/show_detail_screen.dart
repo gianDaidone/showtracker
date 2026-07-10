@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
@@ -62,6 +63,15 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             .rescheduleNotification(widget.detail);
       });
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final trackedList = ref.read(trackedShowsNotifierProvider).valueOrNull ?? [];
+      final trackedShow = trackedList.where((s) => s.tmdbId == widget.detail.id).firstOrNull;
+      if (trackedShow != null) {
+        await ref.read(trackedShowsNotifierProvider.notifier).syncMetadata(widget.detail, trackedShow.id);
+      }
+    });
   }
 
   @override
@@ -78,6 +88,17 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
         ref
             .read(trackedShowsNotifierProvider.notifier)
             .rescheduleNotification(widget.detail);
+      });
+    }
+
+    if (oldWidget.detail != widget.detail) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        final trackedList = ref.read(trackedShowsNotifierProvider).valueOrNull ?? [];
+        final trackedShow = trackedList.where((s) => s.tmdbId == widget.detail.id).firstOrNull;
+        if (trackedShow != null) {
+          await ref.read(trackedShowsNotifierProvider.notifier).syncMetadata(widget.detail, trackedShow.id);
+        }
       });
     }
   }
@@ -180,6 +201,16 @@ class _BackdropAppBar extends StatelessWidget {
       pinned: true,
       backgroundColor: AppColors.background,
       surfaceTintColor: Colors.transparent,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/series');
+          }
+        },
+      ),
       actions: [
         _RefreshButton(tmdbId: detail.id, isAnime: detail.isAnime),
       ],

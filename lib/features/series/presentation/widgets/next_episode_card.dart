@@ -7,6 +7,7 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/database_provider.dart';
 import '../../../../core/services/app_toast.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../data/models/normalized_anime_season.dart';
 import '../../providers/series_providers.dart';
 import 'episode_detail_sheet.dart';
 
@@ -35,10 +36,13 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
   /// Calcola il prossimo episodio da guardare.
   /// [seasonCounts] è la mappa stagione→episodeCount dal DB locale:
   /// consente di rilevare l'overflow di stagione senza alcuna chiamata API.
+  /// [animeSeasonsData] è opzionale e viene usato per gli anime per trovare
+  /// stagioni successive con episodeCount=0 ma ancora in produzione.
   (int season, int episode) _computeNext(
     Map<int, Set<int>> watched,
-    Map<int, int> seasonCounts,
-  ) {
+    Map<int, int> seasonCounts, {
+    List<NormalizedAnimeSeason>? animeSeasonsData,
+  }) {
     if (watched.isEmpty) return (1, 1);
     final lastSeason = watched.keys.reduce((a, b) => a > b ? a : b);
     final lastEp = watched[lastSeason]!.reduce((a, b) => a > b ? a : b);
@@ -48,12 +52,34 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     // della stagione corrente (>0) e l'abbiamo superato. Per anime in onda
     // AniList può restituire episodes=null → episodeCount=0: in quel caso
     // 0 significa "totale ignoto", non "stagione vuota", quindi non saltiamo.
-    final hasNextSeason = seasonCounts.containsKey(lastSeason + 1);
     if (countInSeason != null &&
         countInSeason > 0 &&
-        nextEp > countInSeason &&
-        hasNextSeason) {
-      return (lastSeason + 1, 1);
+        nextEp > countInSeason) {
+      final sortedSeasons = seasonCounts.keys.toList()..sort();
+      int? nextAvailableSeason = sortedSeasons
+          .where((s) => s > lastSeason && (seasonCounts[s] ?? 0) > 0)
+          .firstOrNull;
+
+      // Per gli anime: fallback su stagioni con episodeCount=0 ma ancora in
+      // produzione (AniList non conosce ancora il totale episodi di una stagione
+      // in corso).
+      if (nextAvailableSeason == null && animeSeasonsData != null) {
+        nextAvailableSeason = sortedSeasons
+            .where((s) {
+              if (s <= lastSeason) return false;
+              final animeSeason = animeSeasonsData
+                  .where((as_) => as_.seasonNumber == s)
+                  .firstOrNull;
+              if (animeSeason == null) return false;
+              return animeSeason.status == 'RELEASING' ||
+                  animeSeason.status == 'NOT_YET_RELEASED';
+            })
+            .firstOrNull;
+      }
+
+      if (nextAvailableSeason != null) {
+        return (nextAvailableSeason, 1);
+      }
     }
     return (lastSeason, nextEp);
   }
@@ -117,10 +143,20 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     // ── Prossimo episodio ──────────────────────────────────────────────────
     // seasonCounts viene dal DB locale: nessuna chiamata API per
     // determinare il numero di stagione/episodio corretto.
-    final seasonCounts =
+    final dbSeasonCounts =
         ref.watch(seasonEpisodeCountsProvider(show.id)).valueOrNull ?? {};
 
-    final (nextSeason, nextEp) = _computeNext(watchedBySeason, seasonCounts);
+    final detailAsync = ref.watch(showDetailProvider(show.tmdbId));
+    final detail = detailAsync.valueOrNull;
+    final seasonCounts = (detail != null && detail.seasons.isNotEmpty)
+        ? {for (final s in detail.seasons) s.seasonNumber: s.episodeCount}
+        : dbSeasonCounts;
+
+    var (nextSeason, nextEp) = _computeNext(
+      watchedBySeason,
+      seasonCounts,
+      animeSeasonsData: detail?.animeSeasonsData,
+    );
 
     // Carica titolo e still dell'episodio dall'API (solo dati estetici).
     final seasonAsync = ref.watch(seasonDetailProvider(
@@ -135,10 +171,49 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       return const NextEpisodeSkeletonCard();
     }
 
-    final loadedEpisodes = seasonAsync.valueOrNull?.episodes;
-    final nextEpisode = loadedEpisodes
+    var loadedEpisodes = seasonAsync.valueOrNull?.episodes;
+    var nextEpisode = loadedEpisodes
         ?.where((e) => e.episodeNumber == nextEp)
         .firstOrNull;
+
+    // ── Discrepanza AniList/TMDB ───────────────────────────────────────────
+    // AniList può riportare un episodeCount maggiore di quanti episodi TMDB
+    // distribuisce effettivamente (per OVA, recap, ecc.).
+    // Es: AniList S3 = 13 ep, TMDB distribuisce solo 12 → l'utente ha visto
+    // tutti gli ep reali (12) ma il codice cerca l'ep 13 che non esiste.
+    // In questo caso: ricalcola con il conteggio reale e avanza la stagione.
+    if (seasonAsync.hasValue &&
+        nextEpisode == null &&
+        loadedEpisodes != null &&
+        loadedEpisodes.isNotEmpty &&
+        nextEp > loadedEpisodes.length) {
+      // Correggi il conteggio per questa stagione con il valore reale da TMDB
+      final correctedCounts = Map<int, int>.from(seasonCounts);
+      correctedCounts[nextSeason] = loadedEpisodes.length;
+      final (corrSeason, corrEp) = _computeNext(
+        watchedBySeason,
+        correctedCounts,
+        animeSeasonsData: detail?.animeSeasonsData,
+      );
+      // Usa la stagione ricalcolata solo se è diversa da quella corrente
+      // (altrimenti non avremmo risolto nulla)
+      if (corrSeason != nextSeason || corrEp != nextEp) {
+        nextSeason = corrSeason;
+        nextEp = corrEp;
+        // Ricarichiamo gli episodi della nuova stagione dal provider
+        final corrSeasonAsync = ref.watch(seasonDetailProvider(
+          showId: show.tmdbId,
+          seasonNumber: nextSeason,
+        ));
+        if (!corrSeasonAsync.hasValue && !corrSeasonAsync.hasError) {
+          return const NextEpisodeSkeletonCard();
+        }
+        loadedEpisodes = corrSeasonAsync.valueOrNull?.episodes;
+        nextEpisode = loadedEpisodes
+            ?.where((e) => e.episodeNumber == nextEp)
+            .firstOrNull;
+      }
+    }
 
     // Se i dati della stagione sono caricati ma l'episodio non è ancora
     // uscito, non mostrare la card (l'episodio apparirà in "In Uscita").
@@ -146,11 +221,23 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       return const SizedBox.shrink();
     }
 
-    // ── Tutti gli episodi visti ────────────────────────────────────────────
-    // Se watchedCount >= total, assumiamo di aver visto tutto, A MENO CHE
-    // non ci sia un nextEpisode che è già andato in onda (il DB potrebbe avere
-    // un total obsoleto).
-    if (total != null && watchedCount >= total) {
+    // ── Logica di completamento ────────────────────────────────────────────
+    // Per gli anime con dati AniList, non usiamo watchedCount >= total perché
+    // total può essere calcolato con episodeCount=0 per stagioni in corso,
+    // rendendo il confronto inaffidabile (e potendo triggerare "completato"
+    // prematuro). Usiamo la logica stagione/episodio come fonte di verità.
+    final isAnimeWithData = detail != null && detail.isAnime && detail.animeSeasonsData != null;
+    final isCompleted = isAnimeWithData
+        ? (nextEpisode == null &&
+            (loadedEpisodes == null || loadedEpisodes.isEmpty) &&
+            !detail.animeSeasonsData!.any((as_) =>
+                as_.seasonNumber > (watchedBySeason.keys.isEmpty
+                    ? 0
+                    : watchedBySeason.keys.reduce((a, b) => a > b ? a : b)) &&
+                (as_.status == 'RELEASING' || as_.status == 'NOT_YET_RELEASED')))
+        : (total != null && watchedCount >= total);
+
+    if (isCompleted) {
       if (seasonAsync.hasValue && nextEpisode != null && nextEpisode.hasAired) {
         // Ignora il completamento, c'è un nuovo episodio da guardare!
       } else {
@@ -175,6 +262,8 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
         loadedEpisodes.isNotEmpty) {
       return const SizedBox.shrink();
     }
+
+
 
     final episodeTitle = nextEpisode?.name;
     final imageUrl = nextEpisode?.stillPath != null

@@ -12,7 +12,8 @@ import 'widgets/upcoming_episode_card.dart';
 /// Due tab: "Da Vedere" (prossimo episodio per serie in visione)
 /// e "In Uscita" (episodi futuri delle serie tracciate).
 class NextEpisodesScreen extends ConsumerStatefulWidget {
-  const NextEpisodesScreen({super.key});
+  final int initialTab;
+  const NextEpisodesScreen({super.key, this.initialTab = 0});
 
   @override
   ConsumerState<NextEpisodesScreen> createState() => _NextEpisodesScreenState();
@@ -25,7 +26,7 @@ class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTab);
     _tabController.addListener(_onTabChanged);
   }
 
@@ -41,6 +42,14 @@ class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
     // names are always fresh (they may have been cached by opening a detail page).
     if (_tabController.index == 1 && !_tabController.indexIsChanging) {
       ref.invalidate(upcomingEpisodesProvider);
+    }
+  }
+
+  @override
+  void didUpdateWidget(NextEpisodesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTab != oldWidget.initialTab && widget.initialTab != _tabController.index) {
+      _tabController.animateTo(widget.initialTab);
     }
   }
 
@@ -145,10 +154,16 @@ final visibleWatchingShowsProvider =
     final total = show.totalEpisodes;
     final watchedCount = showData.watchedCount;
 
-    final seasonCounts =
-        await ref.watch(seasonEpisodeCountsProvider(show.id).future) ?? {};
+    final dbSeasonCounts =
+        await ref.watch(seasonEpisodeCountsProvider(show.id).future);
+        
+    final detail = await ref.watch(showDetailProvider(show.tmdbId).future);
+    final seasonCounts = detail.seasons.isNotEmpty
+        ? {for (final s in detail.seasons) s.seasonNumber: s.episodeCount}
+        : dbSeasonCounts;
     
     final watched = showData.watchedBySeason;
+
     int nextSeason = 1;
     int nextEp = 1;
     
@@ -157,13 +172,36 @@ final visibleWatchingShowsProvider =
       final lastEp = watched[lastSeason]!.reduce((a, b) => a > b ? a : b);
       nextEp = lastEp + 1;
       final countInSeason = seasonCounts[lastSeason];
-      final hasNextSeason = seasonCounts.containsKey(lastSeason + 1);
+      
       if (countInSeason != null &&
           countInSeason > 0 &&
-          nextEp > countInSeason &&
-          hasNextSeason) {
-        nextSeason = lastSeason + 1;
-        nextEp = 1;
+          nextEp > countInSeason) {
+          
+        final sortedSeasons = seasonCounts.keys.toList()..sort();
+        int? nextAvailableSeason = sortedSeasons
+            .where((s) => s > lastSeason && (seasonCounts[s] ?? 0) > 0)
+            .firstOrNull;
+
+        if (nextAvailableSeason == null && detail.isAnime && detail.animeSeasonsData != null) {
+          nextAvailableSeason = sortedSeasons
+              .where((s) {
+                if (s <= lastSeason) return false;
+                final animeSeason = detail.animeSeasonsData!
+                    .where((as_) => as_.seasonNumber == s)
+                    .firstOrNull;
+                if (animeSeason == null) return false;
+                return animeSeason.status == 'RELEASING' ||
+                    animeSeason.status == 'NOT_YET_RELEASED';
+              })
+              .firstOrNull;
+        }
+            
+        if (nextAvailableSeason != null) {
+          nextSeason = nextAvailableSeason;
+          nextEp = 1;
+        } else {
+          nextSeason = lastSeason;
+        }
       } else {
         nextSeason = lastSeason;
       }
@@ -183,11 +221,20 @@ final visibleWatchingShowsProvider =
         continue;
       }
 
-      if (total != null && watchedCount >= total) {
+      final isAnimeWithData = detail.isAnime && detail.animeSeasonsData != null;
+      final isCompleted = isAnimeWithData
+          ? (nextEpisode == null &&
+              (loadedEpisodes == null || loadedEpisodes.isEmpty) &&
+              !detail.animeSeasonsData!.any((as_) =>
+                  as_.seasonNumber > (watched.keys.isEmpty
+                      ? 0
+                      : watched.keys.reduce((a, b) => a > b ? a : b)) &&
+                  (as_.status == 'RELEASING' || as_.status == 'NOT_YET_RELEASED')))
+          : (total != null && watchedCount >= total);
+
+      if (isCompleted) {
         if (nextEpisode != null && nextEpisode.hasAired) {
-          // Keep, will render episode card
         } else {
-          // Keep, will render CompletedContent
           visible.add(showData);
           continue;
         }
@@ -196,11 +243,44 @@ final visibleWatchingShowsProvider =
       if (nextEpisode == null &&
           loadedEpisodes != null &&
           loadedEpisodes.isNotEmpty) {
+        // Discrepanza AniList/TMDB: AniList dice che la stagione ha più episodi
+        // di quanti TMDB ne abbia effettivamente (per OVA, recap, ecc.)
+        // Es: AniList S3 = 13 ep, TMDB distribuisce solo 12 → l'utente non può
+        // trovare l'ep 13 anche se ha visto tutti quelli reali.
+        // → Avanza alla stagione successiva invece di skippare la serie.
+        if (nextEp > loadedEpisodes.length) {
+          final sortedSeasonsAdv = seasonCounts.keys.toList()..sort();
+          final lastSeasonAdv = watched.keys.isEmpty
+              ? 0
+              : watched.keys.reduce((a, b) => a > b ? a : b);
+          int? nextSeasonAdv = sortedSeasonsAdv
+              .where((s) => s > lastSeasonAdv && (seasonCounts[s] ?? 0) > 0)
+              .firstOrNull;
+          if (nextSeasonAdv == null && detail.isAnime && detail.animeSeasonsData != null) {
+            nextSeasonAdv = sortedSeasonsAdv
+                .where((s) {
+                  if (s <= lastSeasonAdv) return false;
+                  final as_ = detail.animeSeasonsData!
+                      .where((a) => a.seasonNumber == s)
+                      .firstOrNull;
+                  if (as_ == null) return false;
+                  return as_.status == 'RELEASING' || as_.status == 'NOT_YET_RELEASED';
+                })
+                .firstOrNull;
+          }
+          if (nextSeasonAdv != null) {
+            visible.add(showData);
+            continue;
+          }
+        }
         continue;
       }
     } catch (_) {
-      // If fetching fails, we still show the card as a fallback
-      if (total != null && watchedCount >= total) {
+      final isAnimeWithData = detail.isAnime && detail.animeSeasonsData != null;
+      final isCompleted = isAnimeWithData
+          ? false
+          : (total != null && watchedCount >= total);
+      if (isCompleted) {
         visible.add(showData);
         continue;
       }
@@ -210,7 +290,10 @@ final visibleWatchingShowsProvider =
   }
 
   return visible;
+
+
 });
+
 
 class _DaVedereTab extends ConsumerStatefulWidget {
   const _DaVedereTab();

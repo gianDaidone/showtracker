@@ -62,7 +62,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/series',
-                builder: (context, state) => const NextEpisodesScreen(),
+                builder: (context, state) {
+                  final tabStr = state.uri.queryParameters['tab'];
+                  final tabIndex = int.tryParse(tabStr ?? '0') ?? 0;
+                  return NextEpisodesScreen(initialTab: tabIndex);
+                },
               ),
             ],
           ),

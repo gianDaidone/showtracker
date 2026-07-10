@@ -169,6 +169,22 @@ Future<AniListMedia?> _searchAniListByTmdbTitles(
   return null;
 }
 
+/// Calcola il totalEpisodes effettivo per una serie.
+///
+/// Per gli anime con dati AniList, somma gli episodi di tutte le stagioni
+/// sintetiche (cours). Questo evita il bug dove TMDB riporta un numero di
+/// episodi inferiore al reale perché raggruppa più cours in una singola stagione.
+/// Per le serie non-anime, restituisce il valore TMDB grezzo.
+int? _effectiveTotalEpisodes(TmdbShowDetail detail) {
+  if (detail.isAnime && detail.animeSeasonsData != null && detail.animeSeasonsData!.isNotEmpty) {
+    final sum = detail.animeSeasonsData!.fold<int>(0, (acc, s) => acc + s.episodeCount);
+    // Usa il totale AniList solo se è maggiore di zero per evitare di
+    // sovrascrivere un valore TMDB valido con 0 (anime non ancora uscito).
+    return sum > 0 ? sum : detail.numberOfEpisodes;
+  }
+  return detail.numberOfEpisodes;
+}
+
 // ── Show detail (enriched with AniList for anime) ─────────────────────────────
 
 @riverpod
@@ -179,7 +195,7 @@ Future<TmdbShowDetail> showDetail(ShowDetailRef ref, int tmdbId) async {
 
   // Enrich anime with AniList data
   final animeSeasonsData =
-      await ref.read(animeDataProvider(tmdbId).future);
+      await ref.watch(animeDataProvider(tmdbId).future);
 
   if (animeSeasonsData == null || animeSeasonsData.isEmpty) return detail;
 
@@ -250,7 +266,7 @@ Future<TmdbSeason> seasonDetail(
   final show = await ref.read(showsDaoProvider).getByTmdbId(showId);
 
   // ── Anime path ─────────────────────────────────────────────────────────────
-  final detail = await ref.read(showDetailProvider(showId).future);
+  final detail = await ref.watch(showDetailProvider(showId).future);
   if (detail.isAnime && detail.animeSeasonsData != null) {
     final animeSeasonsData = detail.animeSeasonsData!;
     final animeSeason = animeSeasonsData
@@ -428,27 +444,58 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
   }
 
   Future<void> addShow(TmdbShowDetail detail) async {
+    // ── Fase 1: inserimento immediato con i dati disponibili ───────────────
+    // L'utente potrebbe premere "Aggiungi" prima che AniList abbia finito
+    // di caricare (animeSeasonsData == null). Inseriamo subito la serie con
+    // i valori TMDB grezzi per dare feedback istantaneo all'utente.
+    TmdbShowDetail effectiveDetail = detail;
+
+    // ── Fase 2: per gli anime senza dati AniList, attendiamo il caricamento ─
+    // Se animeSeasonsData è null (AniList non ancora caricato), aspettiamo
+    // i dati sintetici prima di salvare totali e stagioni corrette.
+    // Questo è il fix critico: senza di esso totalEpisodes viene salvato
+    // dal valore TMDB grezzo che può essere inferiore al totale reale
+    // (TMDB raggruppa più cours in meno stagioni).
+    if (detail.isAnime && detail.animeSeasonsData == null) {
+      try {
+        final anilistSeasons = await ref.read(animeDataProvider(detail.id).future);
+        if (anilistSeasons != null && anilistSeasons.isNotEmpty) {
+          // Ricarica il detail arricchito con i dati AniList appena ottenuti
+          effectiveDetail = await ref.read(showDetailProvider(detail.id).future);
+        }
+      } catch (_) {
+        // In caso di errore, usiamo il detail originale (TMDB grezzo).
+        // syncMetadata() nella pagina dettaglio correggerà i valori appena
+        // i dati AniList diventano disponibili.
+      }
+    }
+
+    final effectiveTotal = _effectiveTotalEpisodes(effectiveDetail);
+    final effectiveSeasons = effectiveDetail.isAnime && effectiveDetail.animeSeasonsData != null
+        ? effectiveDetail.animeSeasonsData!.length
+        : effectiveDetail.numberOfSeasons;
+
     final dbId = await ref.read(showsDaoProvider).insertShow(
           TrackedShowsCompanion(
-            tmdbId: Value(detail.id),
-            title: Value(detail.name),
+            tmdbId: Value(effectiveDetail.id),
+            title: Value(effectiveDetail.name),
             overview: Value(
-              (detail.overview?.isNotEmpty ?? false) ? detail.overview : null,
+              (effectiveDetail.overview?.isNotEmpty ?? false) ? effectiveDetail.overview : null,
             ),
-            posterPath: Value(detail.posterPath),
+            posterPath: Value(effectiveDetail.posterPath),
             status: const Value(MediaStatus.watching),
-            totalSeasons: Value(detail.numberOfSeasons),
-            totalEpisodes: Value(detail.numberOfEpisodes),
-            tmdbStatus: Value(detail.status),
-            isAnime: Value(detail.isAnime),
+            totalSeasons: Value(effectiveSeasons),
+            totalEpisodes: Value(effectiveTotal),
+            tmdbStatus: Value(effectiveDetail.status),
+            isAnime: Value(effectiveDetail.isAnime),
             addedAt: Value(DateTime.now()),
           ),
         );
-    final counts = {for (final s in detail.seasons) s.seasonNumber: s.episodeCount};
+    final counts = {for (final s in effectiveDetail.seasons) s.seasonNumber: s.episodeCount};
     await ref.read(showsDaoProvider).insertSeasons(dbId, counts);
 
     // Pianifica notifica con orario preciso per anime, 09:00 per serie normali.
-    await _scheduleNotification(detail);
+    await _scheduleNotification(effectiveDetail);
   }
 
   Future<void> removeShow(int dbId) async {
@@ -472,6 +519,50 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
       } catch (_) {
         AppToast.show('Impossibile aggiornare la notifica per ${show.title}');
       }
+    }
+  }
+
+  Future<void> syncMetadata(TmdbShowDetail detail, int dbId) async {
+    final show = await ref.read(showsDaoProvider).getById(dbId);
+    if (show == null) return;
+    
+    // Forza la pulizia della cache locale per la serie, così forziamo un refresh 
+    // dal web ed evitiamo problemi di mapping sporco (es. Episodio 0)
+    await ref.read(cacheDaoProvider).clearCacheForShow(show.tmdbId);
+    await ref.read(animeCacheDaoProvider).clearAnimeCacheForShow(show.tmdbId);
+    
+    // Per gli anime, usa la somma degli episodi dalle stagioni sintetiche AniList
+    // invece del numberOfEpisodes TMDB grezzo (che può escludere cours futuri).
+    final effectiveTotal = _effectiveTotalEpisodes(detail);
+    final effectiveSeasons = detail.isAnime && detail.animeSeasonsData != null
+        ? detail.animeSeasonsData!.length
+        : detail.numberOfSeasons;
+
+    if (show.totalEpisodes != effectiveTotal ||
+        show.totalSeasons != effectiveSeasons ||
+        show.tmdbStatus != detail.status) {
+      await ref.read(showsDaoProvider).updateShowMetadata(
+        dbId, 
+        effectiveTotal, 
+        effectiveSeasons, 
+        detail.status,
+      );
+    }
+    
+    final counts = {for (final s in detail.seasons) s.seasonNumber: s.episodeCount};
+    final currentCounts = await ref.read(showsDaoProvider).getSeasonCounts(dbId);
+    bool countsChanged = counts.length != currentCounts.length;
+    if (!countsChanged) {
+      for (final s in counts.keys) {
+        if (counts[s] != currentCounts[s]) {
+          countsChanged = true;
+          break;
+        }
+      }
+    }
+    if (countsChanged) {
+      await ref.read(showsDaoProvider).insertSeasons(dbId, counts);
+      ref.invalidate(seasonEpisodeCountsProvider(dbId));
     }
   }
 

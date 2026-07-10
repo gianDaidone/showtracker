@@ -1,6 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/services/app_toast.dart';
@@ -306,7 +307,13 @@ class _ScreenshotCarouselState extends State<_ScreenshotCarousel> {
           top: MediaQuery.of(context).padding.top + 8,
           left: 12,
           child: GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/games');
+              }
+            },
             child: Container(
               width: 36,
               height: 36,

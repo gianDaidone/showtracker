@@ -72,9 +72,10 @@ class TmdbService {
     await Future.wait(tmdbSeasonsToFetch.map((tmdbSeasonNum) async {
       try {
         final season = await getSeasonDetails(tmdbId, tmdbSeasonNum);
-        final eps = season.episodes;
-        if (eps != null && eps.isNotEmpty) {
-          tmdbSeasonsMap[tmdbSeasonNum] = eps;
+        if (season.episodes != null) {
+          tmdbSeasonsMap[tmdbSeasonNum] = season.episodes!
+              .where((e) => e.episodeNumber > 0)
+              .toList();
         }
       } catch (_) {}
     }));
