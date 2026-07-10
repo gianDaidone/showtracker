@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
@@ -6,41 +8,54 @@ import 'widgets_manager.dart';
 import 'features/series/providers/series_providers.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.init();
+  runZoned(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    if (kReleaseMode) {
+      debugPrint = (String? message, {int? wrapWidth}) {};
+    }
 
-  // Crea un container globale per poterlo passare ai widget
-  final container = ProviderContainer();
+    await NotificationService.init();
 
-  // Inizializza i widget nativi e le callback di background
-  await ShowTrackerWidgetsManager.setup();
-  
-  // Popola i widget all'avvio dell'app usando il container (così non viene chiuso il DB)
-  await ShowTrackerWidgetsManager.updateWidgets(container: container);
-  
-  // Mantieni i widget aggiornati in tempo reale quando il DB cambia
-  container.listen(
-    watchingShowsWithEpisodesProvider,
-    (previous, next) {
-      // Ignora gli stati di caricamento temporanei per evitare chiamate multiple
-      if (!next.isLoading && next.hasValue) {
-        ShowTrackerWidgetsManager.updateWidgets(container: container);
+    // Crea un container globale per poterlo passare ai widget
+    final container = ProviderContainer();
+
+    // Inizializza i widget nativi e le callback di background
+    await ShowTrackerWidgetsManager.setup();
+    
+    // Popola i widget all'avvio dell'app usando il container (così non viene chiuso il DB)
+    await ShowTrackerWidgetsManager.updateWidgets(container: container);
+    
+    // Mantieni i widget aggiornati in tempo reale quando il DB cambia
+    container.listen(
+      watchingShowsWithEpisodesProvider,
+      (previous, next) {
+        // Ignora gli stati di caricamento temporanei per evitare chiamate multiple
+        if (!next.isLoading && next.hasValue) {
+          ShowTrackerWidgetsManager.updateWidgets(container: container);
+        }
+      },
+    );
+    container.listen(
+      upcomingEpisodesProvider,
+      (previous, next) {
+        if (!next.isLoading && next.hasValue) {
+          ShowTrackerWidgetsManager.updateWidgets(container: container);
+        }
+      },
+    );
+    
+    runApp(
+      UncontrolledProviderScope(
+        container: container,
+        child: const ShowTrackerApp(),
+      ),
+    );
+  }, zoneSpecification: ZoneSpecification(
+    print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
+      if (!kReleaseMode) {
+        parent.print(zone, line);
       }
     },
-  );
-  container.listen(
-    upcomingEpisodesProvider,
-    (previous, next) {
-      if (!next.isLoading && next.hasValue) {
-        ShowTrackerWidgetsManager.updateWidgets(container: container);
-      }
-    },
-  );
-  
-  runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const ShowTrackerApp(),
-    ),
-  );
+  ));
 }

@@ -17,26 +17,29 @@ import '../../features/debug/debug_screen.dart';
 import '../shell/main_shell.dart';
 import '../services/app_toast.dart';
 
-import '../../features/auth/providers/auth_provider.dart';
-import '../../features/auth/screens/onboarding_screen.dart';
+import '../../core/auth/auth_state.dart';
+import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final authStateAsync = ref.watch(authControllerProvider);
 
   return GoRouter(
     navigatorKey: AppToast.navigatorKey,
     initialLocation: '/series',
     redirect: (context, state) {
-      if (authState.isLoading) return null;
+      if (authStateAsync.isLoading) return null;
 
       final isGoingToOnboarding = state.matchedLocation == '/onboarding';
+      
+      final authState = authStateAsync.valueOrNull;
+      final isAuthenticated = authState != null && authState is! Unauthenticated;
 
-      if (!authState.isAuthenticated && !isGoingToOnboarding) {
+      if (!isAuthenticated && !isGoingToOnboarding) {
         return '/onboarding';
       }
       
-      if (authState.isAuthenticated && isGoingToOnboarding) {
+      if (isAuthenticated && isGoingToOnboarding) {
         return '/series';
       }
 

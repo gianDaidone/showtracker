@@ -1,5 +1,5 @@
 /// Chiave API per TMDB.
-const kTmdbApiKey = 'INSERISCI_QUI_LA_TUA_API_KEY_TMDB';
+const kTmdbApiKey = '***REMOVED***';
 
 /// Base URL per le immagini TMDB.
 const kTmdbImageBase = 'https://image.tmdb.org/t/p';

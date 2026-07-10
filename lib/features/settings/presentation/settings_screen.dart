@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../auth/providers/auth_provider.dart';
+import 'tmdb_account_section.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final isCustomKey = authState.customApiKey != null;
-
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -70,71 +66,7 @@ class SettingsScreen extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
-                  const Text(
-                    'ACCOUNT TMDB',
-                    style: TextStyle(
-                      color: AppColors.accent,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.divider),
-                    ),
-                    child: Column(
-                      children: [
-                        ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                          leading: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.background,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              isCustomKey ? Icons.key : Icons.person,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          title: Text(
-                            isCustomKey ? 'API Key Manuale' : 'Connesso tramite Login TMDB',
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                          ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              isCustomKey ? 'Le chiamate usano la chiave custom.' : 'Le chiamate usano la sessione sicura.',
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ),
-                        ),
-                        const Divider(height: 1, color: AppColors.divider),
-                        if (isCustomKey)
-                          ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                            leading: const Icon(Icons.edit, color: AppColors.textSecondary),
-                            title: const Text('Aggiorna API Key'),
-                            onTap: () {
-                              _showCustomKeyDialog(context, ref);
-                            },
-                          ),
-                        if (isCustomKey) const Divider(height: 1, color: AppColors.divider),
-                        ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                          leading: const Icon(Icons.logout, color: Colors.redAccent),
-                          title: const Text('Disconnetti', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w500)),
-                          onTap: () {
-                            _showLogoutConfirmation(context, ref);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+                  const TmdbAccountSection(),
                   const SizedBox(height: 32),
                   const Text(
                     'INFORMAZIONI SULL\'APP',
@@ -221,6 +153,51 @@ class SettingsScreen extends ConsumerWidget {
                             height: 1.5,
                           ),
                         ),
+                        const SizedBox(height: 20),
+                        const Divider(height: 1, color: AppColors.divider),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'This product uses the TMDB API but is not endorsed or certified by TMDB.',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Divider(height: 1, color: AppColors.divider),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.hub_outlined, color: AppColors.textPrimary, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Ecosistema Dati',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Per offrirti un catalogo ricco e globale, l\'app si appoggia a servizi pubblici di eccellenza. Usiamo TMDB per scovare film e serie occidentali. Per gli Anime, invece, attingiamo al database di AniList per avere date e orari di uscita precisissimi, sfruttando i collegamenti del progetto open-source Yuna per far parlare "magicamente" i due mondi.',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -230,67 +207,6 @@ class SettingsScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-
-  void _showCustomKeyDialog(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Aggiorna API Key v3'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              hintText: 'La tua nuova TMDB API Key',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annulla'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final key = controller.text.trim();
-                if (key.isNotEmpty) {
-                  ref.read(authProvider.notifier).saveCustomApiKey(key);
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Salva'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showLogoutConfirmation(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Disconnetti'),
-          content: const Text('Sei sicuro di voler disconnettere il tuo account? L\'app si bloccherà finché non rieffettuerai l\'accesso.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annulla'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
-              onPressed: () {
-                Navigator.pop(context); // chiudi dialog
-                ref.read(authProvider.notifier).logout(); // disconnette e GoRouter reindirizzerà
-              },
-              child: const Text('Disconnetti'),
-            ),
-          ],
-        );
-      },
     );
   }
 }

@@ -1,5 +1,5 @@
 import 'package:http/http.dart' as http;
-import '../../features/auth/providers/auth_provider.dart';
+import '../auth/auth_state.dart';
 import '../constants.dart';
 
 class TmdbInterceptor extends http.BaseClient {
@@ -13,13 +13,17 @@ class TmdbInterceptor extends http.BaseClient {
     if (request.url.host == 'api.themoviedb.org') {
       final queryParams = Map<String, String>.from(request.url.queryParameters);
       
-      if (_authState.customApiKey != null) {
-        queryParams['api_key'] = _authState.customApiKey!;
-      } else if (_authState.sessionId != null) {
-        queryParams['api_key'] = kTmdbApiKey; 
-        queryParams['session_id'] = _authState.sessionId!;
-      } else {
-        queryParams['api_key'] = kTmdbApiKey; 
+      switch (_authState) {
+        case AuthenticatedWithManualKey(:final apiKey):
+          queryParams['api_key'] = apiKey;
+          break;
+        case AuthenticatedWithSession(:final sessionId):
+          queryParams['api_key'] = kTmdbApiKey; 
+          queryParams['session_id'] = sessionId;
+          break;
+        case Unauthenticated():
+          queryParams['api_key'] = kTmdbApiKey; 
+          break;
       }
 
       final newUrl = request.url.replace(queryParameters: queryParams);
