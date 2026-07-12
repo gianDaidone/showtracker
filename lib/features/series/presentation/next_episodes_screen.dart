@@ -412,6 +412,7 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => NextEpisodeCard(
+                    key: ValueKey(daVedere[index].show.id),
                     showData: daVedere[index],
                   ),
                   childCount: daVedere.length,
@@ -441,6 +442,7 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => NextEpisodeCard(
+                    key: ValueKey(nonVisti[index].show.id),
                     showData: nonVisti[index],
                   ),
                   childCount: nonVisti.length,
@@ -537,6 +539,7 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                   (context, index) {
                     final info = prossimamente[index];
                     return UpcomingEpisodeCard(
+                      key: ValueKey('${info.show.id}_${info.episode.seasonNumber}_${info.episode.episodeNumber}'),
                       show: info.show,
                       episode: info.episode,
                       airDate: info.airDate,
@@ -575,6 +578,7 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                   (context, index) {
                     final info = inArrivo[index];
                     return UpcomingEpisodeCard(
+                      key: ValueKey('${info.show.id}_${info.episode.seasonNumber}_${info.episode.episodeNumber}'),
                       show: info.show,
                       episode: info.episode,
                       airDate: info.airDate,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'tmdb_account_section.dart';
+import 'rawg_account_section.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -66,7 +68,19 @@ class SettingsScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
+                  const Text(
+                    'ACCOUNT',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   const TmdbAccountSection(),
+                  const SizedBox(height: 16),
+                  const RawgAccountSection(),
                   const SizedBox(height: 32),
                   const Text(
                     'INFORMAZIONI SULL\'APP',
@@ -208,6 +222,54 @@ class SettingsScreen extends StatelessWidget {
                             fontSize: 12,
                             fontStyle: FontStyle.italic,
                             height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Divider(height: 1, color: AppColors.divider),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.videogame_asset, color: AppColors.textPrimary, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Perché RAWG?',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'L\'inserimento della chiave RAWG abilita la ricerca e il tracciamento dei videogiochi, scaricando in sola lettura copertine e dettagli. La tua libreria giochi rimane privata e salvata esclusivamente sul tuo dispositivo.',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Divider(height: 1, color: AppColors.divider),
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: () => launchUrl(Uri.parse('https://rawg.io/'), mode: LaunchMode.externalApplication),
+                          child: const Text(
+                            'Video game data and information are sourced from RAWG.',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                              height: 1.5,
+                            ),
                           ),
                         ),
                       ],

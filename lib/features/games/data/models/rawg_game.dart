@@ -1,6 +1,7 @@
 /// Risultato di ricerca RAWG (lista).
 class RawgGame {
   final int id;
+  final String slug;
   final String name;
   final String? backgroundImage;
   final String? released; // "YYYY-MM-DD" oppure null
@@ -11,6 +12,7 @@ class RawgGame {
 
   const RawgGame({
     required this.id,
+    required this.slug,
     required this.name,
     this.backgroundImage,
     this.released,
@@ -23,6 +25,7 @@ class RawgGame {
   factory RawgGame.fromJson(Map<String, dynamic> json) {
     return RawgGame(
       id: json['id'] as int,
+      slug: json['slug'] as String? ?? '',
       name: (json['name'] as String?)?.isNotEmpty == true
           ? json['name'] as String
           : 'Titolo sconosciuto',

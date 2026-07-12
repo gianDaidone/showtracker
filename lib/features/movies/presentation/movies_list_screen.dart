@@ -107,7 +107,10 @@ class _MoviesListScreenState extends ConsumerState<MoviesListScreen> {
           return ListView.builder(
             padding: const EdgeInsets.only(top: 8, bottom: 24),
             itemCount: filtered.length,
-            itemBuilder: (_, i) => _MovieCard(movie: filtered[i]),
+            itemBuilder: (_, i) => _MovieCard(
+              key: ValueKey(filtered[i].id),
+              movie: filtered[i],
+            ),
           );
         },
       ),
@@ -151,7 +154,7 @@ class _NoResults extends StatelessWidget {
 
 class _MovieCard extends StatelessWidget {
   final TrackedMovy movie;
-  const _MovieCard({required this.movie});
+  const _MovieCard({super.key, required this.movie});
 
   @override
   Widget build(BuildContext context) {

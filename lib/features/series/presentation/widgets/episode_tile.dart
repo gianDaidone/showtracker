@@ -71,6 +71,8 @@ class EpisodeTile extends StatelessWidget {
   }
 
   Widget? _buildSubtitle() {
+    final aired = episode.hasAired;
+
     // Precise airingAt from AniList (next episode of an airing anime)
     if (episode.airingAt != null) {
       final dt = episode.airingAt!;
@@ -91,7 +93,7 @@ class EpisodeTile extends StatelessWidget {
       return Text(
         '$dayLabel alle $timeStr',
         style: TextStyle(
-          color: isBatchRelease ? Colors.orange : AppColors.accent,
+          color: aired ? AppColors.textSecondary : (isBatchRelease ? Colors.orange : AppColors.accent),
           fontSize: 11,
           fontWeight: isBatchRelease ? FontWeight.bold : FontWeight.w500,
         ),
@@ -103,7 +105,7 @@ class EpisodeTile extends StatelessWidget {
       return Text(
         _formatDate(episode.airDate!),
         style: TextStyle(
-          color: isBatchRelease ? Colors.orange : AppColors.textSecondary,
+          color: aired ? AppColors.textSecondary : (isBatchRelease ? Colors.orange : AppColors.textSecondary),
           fontSize: 11,
           fontWeight: isBatchRelease ? FontWeight.bold : FontWeight.normal,
         ),

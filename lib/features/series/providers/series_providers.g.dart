@@ -6,7 +6,7 @@ part of 'series_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$tmdbServiceHash() => r'32de98da9f9d341133d96c7a22e70cee5e4480d4';
+String _$tmdbServiceHash() => r'1416e9115dff9da9e4762137ac2f95de060ce4f7';
 
 /// See also [tmdbService].
 @ProviderFor(tmdbService)
@@ -341,7 +341,7 @@ class _AnimeDataProviderElement
   int get tmdbId => (origin as AnimeDataProvider).tmdbId;
 }
 
-String _$showDetailHash() => r'c7a23a4f2cef3235fea30b57863a8014ee2f55ec';
+String _$showDetailHash() => r'4b2d2f7841366ca2262576dc43892e26a4460fca';
 
 /// See also [showDetail].
 @ProviderFor(showDetail)
@@ -472,7 +472,7 @@ class _ShowDetailProviderElement
   int get tmdbId => (origin as ShowDetailProvider).tmdbId;
 }
 
-String _$seasonDetailHash() => r'f35b6f32b49c8c3124a0ce00de3bae9d2be79929';
+String _$seasonDetailHash() => r'f6bd306004496f6aa34c5e4bcfa226bf1e45439d';
 
 /// See also [seasonDetail].
 @ProviderFor(seasonDetail)
@@ -1059,7 +1059,7 @@ final upcomingEpisodesProvider =
 typedef UpcomingEpisodesRef
     = AutoDisposeFutureProviderRef<List<UpcomingEpisodeInfo>>;
 String _$trackedShowsNotifierHash() =>
-    r'201a6ed7d60e3a149c43ba4664d6029456347e24';
+    r'75bd3c0d2728e8393f46464670a69651a6366ed8';
 
 /// See also [TrackedShowsNotifier].
 @ProviderFor(TrackedShowsNotifier)

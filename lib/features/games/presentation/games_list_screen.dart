@@ -116,7 +116,10 @@ class _GamesListScreenState extends ConsumerState<GamesListScreen> {
           return ListView.builder(
             padding: const EdgeInsets.only(top: 8, bottom: 24),
             itemCount: filtered.length,
-            itemBuilder: (_, i) => _GameCard(game: filtered[i]),
+            itemBuilder: (_, i) => _GameCard(
+              key: ValueKey(filtered[i].id),
+              game: filtered[i],
+            ),
           );
         },
       ),
@@ -160,7 +163,7 @@ class _NoResults extends StatelessWidget {
 
 class _GameCard extends StatelessWidget {
   final TrackedGame game;
-  const _GameCard({required this.game});
+  const _GameCard({super.key, required this.game});
 
   @override
   Widget build(BuildContext context) {

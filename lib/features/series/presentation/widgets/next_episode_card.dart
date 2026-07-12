@@ -265,6 +265,28 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
 
 
 
+    int? airedEpisodes;
+    if (detail != null) {
+      if (detail.nextEpisodeToAir != null) {
+        int aired = 0;
+        for (final s in seasonCounts.keys) {
+          if (s < detail.nextEpisodeToAir!.seasonNumber) {
+            aired += seasonCounts[s] ?? 0;
+          } else if (s == detail.nextEpisodeToAir!.seasonNumber) {
+            aired += detail.nextEpisodeToAir!.episodeNumber - 1;
+          }
+        }
+        airedEpisodes = aired;
+      } else {
+        airedEpisodes = seasonCounts.values.fold<int>(0, (a, b) => a + (b ?? 0));
+      }
+    } else {
+      airedEpisodes = total;
+    }
+
+    final int? availableUnwatched = airedEpisodes != null ? (airedEpisodes - watchedCount) : null;
+    final bool showBadge = availableUnwatched == null || availableUnwatched > 1;
+
     final episodeTitle = nextEpisode?.name;
     final imageUrl = nextEpisode?.stillPath != null
         ? 'https://image.tmdb.org/t/p/w185${nextEpisode!.stillPath}'
@@ -348,15 +370,17 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          total != null ? '(+${total - watchedCount})' : '(+?)',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                        if (showBadge) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            availableUnwatched != null ? '(+${availableUnwatched - 1})' : '(+?)',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 6),

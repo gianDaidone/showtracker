@@ -44,48 +44,123 @@ class TmdbAccountSection extends ConsumerWidget {
         switch (state) {
           case Unauthenticated():
             statusText = 'Non connesso';
-            subtitle = 'Accedi per sincronizzare i dati.';
             isConnected = false;
             break;
           case AuthenticatedWithSession():
-            statusText = 'Connesso';
-            subtitle = 'Connesso tramite account TMDB.';
+            statusText = 'Connesso tramite account';
             isConnected = true;
             break;
           case AuthenticatedWithManualKey():
-            statusText = 'Connesso (Avanzato)';
-            subtitle = 'Connesso tramite API Key manuale.';
+            statusText = 'Connesso (API Key manuale)';
             isConnected = true;
             break;
         }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Text(
-                'ACCOUNT TMDB',
-                style: TextStyle(
-                  color: AppColors.accent,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
+        return Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.divider),
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.account_circle, color: AppColors.textPrimary),
-              title: Text(statusText),
-              subtitle: Text(subtitle),
-              trailing: isConnected
-                  ? IconButton(
-                      icon: const Icon(Icons.logout, color: Colors.red),
-                      onPressed: () => _logout(ref, context, state),
-                    )
-                  : null,
-            ),
-          ],
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: isConnected ? const Color(0xFF01B4E4) : AppColors.background,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isConnected ? const Color(0xFF01B4E4) : AppColors.textSecondary,
+                              width: 2,
+                            ),
+                          ),
+                          child: Text(
+                            'TMDB',
+                            style: TextStyle(
+                              color: isConnected ? Colors.white : AppColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'TMDB',
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                statusText,
+                                style: TextStyle(
+                                  color: isConnected ? Colors.green : AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isConnected) ...[
+                    const Divider(height: 1, color: AppColors.divider),
+                    InkWell(
+                      onTap: () {
+                         showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Disconnettere l\'account?'),
+                            content: const Text(
+                              'Disconnettendo l\'account non potrai più cercare nuovi titoli TMDB, ma il tuo database locale rimarrà intatto.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Annulla'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  _logout(ref, context, state);
+                                  Navigator.pop(context);
+                                },
+                                style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                                child: const Text('Disconnetti'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: Text(
+                            'Disconnetti Account',
+                            style: TextStyle(
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),

@@ -24,7 +24,8 @@ void main() async {
     await ShowTrackerWidgetsManager.setup();
     
     // Popola i widget all'avvio dell'app usando il container (così non viene chiuso il DB)
-    await ShowTrackerWidgetsManager.updateWidgets(container: container);
+    // Rimosso await per non bloccare il caricamento dell'interfaccia con richieste di rete
+    ShowTrackerWidgetsManager.updateWidgets(container: container);
     
     // Mantieni i widget aggiornati in tempo reale quando il DB cambia
     container.listen(

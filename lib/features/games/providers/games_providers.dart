@@ -9,12 +9,22 @@ import '../data/models/rawg_game.dart';
 import '../data/models/rawg_game_detail.dart';
 import '../data/rawg_service.dart';
 
+import 'package:http/http.dart' as http;
+import '../../../core/network/tmdb_http_client.dart';
+import '../../../core/auth/rawg_auth_state.dart';
+
 part 'games_providers.g.dart';
 
 // ── RAWG Service ──────────────────────────────────────────────────────────────
 
 @riverpod
-RawgService rawgService(RawgServiceRef ref) => RawgService();
+RawgService rawgService(RawgServiceRef ref) {
+  final authStateAsync = ref.watch(rawgAuthControllerProvider);
+  final authState = authStateAsync.valueOrNull ?? const RawgUnauthenticated();
+  final client = AppInterceptor(http.Client(), rawgAuthState: authState);
+  ref.onDispose(client.close);
+  return RawgService(client);
+}
 
 // ── Ricerca giochi ────────────────────────────────────────────────────────────
 

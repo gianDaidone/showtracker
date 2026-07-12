@@ -4,6 +4,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../core/auth/rawg_auth_state.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_theme.dart';
@@ -32,6 +35,13 @@ class GamesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final rawgStateAsync = ref.watch(rawgAuthControllerProvider);
+    final isUnauthenticated = rawgStateAsync.valueOrNull is RawgUnauthenticated;
+
+    if (isUnauthenticated) {
+      return const _RawgEmptyShell();
+    }
+
     final gamesAsync = ref.watch(trackedGamesNotifierProvider);
     final totalCount = gamesAsync.valueOrNull?.length ?? 0;
 
@@ -58,6 +68,103 @@ class GamesScreen extends ConsumerWidget {
                     _GiocatiTab(),
                   ],
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── RAWG Empty Shell ──────────────────────────────────────────────────────────
+
+class _RawgEmptyShell extends ConsumerStatefulWidget {
+  const _RawgEmptyShell();
+
+  @override
+  ConsumerState<_RawgEmptyShell> createState() => _RawgEmptyShellState();
+}
+
+class _RawgEmptyShellState extends ConsumerState<_RawgEmptyShell> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(
+                Icons.videogame_asset_outlined,
+                size: 80,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Modulo Videogiochi',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Inserisci una RAWG API Key per sbloccare la ricerca e il tracciamento dei videogiochi.',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 15,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              TextField(
+                controller: _controller,
+                decoration: const InputDecoration(
+                  hintText: 'La tua RAWG API Key',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => launchUrl(Uri.parse('https://rawg.io/apidocs'), mode: LaunchMode.externalApplication),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: const Text('Richiedi chiave gratis'),
+                ),
+              ),
+              const SizedBox(height: 32),
+              FilledButton(
+                onPressed: () {
+                  final key = _controller.text.trim();
+                  if (key.isNotEmpty) {
+                    ref.read(rawgAuthControllerProvider.notifier).loginWithKey(key);
+                  }
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Salva e Attiva', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -236,7 +343,10 @@ class _BacklogTabState extends ConsumerState<_BacklogTab>
             ),
             SliverList(
               delegate: SliverChildBuilderDelegate(
-                (context, index) => _GameCard(game: backlog[index]),
+                (context, index) => _GameCard(
+                  key: ValueKey(backlog[index].id),
+                  game: backlog[index],
+                ),
                 childCount: backlog.length,
               ),
             ),
@@ -326,7 +436,11 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
               ),
               SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => _UpcomingGameCard(game: prossimamente[index], isFarFuture: false),
+                  (context, index) => _UpcomingGameCard(
+                    key: ValueKey(prossimamente[index].id),
+                    game: prossimamente[index],
+                    isFarFuture: false,
+                  ),
                   childCount: prossimamente.length,
                 ),
               ),
@@ -353,7 +467,11 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
               ),
               SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => _UpcomingGameCard(game: inArrivo[index], isFarFuture: true),
+                  (context, index) => _UpcomingGameCard(
+                    key: ValueKey(inArrivo[index].id),
+                    game: inArrivo[index],
+                    isFarFuture: true,
+                  ),
                   childCount: inArrivo.length,
                 ),
               ),
@@ -444,7 +562,10 @@ class _GiocatiTabState extends ConsumerState<_GiocatiTab>
                       ),
                     );
                   }
-                  return _GameCard(game: (item as _GameItem).game);
+                  return _GameCard(
+                    key: ValueKey((item as _GameItem).game.id),
+                    game: item.game,
+                  );
                 },
               ),
             ),
@@ -474,7 +595,7 @@ class _GameItem extends _ListItem {
 
 class _GameCard extends ConsumerStatefulWidget {
   final TrackedGame game;
-  const _GameCard({required this.game});
+  const _GameCard({super.key, required this.game});
 
   @override
   ConsumerState<_GameCard> createState() => _GameCardState();
@@ -618,7 +739,7 @@ class _GameCardState extends ConsumerState<_GameCard> {
 class _UpcomingGameCard extends StatelessWidget {
   final TrackedGame game;
   final bool isFarFuture;
-  const _UpcomingGameCard({required this.game, this.isFarFuture = false});
+  const _UpcomingGameCard({super.key, required this.game, this.isFarFuture = false});
 
   @override
   Widget build(BuildContext context) {

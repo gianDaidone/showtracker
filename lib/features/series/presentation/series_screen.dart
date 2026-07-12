@@ -106,7 +106,10 @@ class _SeriesListScreenState extends ConsumerState<SeriesListScreen> {
           return ListView.builder(
             padding: const EdgeInsets.only(top: 8, bottom: 24),
             itemCount: filtered.length,
-            itemBuilder: (_, i) => ShowCard(show: filtered[i]),
+            itemBuilder: (_, i) => ShowCard(
+              key: ValueKey(filtered[i].id),
+              show: filtered[i],
+            ),
           );
         },
       ),

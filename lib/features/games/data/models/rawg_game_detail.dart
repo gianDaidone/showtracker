@@ -9,6 +9,7 @@ class RawgGameDetail extends RawgGame {
 
   const RawgGameDetail({
     required super.id,
+    required super.slug,
     required super.name,
     super.backgroundImage,
     super.released,
@@ -26,6 +27,7 @@ class RawgGameDetail extends RawgGame {
     final base = RawgGame.fromJson(json);
     return RawgGameDetail(
       id: base.id,
+      slug: base.slug,
       name: base.name,
       backgroundImage: base.backgroundImage,
       released: base.released,

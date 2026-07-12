@@ -58,54 +58,111 @@ class AnimeDataMerger {
     // 3. Build normalized seasons with smart TMDB season mapping based on episode counts
     final result = <NormalizedAnimeSeason>[];
     int tmdbIdx = 0;
-    int currentGroupSum = 0;
+    int aniIdx = 0;
     int maxMappedTmdbSeasonNumber = -1;
 
-    for (var i = 0; i < filtered.length; i++) {
-      final media = filtered[i];
-      int tmdbSeasonNumber;
-      
-      if (tmdbIdx < tmdbSeasons.length) {
-        final tmdbSeason = tmdbSeasons[tmdbIdx];
-        tmdbSeasonNumber = tmdbSeason.seasonNumber;
-        maxMappedTmdbSeasonNumber = tmdbSeasonNumber > maxMappedTmdbSeasonNumber 
-            ? tmdbSeasonNumber 
-            : maxMappedTmdbSeasonNumber;
-        
-        final eps = media.episodes ?? 0;
-        currentGroupSum += eps;
-        
-        // If TMDB episode count is > 0 and we've reached it (allowing a diff of 2 for OVAs)
-        if (tmdbSeason.episodeCount > 0 && 
-            (currentGroupSum == tmdbSeason.episodeCount || 
-             (currentGroupSum - tmdbSeason.episodeCount).abs() <= 2)) {
-          tmdbIdx++;
-          currentGroupSum = 0;
-        } else if (eps == 0 && tmdbSeason.episodeCount == 0) {
-          // Both have 0 episodes (upcoming), assume they match
-          tmdbIdx++;
-          currentGroupSum = 0;
-        }
-      } else {
-        // Fallback if we run out of TMDB seasons (unlikely since AniList splits more)
-        maxMappedTmdbSeasonNumber++;
-        tmdbSeasonNumber = maxMappedTmdbSeasonNumber;
+    int tmdbEpsLeft = tmdbIdx < tmdbSeasons.length ? tmdbSeasons[tmdbIdx].episodeCount : 0;
+    int aniEpsLeft = aniIdx < filtered.length ? (filtered[aniIdx].episodes ?? 0) : 0;
+
+    while (aniIdx < filtered.length) {
+      final media = filtered[aniIdx];
+
+      if (tmdbIdx >= tmdbSeasons.length) {
+        // We ran out of TMDB seasons. TMDB is the source of truth for episodes,
+        // so we discard any remaining AniList episodes (which would otherwise 
+        // create empty synthetic seasons).
+        break;
       }
 
-      result.add(NormalizedAnimeSeason(
-        seasonNumber: i + 1,
-        tmdbSeasonNumber: tmdbSeasonNumber,
-        anilistId: media.id,
-        episodeCount: media.episodes ?? 0,
-        status: media.status,
-        season: media.season,
-        seasonYear: media.seasonYear,
-        titleRomaji: media.titleRomaji,
-        titleEnglish: media.titleEnglish,
-        averageScore: media.averageScore,
-        nextAiringEpisode: media.nextAiringEpisode,
-        streamingEpisodes: media.streamingEpisodes,
-      ));
+      final tmdbSeason = tmdbSeasons[tmdbIdx];
+      if (tmdbSeason.seasonNumber > maxMappedTmdbSeasonNumber) {
+        maxMappedTmdbSeasonNumber = tmdbSeason.seasonNumber;
+      }
+
+      // If AniList count is 0 (airing/unknown) or TMDB count is 0, we map them and advance both.
+      if (aniEpsLeft == 0 || tmdbEpsLeft == 0) {
+        result.add(NormalizedAnimeSeason(
+          seasonNumber: result.length + 1,
+          tmdbSeasonNumber: tmdbSeason.seasonNumber,
+          anilistId: media.id,
+          episodeCount: aniEpsLeft,
+          status: media.status,
+          season: media.season,
+          seasonYear: media.seasonYear,
+          titleRomaji: media.titleRomaji,
+          titleEnglish: media.titleEnglish,
+          averageScore: media.averageScore,
+          nextAiringEpisode: media.nextAiringEpisode,
+          streamingEpisodes: media.streamingEpisodes,
+        ));
+        aniIdx++;
+        tmdbIdx++;
+        if (aniIdx < filtered.length) aniEpsLeft = filtered[aniIdx].episodes ?? 0;
+        if (tmdbIdx < tmdbSeasons.length) tmdbEpsLeft = tmdbSeasons[tmdbIdx].episodeCount;
+        continue;
+      }
+
+      // If they match within tolerance
+      if ((aniEpsLeft - tmdbEpsLeft).abs() <= 2) {
+        result.add(NormalizedAnimeSeason(
+          seasonNumber: result.length + 1,
+          tmdbSeasonNumber: tmdbSeason.seasonNumber,
+          anilistId: media.id,
+          episodeCount: aniEpsLeft, // Keeping AniList as authoritative for chunk total
+          status: media.status,
+          season: media.season,
+          seasonYear: media.seasonYear,
+          titleRomaji: media.titleRomaji,
+          titleEnglish: media.titleEnglish,
+          averageScore: media.averageScore,
+          nextAiringEpisode: media.nextAiringEpisode,
+          streamingEpisodes: media.streamingEpisodes,
+        ));
+        aniIdx++;
+        tmdbIdx++;
+        if (aniIdx < filtered.length) aniEpsLeft = filtered[aniIdx].episodes ?? 0;
+        if (tmdbIdx < tmdbSeasons.length) tmdbEpsLeft = tmdbSeasons[tmdbIdx].episodeCount;
+      }
+      // If AniList has fewer episodes left than TMDB season needs
+      else if (aniEpsLeft < tmdbEpsLeft) {
+        result.add(NormalizedAnimeSeason(
+          seasonNumber: result.length + 1,
+          tmdbSeasonNumber: tmdbSeason.seasonNumber,
+          anilistId: media.id,
+          episodeCount: aniEpsLeft,
+          status: media.status,
+          season: media.season,
+          seasonYear: media.seasonYear,
+          titleRomaji: media.titleRomaji,
+          titleEnglish: media.titleEnglish,
+          averageScore: media.averageScore,
+          nextAiringEpisode: media.nextAiringEpisode,
+          streamingEpisodes: media.streamingEpisodes,
+        ));
+        tmdbEpsLeft -= aniEpsLeft;
+        aniIdx++;
+        if (aniIdx < filtered.length) aniEpsLeft = filtered[aniIdx].episodes ?? 0;
+      }
+      // If AniList has more episodes left than TMDB season needs
+      else {
+        result.add(NormalizedAnimeSeason(
+          seasonNumber: result.length + 1,
+          tmdbSeasonNumber: tmdbSeason.seasonNumber,
+          anilistId: media.id,
+          episodeCount: tmdbEpsLeft,
+          status: media.status,
+          season: media.season,
+          seasonYear: media.seasonYear,
+          titleRomaji: media.titleRomaji,
+          titleEnglish: media.titleEnglish,
+          averageScore: media.averageScore,
+          nextAiringEpisode: media.nextAiringEpisode,
+          streamingEpisodes: media.streamingEpisodes,
+        ));
+        aniEpsLeft -= tmdbEpsLeft;
+        tmdbIdx++;
+        if (tmdbIdx < tmdbSeasons.length) tmdbEpsLeft = tmdbSeasons[tmdbIdx].episodeCount;
+      }
     }
 
     // 4. Fallback: append any remaining TMDB seasons that weren't consumed.
@@ -114,13 +171,12 @@ class AnimeDataMerger {
     for (var i = tmdbIdx; i < tmdbSeasons.length; i++) {
       final tmdbSeason = tmdbSeasons[i];
       
-      if (i == tmdbIdx && currentGroupSum > 0 && currentGroupSum < tmdbSeason.episodeCount) {
-        final remainingEps = tmdbSeason.episodeCount - currentGroupSum;
+      if (i == tmdbIdx && tmdbEpsLeft > 0 && tmdbEpsLeft < tmdbSeason.episodeCount) {
         result.add(NormalizedAnimeSeason(
           seasonNumber: result.length + 1,
           tmdbSeasonNumber: tmdbSeason.seasonNumber,
           anilistId: -1,
-          episodeCount: remainingEps,
+          episodeCount: tmdbEpsLeft,
           status: 'FINISHED', // Fallback status
           streamingEpisodes: const [],
         ));

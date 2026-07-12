@@ -230,7 +230,10 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
             ),
             SliverList(
               delegate: SliverChildBuilderDelegate(
-                (context, index) => _WatchlistMovieCard(movie: toWatch[index]),
+                (context, index) => _WatchlistMovieCard(
+                  key: ValueKey(toWatch[index].id),
+                  movie: toWatch[index],
+                ),
                 childCount: toWatch.length,
               ),
             ),
@@ -317,7 +320,11 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
               ),
               SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => _UpcomingMovieCard(movie: prossimamente[index], isFarFuture: false),
+                  (context, index) => _UpcomingMovieCard(
+                    key: ValueKey(prossimamente[index].id),
+                    movie: prossimamente[index],
+                    isFarFuture: false,
+                  ),
                   childCount: prossimamente.length,
                 ),
               ),
@@ -344,7 +351,11 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
               ),
               SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => _UpcomingMovieCard(movie: inArrivo[index], isFarFuture: true),
+                  (context, index) => _UpcomingMovieCard(
+                    key: ValueKey(inArrivo[index].id),
+                    movie: inArrivo[index],
+                    isFarFuture: true,
+                  ),
                   childCount: inArrivo.length,
                 ),
               ),
@@ -361,7 +372,7 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
 
 class _WatchlistMovieCard extends ConsumerStatefulWidget {
   final TrackedMovy movie;
-  const _WatchlistMovieCard({required this.movie});
+  const _WatchlistMovieCard({super.key, required this.movie});
 
   @override
   ConsumerState<_WatchlistMovieCard> createState() =>
@@ -450,7 +461,7 @@ class _WatchlistMovieCardState extends ConsumerState<_WatchlistMovieCard> {
 class _UpcomingMovieCard extends StatelessWidget {
   final TrackedMovy movie;
   final bool isFarFuture;
-  const _UpcomingMovieCard({required this.movie, this.isFarFuture = false});
+  const _UpcomingMovieCard({super.key, required this.movie, this.isFarFuture = false});
 
   @override
   Widget build(BuildContext context) {

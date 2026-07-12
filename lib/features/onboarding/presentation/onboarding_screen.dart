@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../../core/auth/rawg_auth_state.dart';
 import '../../../core/constants.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -145,6 +146,62 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
+  void _showRawgKeyDialog() {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Inserisci RAWG API Key'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Ottieni gratuitamente una chiave API per abilitare il database dei videogiochi. '
+                'Questo passaggio è facoltativo e può essere configurato in seguito.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  hintText: 'La tua RAWG API Key',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => launchUrl(Uri.parse('https://rawg.io/apidocs'), mode: LaunchMode.externalApplication),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: const Text('Richiedi chiave gratis'),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annulla'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final key = controller.text.trim();
+                if (key.isNotEmpty) {
+                  ref.read(rawgAuthControllerProvider.notifier).loginWithKey(key);
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Salva e Attiva'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -232,6 +289,29 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: const Text('Opzioni avanzate (API Key manuale)'),
+              ),
+              const SizedBox(height: 16),
+              const Divider(color: AppColors.divider),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.divider, width: 1.5),
+                ),
+                child: OutlinedButton.icon(
+                  onPressed: _showRawgKeyDialog,
+                  icon: const Icon(Icons.videogame_asset, color: AppColors.textPrimary),
+                  label: const Text(
+                    'Attiva Modulo Videogiochi',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

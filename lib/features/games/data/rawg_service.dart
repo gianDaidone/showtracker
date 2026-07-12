@@ -6,16 +6,19 @@ import 'models/rawg_game.dart';
 import 'models/rawg_game_detail.dart';
 
 class RawgService {
+  final http.Client _client;
   static const _base = 'https://api.rawg.io/api';
+
+  RawgService(this._client);
 
   Uri _uri(String path, [Map<String, String>? params]) {
     return Uri.parse('$_base$path').replace(
-      queryParameters: {'key': kRawgApiKey, ...?params},
+      queryParameters: params,
     );
   }
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
-    final response = await http.get(uri);
+    final response = await _client.get(uri);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('RAWG ${response.statusCode}: ${response.reasonPhrase}');
     }

@@ -55,7 +55,7 @@ class UpcomingEpisodeInfo {
 TmdbService tmdbService(TmdbServiceRef ref) {
   final authStateAsync = ref.watch(authControllerProvider);
   final authState = authStateAsync.valueOrNull ?? const Unauthenticated();
-  final client = TmdbInterceptor(http.Client(), authState);
+  final client = AppInterceptor(http.Client(), tmdbAuthState: authState);
   ref.onDispose(client.close);
   return TmdbService(client);
 }

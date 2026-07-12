@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/services/app_toast.dart';
@@ -184,6 +185,53 @@ class _DetailBody extends ConsumerWidget {
                     ),
                   ),
                 ],
+
+                const SizedBox(height: 32),
+                
+                // RAWG Attribution
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.videogame_asset, color: AppColors.textSecondary, size: 28),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Video game data and information are sourced from RAWG.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          height: 1.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            final slug = detail.slug.isNotEmpty ? detail.slug : detail.id.toString();
+                            launchUrl(Uri.parse('https://rawg.io/games/$slug'), mode: LaunchMode.externalApplication);
+                          },
+                          icon: const Icon(Icons.open_in_new, color: AppColors.textPrimary, size: 18),
+                          label: const Text(
+                            'Vedi su RAWG',
+                            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            side: const BorderSide(color: AppColors.divider),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 const SizedBox(height: 32),
               ],
