@@ -29,3 +29,10 @@ Thumbs.db
 # Environment / secrets
 *.env
 dart_defines/
+
+# Database
+db.sqlite
+db.sqlite-*
+
+# Scratch files
+scratch*.dart
