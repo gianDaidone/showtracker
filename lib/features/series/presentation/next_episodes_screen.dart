@@ -235,42 +235,45 @@ final visibleWatchingShowsProvider =
       if (isCompleted) {
         if (nextEpisode != null && nextEpisode.hasAired) {
         } else {
-          visible.add(showData);
+          final isTerminata = show.tmdbStatus == 'Ended' || show.tmdbStatus == 'Canceled';
+          if (isTerminata) {
+            visible.add(showData);
+          }
           continue;
         }
       }
 
-      if (nextEpisode == null &&
-          loadedEpisodes != null &&
-          loadedEpisodes.isNotEmpty) {
-        // Discrepanza AniList/TMDB: AniList dice che la stagione ha più episodi
-        // di quanti TMDB ne abbia effettivamente (per OVA, recap, ecc.)
-        // Es: AniList S3 = 13 ep, TMDB distribuisce solo 12 → l'utente non può
-        // trovare l'ep 13 anche se ha visto tutti quelli reali.
-        // → Avanza alla stagione successiva invece di skippare la serie.
-        if (nextEp > loadedEpisodes.length) {
-          final sortedSeasonsAdv = seasonCounts.keys.toList()..sort();
-          final lastSeasonAdv = watched.keys.isEmpty
-              ? 0
-              : watched.keys.reduce((a, b) => a > b ? a : b);
-          int? nextSeasonAdv = sortedSeasonsAdv
-              .where((s) => s > lastSeasonAdv && (seasonCounts[s] ?? 0) > 0)
-              .firstOrNull;
-          if (nextSeasonAdv == null && detail.isAnime && detail.animeSeasonsData != null) {
-            nextSeasonAdv = sortedSeasonsAdv
-                .where((s) {
-                  if (s <= lastSeasonAdv) return false;
-                  final as_ = detail.animeSeasonsData!
-                      .where((a) => a.seasonNumber == s)
-                      .firstOrNull;
-                  if (as_ == null) return false;
-                  return as_.status == 'RELEASING' || as_.status == 'NOT_YET_RELEASED';
-                })
+      if (nextEpisode == null) {
+        if (loadedEpisodes != null && loadedEpisodes.isNotEmpty) {
+          // Discrepanza AniList/TMDB: AniList dice che la stagione ha più episodi
+          // di quanti TMDB ne abbia effettivamente (per OVA, recap, ecc.)
+          // Es: AniList S3 = 13 ep, TMDB distribuisce solo 12 → l'utente non può
+          // trovare l'ep 13 anche se ha visto tutti quelli reali.
+          // → Avanza alla stagione successiva invece di skippare la serie.
+          if (nextEp > loadedEpisodes.length) {
+            final sortedSeasonsAdv = seasonCounts.keys.toList()..sort();
+            final lastSeasonAdv = watched.keys.isEmpty
+                ? 0
+                : watched.keys.reduce((a, b) => a > b ? a : b);
+            int? nextSeasonAdv = sortedSeasonsAdv
+                .where((s) => s > lastSeasonAdv && (seasonCounts[s] ?? 0) > 0)
                 .firstOrNull;
-          }
-          if (nextSeasonAdv != null) {
-            visible.add(showData);
-            continue;
+            if (nextSeasonAdv == null && detail.isAnime && detail.animeSeasonsData != null) {
+              nextSeasonAdv = sortedSeasonsAdv
+                  .where((s) {
+                    if (s <= lastSeasonAdv) return false;
+                    final as_ = detail.animeSeasonsData!
+                        .where((a) => a.seasonNumber == s)
+                        .firstOrNull;
+                    if (as_ == null) return false;
+                    return as_.status == 'RELEASING' || as_.status == 'NOT_YET_RELEASED';
+                  })
+                  .firstOrNull;
+            }
+            if (nextSeasonAdv != null) {
+              visible.add(showData);
+              continue;
+            }
           }
         }
         continue;
@@ -281,7 +284,10 @@ final visibleWatchingShowsProvider =
           ? false
           : (total != null && watchedCount >= total);
       if (isCompleted) {
-        visible.add(showData);
+        final isTerminata = show.tmdbStatus == 'Ended' || show.tmdbStatus == 'Canceled';
+        if (isTerminata) {
+          visible.add(showData);
+        }
         continue;
       }
     }

@@ -241,25 +241,26 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       if (seasonAsync.hasValue && nextEpisode != null && nextEpisode.hasAired) {
         // Ignora il completamento, c'è un nuovo episodio da guardare!
       } else {
-        return _CardShell(
-          show: show,
-          loading: false,
-          child: _CompletedContent(
+        final isTerminata = show.tmdbStatus == 'Ended' || show.tmdbStatus == 'Canceled';
+        if (isTerminata) {
+          return _CardShell(
             show: show,
-            watchedCount: watchedCount,
-            onMarkCompleted: _markCompleted,
-          ),
-        );
+            loading: false,
+            child: _CompletedContent(
+              show: show,
+              watchedCount: watchedCount,
+              onMarkCompleted: _markCompleted,
+            ),
+          );
+        } else {
+          return const SizedBox.shrink();
+        }
       }
     }
 
-    // Utente in pari con una stagione in onda: la stagione ha episodi
-    // caricati ma l'episodio richiesto non esiste ancora. Nascondi la card,
-    // l'episodio apparirà in "In Uscita" quando verrà rilasciato.
-    if (seasonAsync.hasValue &&
-        nextEpisode == null &&
-        loadedEpisodes != null &&
-        loadedEpisodes.isNotEmpty) {
+    // Se l'episodio richiesto non esiste (es: stagione in corso ma nessun episodio caricato)
+    // nascondi la card. L'episodio apparirà in "In Uscita" quando avrà una data.
+    if (seasonAsync.hasValue && nextEpisode == null) {
       return const SizedBox.shrink();
     }
 
