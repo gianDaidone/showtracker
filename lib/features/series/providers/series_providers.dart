@@ -749,8 +749,7 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
   final results = <UpcomingEpisodeInfo>[];
 
   for (final show in shows) {
-    if (show.status == MediaStatus.completed ||
-        show.status == MediaStatus.dropped) {
+    if (show.status != MediaStatus.watching) {
       continue;
     }
     try {

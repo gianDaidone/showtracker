@@ -228,8 +228,7 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
       ),
     ])
       ..where(
-        trackedShows.status.equalsValue(MediaStatus.watching) |
-            trackedShows.status.equalsValue(MediaStatus.paused),
+        trackedShows.status.equalsValue(MediaStatus.watching),
       )
       ..orderBy([OrderingTerm.desc(trackedShows.addedAt)]);
 
