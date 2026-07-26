@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:http/http.dart' as http;
@@ -189,6 +190,12 @@ int? _effectiveTotalEpisodes(TmdbShowDetail detail) {
 
 @riverpod
 Future<TmdbShowDetail> showDetail(ShowDetailRef ref, int tmdbId) async {
+  final link = ref.keepAlive();
+  final timer = Timer(const Duration(seconds: 30), () {
+    link.close();
+  });
+  ref.onDispose(() => timer.cancel());
+
   final detail = await ref.watch(tmdbServiceProvider).getShowDetails(tmdbId);
 
   if (!detail.isAnime) return detail;
@@ -586,15 +593,19 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
   /// just-aired episode, this re-runs the logic with now-current data.
   Future<void> rescheduleAllNotifications() async {
     final shows = await ref.read(showsDaoProvider).getAll();
-    for (final show in shows) {
-      if (show.status == MediaStatus.completed ||
-          show.status == MediaStatus.dropped) {
-        continue;
-      }
-      try {
-        final detail = await ref.read(showDetailProvider(show.tmdbId).future);
-        await _scheduleNotification(detail);
-      } catch (_) {}
+    final eligibleShows = shows.where((s) => 
+        s.status != MediaStatus.completed && s.status != MediaStatus.dropped
+    ).toList();
+
+    const batchSize = 5;
+    for (var i = 0; i < eligibleShows.length; i += batchSize) {
+      final batch = eligibleShows.skip(i).take(batchSize);
+      await Future.wait(batch.map((show) async {
+        try {
+          final detail = await ref.read(showDetailProvider(show.tmdbId).future);
+          await _scheduleNotification(detail);
+        } catch (_) {}
+      }));
     }
   }
 
@@ -746,12 +757,11 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
 
   final today = DateTime.now();
   final todayMidnight = DateTime(today.year, today.month, today.day);
-  final results = <UpcomingEpisodeInfo>[];
-
-  for (final show in shows) {
-    if (show.status != MediaStatus.watching) {
-      continue;
-    }
+  
+  final watchingShows = shows.where((s) => s.status == MediaStatus.watching).toList();
+  
+  final resultsNested = await Future.wait(watchingShows.map((show) async {
+    final localResults = <UpcomingEpisodeInfo>[];
     try {
       final detail = await ref.read(showDetailProvider(show.tmdbId).future);
 
@@ -793,7 +803,7 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
             sName = sSeason.name!.split(' · ').first.trim();
           }
 
-          results.add(UpcomingEpisodeInfo(
+          localResults.add(UpcomingEpisodeInfo(
             show: show,
             episode: TmdbNextEpisode(
               seasonNumber: animeSeason.seasonNumber,
@@ -809,17 +819,17 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
           foundAnimeAiring = true;
           break;
         }
-        if (foundAnimeAiring) continue;
+        if (foundAnimeAiring) return localResults;
       }
 
       // Standard TMDB (or Anime fallback when AniList data lacks nextAiringEpisode)
       final next = detail.nextEpisodeToAir;
-      if (next == null || next.airDate == null) continue;
+      if (next == null || next.airDate == null) return localResults;
       final airDate = DateTime.tryParse(next.airDate!);
-      if (airDate == null) continue;
+      if (airDate == null) return localResults;
       final airMidnight =
           DateTime(airDate.year, airDate.month, airDate.day);
-      if (airMidnight.isBefore(todayMidnight)) continue;
+      if (airMidnight.isBefore(todayMidnight)) return localResults;
 
       // If it's an anime falling back to TMDB, we MUST map the TMDB season number
       // to the corresponding AniList season number so the UI links to the correct tab.
@@ -864,7 +874,7 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
         }
       }
 
-      results.add(UpcomingEpisodeInfo(
+      localResults.add(UpcomingEpisodeInfo(
         show: show,
         episode: TmdbNextEpisode(
           seasonNumber: mappedSeasonNumber,
@@ -882,8 +892,10 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
     } catch (_) {
       // Ignora show non caricabili
     }
-  }
+    return localResults;
+  }));
 
+  final results = resultsNested.expand((x) => x).toList();
   results.sort((a, b) => a.airDate.compareTo(b.airDate));
   return results;
 }

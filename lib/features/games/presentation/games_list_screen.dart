@@ -29,6 +29,7 @@ class _GamesListScreenState extends ConsumerState<GamesListScreen> {
   bool _isSearching = false;
   final _controller = TextEditingController();
   String _query = '';
+  MediaStatus? _selectedStatus;
 
   @override
   void dispose() {
@@ -104,22 +105,57 @@ class _GamesListScreenState extends ConsumerState<GamesListScreen> {
         data: (games) {
           if (games.isEmpty) return const _EmptyState();
 
-          final filtered = _query.isEmpty
-              ? games
-              : games
-                  .where((g) =>
-                      g.title.toLowerCase().contains(_query.toLowerCase()))
-                  .toList();
+          var filtered = games;
+          if (_selectedStatus != null) {
+            filtered = filtered.where((g) => g.status == _selectedStatus).toList();
+          }
+          if (_query.isNotEmpty) {
+            filtered = filtered
+                .where((g) =>
+                    g.title.toLowerCase().contains(_query.toLowerCase()))
+                .toList();
+          }
 
-          if (filtered.isEmpty) return _NoResults(query: _query);
+          final list = filtered.isEmpty
+              ? _NoResults(query: _query)
+              : ListView.builder(
+                  padding: const EdgeInsets.only(top: 8, bottom: 24),
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) => _GameCard(
+                    key: ValueKey(filtered[i].id),
+                    game: filtered[i],
+                  ),
+                );
 
-          return ListView.builder(
-            padding: const EdgeInsets.only(top: 8, bottom: 24),
-            itemCount: filtered.length,
-            itemBuilder: (_, i) => _GameCard(
-              key: ValueKey(filtered[i].id),
-              game: filtered[i],
-            ),
+          return Column(
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    _FilterChip(
+                      label: 'Tutti',
+                      isSelected: _selectedStatus == null,
+                      onTap: () => setState(() => _selectedStatus = null),
+                    ),
+                    ...[
+                      MediaStatus.planToWatch,
+                      MediaStatus.completed,
+                      MediaStatus.dropped,
+                    ].map((status) => Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: _FilterChip(
+                            label: status.gameLabel,
+                            isSelected: _selectedStatus == status,
+                            onTap: () => setState(() => _selectedStatus = status),
+                          ),
+                        )),
+                  ],
+                ),
+              ),
+              Expanded(child: list),
+            ],
           );
         },
       ),
@@ -144,7 +180,7 @@ class _NoResults extends StatelessWidget {
             const Icon(Icons.search_off, size: 56, color: AppColors.textSecondary),
             const SizedBox(height: 16),
             Text(
-              'Nessun gioco trovato\nper "$query"',
+              query.isNotEmpty ? 'Nessun gioco trovato\nper "$query"' : 'Nessun gioco in questo stato',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.textPrimary,
@@ -374,6 +410,43 @@ class _EmptyState extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.accent : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.accent : AppColors.divider,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.black : AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

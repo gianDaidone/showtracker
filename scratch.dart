@@ -1,14 +1,14 @@
-import 'dart:convert';
 import 'dart:io';
 
 void main() async {
-  final apiKey = '***REMOVED***';
-  var req = await HttpClient().getUrl(Uri.parse('https://api.themoviedb.org/3/tv/94664/season/0?api_key=$apiKey'));
-  var res = await req.close();
-  var body = await res.transform(utf8.decoder).join();
-  var data = jsonDecode(body);
+  HttpClient client = HttpClient()
+    ..badCertificateCallback = ((X509Certificate cert, String host, int port) => true);
   
-  for (var ep in data['episodes']) {
-    print('Specials Ep ${ep['episode_number']}: ${ep['name']}');
-  }
+  HttpClientRequest request = await client.postUrl(Uri.parse('https://yuna.robbb.in/graphql'));
+  request.headers.set('Content-Type', 'application/json');
+  request.write('{"query": "query { mappings(tmdbId: 94664) { anilistId malId tmdbSeason } }"}');
+  
+  HttpClientResponse response = await request.close();
+  String reply = await response.transform(SystemEncoding().decoder).join();
+  print(reply);
 }

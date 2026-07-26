@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/database/tables/enums.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/series_providers.dart';
 import 'widgets/show_card.dart';
@@ -17,6 +18,7 @@ class _SeriesListScreenState extends ConsumerState<SeriesListScreen> {
   bool _isSearching = false;
   final _controller = TextEditingController();
   String _query = '';
+  MediaStatus? _selectedStatus;
 
   @override
   void dispose() {
@@ -92,24 +94,53 @@ class _SeriesListScreenState extends ConsumerState<SeriesListScreen> {
         data: (shows) {
           if (shows.isEmpty) return const _EmptyState();
 
-          final filtered = _query.isEmpty
-              ? shows
-              : shows
-                  .where((s) =>
-                      s.title.toLowerCase().contains(_query.toLowerCase()))
-                  .toList();
-
-          if (filtered.isEmpty) {
-            return _NoResults(query: _query);
+          var filtered = shows;
+          if (_selectedStatus != null) {
+            filtered = filtered.where((s) => s.status == _selectedStatus).toList();
+          }
+          if (_query.isNotEmpty) {
+            filtered = filtered
+                .where((s) =>
+                    s.title.toLowerCase().contains(_query.toLowerCase()))
+                .toList();
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.only(top: 8, bottom: 24),
-            itemCount: filtered.length,
-            itemBuilder: (_, i) => ShowCard(
-              key: ValueKey(filtered[i].id),
-              show: filtered[i],
-            ),
+          final list = filtered.isEmpty
+              ? _NoResults(query: _query)
+              : ListView.builder(
+                  padding: const EdgeInsets.only(top: 8, bottom: 24),
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) => ShowCard(
+                    key: ValueKey(filtered[i].id),
+                    show: filtered[i],
+                  ),
+                );
+
+          return Column(
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    _FilterChip(
+                      label: 'Tutti',
+                      isSelected: _selectedStatus == null,
+                      onTap: () => setState(() => _selectedStatus = null),
+                    ),
+                    ...MediaStatus.values.map((status) => Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: _FilterChip(
+                            label: status.label,
+                            isSelected: _selectedStatus == status,
+                            onTap: () => setState(() => _selectedStatus = status),
+                          ),
+                        )),
+                  ],
+                ),
+              ),
+              Expanded(child: list),
+            ],
           );
         },
       ),
@@ -134,7 +165,7 @@ class _NoResults extends StatelessWidget {
             const Icon(Icons.search_off, size: 56, color: AppColors.textSecondary),
             const SizedBox(height: 16),
             Text(
-              'Nessuna serie trovata\nper "$query"',
+              query.isNotEmpty ? 'Nessuna serie trovata\nper "$query"' : 'Nessuna serie in questo stato',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.textPrimary,
@@ -189,6 +220,43 @@ class _EmptyState extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.accent : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.accent : AppColors.divider,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.black : AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

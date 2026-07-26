@@ -14,4 +14,11 @@ enum MediaStatus {
         MediaStatus.dropped => 'Abbandonato',
         MediaStatus.planToWatch => 'Da vedere',
       };
+  String get gameLabel => switch (this) {
+        MediaStatus.watching => 'In gioco',
+        MediaStatus.completed => 'Giocato',
+        MediaStatus.paused => 'In pausa',
+        MediaStatus.dropped => 'Abbandonato',
+        MediaStatus.planToWatch => 'Backlog',
+      };
 }
