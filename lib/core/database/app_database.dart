@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -117,6 +117,12 @@ class AppDatabase extends _$AppDatabase {
             } catch (_) {
               // Ignore if it already exists from a previous partial migration
             }
+          }
+          if (from < 12) {
+            await m.addColumn(trackedShows, trackedShows.nextEpisodeNumber);
+            await m.addColumn(trackedShows, trackedShows.nextEpisodeSeason);
+            await m.addColumn(trackedShows, trackedShows.nextEpisodeName);
+            await m.addColumn(trackedShows, trackedShows.nextEpisodeAirDate);
           }
         },
       );

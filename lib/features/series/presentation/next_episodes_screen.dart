@@ -142,162 +142,73 @@ class _SeriesTabBar extends StatelessWidget {
 
 // ── Tab "Da Vedere" ───────────────────────────────────────────────────────────
 
-final visibleWatchingShowsProvider =
-    FutureProvider.autoDispose<List<ShowWithWatchedEpisodes>>((ref) async {
+final visibleWatchingShowsProvider = FutureProvider.autoDispose<List<ShowWithWatchedEpisodes>>((ref) async {
   final watching = await ref.watch(watchingShowsWithEpisodesProvider.future);
   if (watching.isEmpty) return [];
 
   final visible = <ShowWithWatchedEpisodes>[];
+  final now = DateTime.now();
 
   for (final showData in watching) {
     final show = showData.show;
-    final total = show.totalEpisodes;
+    final total = show.totalEpisodes ?? 9999;
     final watchedCount = showData.watchedCount;
 
-    final dbSeasonCounts =
-        await ref.watch(seasonEpisodeCountsProvider(show.id).future);
-        
-    final detail = await ref.watch(showDetailProvider(show.tmdbId).future);
-    final seasonCounts = detail.seasons.isNotEmpty
-        ? {for (final s in detail.seasons) s.seasonNumber: s.episodeCount}
-        : dbSeasonCounts;
-    
+    if (watchedCount >= total) {
+      final isTerminata = show.tmdbStatus == 'Ended' || show.tmdbStatus == 'Canceled';
+      if (isTerminata) {
+        visible.add(showData);
+      }
+      continue;
+    }
+
+    // Calcoliamo offline quale sarebbe il prossimo episodio da guardare
     final watched = showData.watchedBySeason;
+    final seasonCounts = await ref.watch(seasonEpisodeCountsProvider(show.id).future);
 
     int nextSeason = 1;
     int nextEp = 1;
-    
+
     if (watched.isNotEmpty) {
       final lastSeason = watched.keys.reduce((a, b) => a > b ? a : b);
       final lastEp = watched[lastSeason]!.reduce((a, b) => a > b ? a : b);
       nextEp = lastEp + 1;
       final countInSeason = seasonCounts[lastSeason];
       
-      if (countInSeason != null &&
-          countInSeason > 0 &&
-          nextEp > countInSeason) {
-          
+      if (countInSeason != null && countInSeason > 0 && nextEp > countInSeason) {
         final sortedSeasons = seasonCounts.keys.toList()..sort();
         int? nextAvailableSeason = sortedSeasons
             .where((s) => s > lastSeason && (seasonCounts[s] ?? 0) > 0)
             .firstOrNull;
-
-        if (nextAvailableSeason == null && detail.isAnime && detail.animeSeasonsData != null) {
-          nextAvailableSeason = sortedSeasons
-              .where((s) {
-                if (s <= lastSeason) return false;
-                final animeSeason = detail.animeSeasonsData!
-                    .where((as_) => as_.seasonNumber == s)
-                    .firstOrNull;
-                if (animeSeason == null) return false;
-                return animeSeason.status == 'RELEASING' ||
-                    animeSeason.status == 'NOT_YET_RELEASED';
-              })
-              .firstOrNull;
-        }
-            
         if (nextAvailableSeason != null) {
           nextSeason = nextAvailableSeason;
           nextEp = 1;
         } else {
-          nextSeason = lastSeason;
+          // L'utente ha visto tutti gli episodi noti della stagione corrente,
+          // e non ci sono stagioni successive. Il prossimo episodio NON ESISTE ANCORA.
+          // Non possiamo farglielo guardare. Nascondiamo la card!
+          continue;
         }
       } else {
         nextSeason = lastSeason;
       }
     }
 
-    try {
-      final seasonDetail = await ref.watch(
-        seasonDetailProvider(showId: show.tmdbId, seasonNumber: nextSeason).future,
-      );
-      
-      final loadedEpisodes = seasonDetail.episodes;
-      final nextEpisode = loadedEpisodes
-          ?.where((e) => e.episodeNumber == nextEp)
-          .firstOrNull;
-
-      if (nextEpisode != null && !nextEpisode.hasAired) {
-        continue;
-      }
-
-      final isAnimeWithData = detail.isAnime && detail.animeSeasonsData != null;
-      final isCompleted = isAnimeWithData
-          ? (nextEpisode == null &&
-              (loadedEpisodes == null || loadedEpisodes.isEmpty) &&
-              !detail.animeSeasonsData!.any((as_) =>
-                  as_.seasonNumber > (watched.keys.isEmpty
-                      ? 0
-                      : watched.keys.reduce((a, b) => a > b ? a : b)) &&
-                  (as_.status == 'RELEASING' || as_.status == 'NOT_YET_RELEASED')))
-          : (total != null && watchedCount >= total);
-
-      if (isCompleted) {
-        if (nextEpisode != null && nextEpisode.hasAired) {
-        } else {
-          final isTerminata = show.tmdbStatus == 'Ended' || show.tmdbStatus == 'Canceled';
-          if (isTerminata) {
-            visible.add(showData);
-          }
-          continue;
-        }
-      }
-
-      if (nextEpisode == null) {
-        if (loadedEpisodes != null && loadedEpisodes.isNotEmpty) {
-          // Discrepanza AniList/TMDB: AniList dice che la stagione ha più episodi
-          // di quanti TMDB ne abbia effettivamente (per OVA, recap, ecc.)
-          // Es: AniList S3 = 13 ep, TMDB distribuisce solo 12 → l'utente non può
-          // trovare l'ep 13 anche se ha visto tutti quelli reali.
-          // → Avanza alla stagione successiva invece di skippare la serie.
-          if (nextEp > loadedEpisodes.length) {
-            final sortedSeasonsAdv = seasonCounts.keys.toList()..sort();
-            final lastSeasonAdv = watched.keys.isEmpty
-                ? 0
-                : watched.keys.reduce((a, b) => a > b ? a : b);
-            int? nextSeasonAdv = sortedSeasonsAdv
-                .where((s) => s > lastSeasonAdv && (seasonCounts[s] ?? 0) > 0)
-                .firstOrNull;
-            if (nextSeasonAdv == null && detail.isAnime && detail.animeSeasonsData != null) {
-              nextSeasonAdv = sortedSeasonsAdv
-                  .where((s) {
-                    if (s <= lastSeasonAdv) return false;
-                    final as_ = detail.animeSeasonsData!
-                        .where((a) => a.seasonNumber == s)
-                        .firstOrNull;
-                    if (as_ == null) return false;
-                    return as_.status == 'RELEASING' || as_.status == 'NOT_YET_RELEASED';
-                  })
-                  .firstOrNull;
-            }
-            if (nextSeasonAdv != null) {
-              visible.add(showData);
-              continue;
-            }
-          }
-        }
-        continue;
-      }
-    } catch (_) {
-      final isAnimeWithData = detail.isAnime && detail.animeSeasonsData != null;
-      final isCompleted = isAnimeWithData
-          ? false
-          : (total != null && watchedCount >= total);
-      if (isCompleted) {
-        final isTerminata = show.tmdbStatus == 'Ended' || show.tmdbStatus == 'Canceled';
-        if (isTerminata) {
-          visible.add(showData);
-        }
-        continue;
-      }
+    // Verifichiamo se l'episodio che l'utente deve guardare coincide proprio con 
+    // l'episodio in uscita salvato nel DB. Se coincide e la data è nel futuro,
+    // significa che l'utente è in pari e sta aspettando la messa in onda: non mostriamo la card!
+    if (show.nextEpisodeSeason == nextSeason && show.nextEpisodeNumber == nextEp) {
+       if (show.nextEpisodeAirDate != null && show.nextEpisodeAirDate!.isAfter(now)) {
+         continue; // Non ancora uscito
+       }
     }
 
+    // Se arriviamo qui senza la sicurezza che l'episodio esista, 
+    // l'unico altro caso edge è che non sia né in countInSeason né in nextEpisode.
+    // Ma l'abbiamo gestito col "continue" qui sopra.
     visible.add(showData);
   }
-
   return visible;
-
-
 });
 
 

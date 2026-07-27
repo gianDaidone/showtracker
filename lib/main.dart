@@ -45,7 +45,9 @@ void main() async {
         }
       },
     );
-    
+    // Avvia la sincronizzazione in background in modo silente (Offline-First sync)
+    unawaited(container.read(trackedShowsNotifierProvider.notifier).rescheduleAllNotifications());
+
     runApp(
       UncontrolledProviderScope(
         container: container,

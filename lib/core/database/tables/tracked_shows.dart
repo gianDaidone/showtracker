@@ -19,4 +19,10 @@ class TrackedShows extends Table {
       boolean().withDefault(const Constant(false))();
   DateTimeColumn get addedAt => dateTime()();
   DateTimeColumn get lastWatchedAt => dateTime().nullable()();
+
+  // Dati per il prossimo episodio (Offline-first)
+  IntColumn get nextEpisodeNumber => integer().nullable()();
+  IntColumn get nextEpisodeSeason => integer().nullable()();
+  TextColumn get nextEpisodeName => text().nullable()();
+  DateTimeColumn get nextEpisodeAirDate => dateTime().nullable()();
 }

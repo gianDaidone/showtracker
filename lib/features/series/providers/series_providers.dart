@@ -482,6 +482,36 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
         ? effectiveDetail.animeSeasonsData!.length
         : effectiveDetail.numberOfSeasons;
 
+    // --- Estrazione prossimo episodio ---
+    int? nextSeason;
+    int? nextEpisode;
+    String? nextName;
+    DateTime? nextDate;
+
+    if (effectiveDetail.isAnime && effectiveDetail.animeSeasonsData != null) {
+      for (final animeSeason in effectiveDetail.animeSeasonsData!) {
+        final nextAiring = animeSeason.nextAiringEpisode;
+        if (nextAiring != null && nextAiring.airingDateTime.isAfter(DateTime.now())) {
+          nextSeason = animeSeason.seasonNumber;
+          nextEpisode = nextAiring.episode;
+          nextDate = nextAiring.airingDateTime;
+          break;
+        }
+      }
+    } else {
+      final tmdbNext = effectiveDetail.nextEpisodeToAir;
+      if (tmdbNext != null) {
+        nextSeason = tmdbNext.seasonNumber;
+        nextEpisode = tmdbNext.episodeNumber;
+        nextName = tmdbNext.name;
+        if (tmdbNext.airDate != null) {
+          final d = DateTime.tryParse(tmdbNext.airDate!);
+          if (d != null) nextDate = DateTime(d.year, d.month, d.day, 9, 0);
+        }
+      }
+    }
+    // -------------------------------------
+
     final dbId = await ref.read(showsDaoProvider).insertShow(
           TrackedShowsCompanion(
             tmdbId: Value(effectiveDetail.id),
@@ -496,6 +526,10 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
             tmdbStatus: Value(effectiveDetail.status),
             isAnime: Value(effectiveDetail.isAnime),
             addedAt: Value(DateTime.now()),
+            nextEpisodeNumber: Value(nextEpisode),
+            nextEpisodeSeason: Value(nextSeason),
+            nextEpisodeName: Value(nextName),
+            nextEpisodeAirDate: Value(nextDate),
           ),
         );
     final counts = {for (final s in effectiveDetail.seasons) s.seasonNumber: s.episodeCount};
@@ -529,14 +563,16 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
     }
   }
 
-  Future<void> syncMetadata(TmdbShowDetail detail, int dbId) async {
+  Future<void> syncMetadata(TmdbShowDetail detail, int dbId, {bool clearCache = true}) async {
     final show = await ref.read(showsDaoProvider).getById(dbId);
     if (show == null) return;
     
-    // Forza la pulizia della cache locale per la serie, così forziamo un refresh 
-    // dal web ed evitiamo problemi di mapping sporco (es. Episodio 0)
-    await ref.read(cacheDaoProvider).clearCacheForShow(show.tmdbId);
-    await ref.read(animeCacheDaoProvider).clearAnimeCacheForShow(show.tmdbId);
+    if (clearCache) {
+      // Forza la pulizia della cache locale per la serie, così forziamo un refresh 
+      // dal web ed evitiamo problemi di mapping sporco (es. Episodio 0)
+      await ref.read(cacheDaoProvider).clearCacheForShow(show.tmdbId);
+      await ref.read(animeCacheDaoProvider).clearAnimeCacheForShow(show.tmdbId);
+    }
     
     // Per gli anime, usa la somma degli episodi dalle stagioni sintetiche AniList
     // invece del numberOfEpisodes TMDB grezzo (che può escludere cours futuri).
@@ -544,15 +580,52 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
     final effectiveSeasons = detail.isAnime && detail.animeSeasonsData != null
         ? detail.animeSeasonsData!.length
         : detail.numberOfSeasons;
+        
+    // --- Estrazione prossimo episodio ---
+    int? nextSeason;
+    int? nextEpisode;
+    String? nextName;
+    DateTime? nextDate;
+
+    if (detail.isAnime && detail.animeSeasonsData != null) {
+      for (final animeSeason in detail.animeSeasonsData!) {
+        final nextAiring = animeSeason.nextAiringEpisode;
+        if (nextAiring != null && nextAiring.airingDateTime.isAfter(DateTime.now())) {
+          nextSeason = animeSeason.seasonNumber;
+          nextEpisode = nextAiring.episode;
+          nextDate = nextAiring.airingDateTime;
+          break;
+        }
+      }
+    } else {
+      final tmdbNext = detail.nextEpisodeToAir;
+      if (tmdbNext != null) {
+        nextSeason = tmdbNext.seasonNumber;
+        nextEpisode = tmdbNext.episodeNumber;
+        nextName = tmdbNext.name;
+        if (tmdbNext.airDate != null) {
+          final d = DateTime.tryParse(tmdbNext.airDate!);
+          if (d != null) nextDate = DateTime(d.year, d.month, d.day, 9, 0);
+        }
+      }
+    }
+    // -------------------------------------
 
     if (show.totalEpisodes != effectiveTotal ||
         show.totalSeasons != effectiveSeasons ||
-        show.tmdbStatus != detail.status) {
+        show.tmdbStatus != detail.status ||
+        show.nextEpisodeNumber != nextEpisode ||
+        show.nextEpisodeSeason != nextSeason ||
+        show.nextEpisodeAirDate != nextDate) {
       await ref.read(showsDaoProvider).updateShowMetadata(
         dbId, 
         effectiveTotal, 
         effectiveSeasons, 
         detail.status,
+        nextEpisodeNumber: Value(nextEpisode),
+        nextEpisodeSeason: Value(nextSeason),
+        nextEpisodeName: Value(nextName),
+        nextEpisodeAirDate: Value(nextDate),
       );
     }
     
@@ -592,20 +665,27 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
   /// skipped because TMDB's `next_episode_to_air` was still pointing at the
   /// just-aired episode, this re-runs the logic with now-current data.
   Future<void> rescheduleAllNotifications() async {
+    // Questa funzione ora funge anche da background worker per aggiornare 
+    // il database locale (architettura offline-first).
     final shows = await ref.read(showsDaoProvider).getAll();
     final eligibleShows = shows.where((s) => 
         s.status != MediaStatus.completed && s.status != MediaStatus.dropped
     ).toList();
 
-    const batchSize = 5;
-    for (var i = 0; i < eligibleShows.length; i += batchSize) {
-      final batch = eligibleShows.skip(i).take(batchSize);
-      await Future.wait(batch.map((show) async {
-        try {
-          final detail = await ref.read(showDetailProvider(show.tmdbId).future);
-          await _scheduleNotification(detail);
-        } catch (_) {}
-      }));
+    for (int i = 0; i < eligibleShows.length; i++) {
+      final show = eligibleShows[i];
+      try {
+        final detail = await ref.read(showDetailProvider(show.tmdbId).future);
+        // Aggiorna anche il database con il prossimo episodio, ma non cancellare la cache!
+        await syncMetadata(detail, show.id, clearCache: false);
+        await _scheduleNotification(detail);
+      } catch (_) {}
+      
+      // Attendi 2 secondi tra una serie e l'altra per non saturare la connessione
+      // e non bloccare l'app se l'utente naviga nel frattempo.
+      if (i < eligibleShows.length - 1) {
+        await Future.delayed(const Duration(seconds: 2));
+      }
     }
   }
 
@@ -760,142 +840,38 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
   
   final watchingShows = shows.where((s) => s.status == MediaStatus.watching).toList();
   
-  final resultsNested = await Future.wait(watchingShows.map((show) async {
-    final localResults = <UpcomingEpisodeInfo>[];
-    try {
-      final detail = await ref.read(showDetailProvider(show.tmdbId).future);
+  final results = <UpcomingEpisodeInfo>[];
 
-      // Anime: use precise AniList airingAt
-      if (detail.isAnime && detail.animeSeasonsData != null) {
-        bool foundAnimeAiring = false;
-        for (final animeSeason in detail.animeSeasonsData!) {
-          final nextAiring = animeSeason.nextAiringEpisode;
-          if (nextAiring == null) continue;
-          final airingAt = nextAiring.airingDateTime;
-          final airMidnight =
-              DateTime(airingAt.year, airingAt.month, airingAt.day);
-          if (airMidnight.isBefore(todayMidnight)) continue;
-
-          // Try to get episode name from season detail (uses SQLite cache,
-          // falls back to TMDB fetch if not cached yet).
-          String episodeName = '';
-          List<TmdbEpisode> additionalEpisodes = [];
-          try {
-            final seasonDetail = await ref.read(seasonDetailProvider(
-              showId: show.tmdbId,
-              seasonNumber: animeSeason.seasonNumber,
-            ).future);
-            final ep = seasonDetail.episodes
-                ?.where((e) => e.episodeNumber == nextAiring.episode)
-                .firstOrNull;
-            if (ep != null && ep.name.isNotEmpty) episodeName = ep.name;
-            
-            if (seasonDetail.episodes != null && ep?.airDate != null) {
-               additionalEpisodes = seasonDetail.episodes!
-                   .where((e) => e.airDate == ep!.airDate && e.episodeNumber > nextAiring.episode)
-                   .toList();
-            }
-          } catch (_) {}
-
-          String? sName;
-          final sSeason = detail.seasons.where((s) => s.seasonNumber == animeSeason.seasonNumber).firstOrNull;
-          if (sSeason != null && sSeason.name != null) {
-            sName = sSeason.name!.split(' · ').first.trim();
-          }
-
-          localResults.add(UpcomingEpisodeInfo(
-            show: show,
-            episode: TmdbNextEpisode(
-              seasonNumber: animeSeason.seasonNumber,
-              episodeNumber: nextAiring.episode,
-              name: episodeName,
-              airDate: airingAt.toIso8601String(),
-            ),
-            airDate: airMidnight,
-            preciseAirTime: airingAt,
-            seasonName: sName,
-            additionalEpisodes: additionalEpisodes,
-          ));
-          foundAnimeAiring = true;
-          break;
-        }
-        if (foundAnimeAiring) return localResults;
-      }
-
-      // Standard TMDB (or Anime fallback when AniList data lacks nextAiringEpisode)
-      final next = detail.nextEpisodeToAir;
-      if (next == null || next.airDate == null) return localResults;
-      final airDate = DateTime.tryParse(next.airDate!);
-      if (airDate == null) return localResults;
-      final airMidnight =
-          DateTime(airDate.year, airDate.month, airDate.day);
-      if (airMidnight.isBefore(todayMidnight)) return localResults;
-
-      // If it's an anime falling back to TMDB, we MUST map the TMDB season number
-      // to the corresponding AniList season number so the UI links to the correct tab.
-      int mappedSeasonNumber = next.seasonNumber;
-      if (detail.isAnime && detail.animeSeasonsData != null) {
-        final matchingSeason = detail.animeSeasonsData!
-            .where((s) => s.tmdbSeasonNumber == next.seasonNumber)
-            .firstOrNull;
-        if (matchingSeason != null) {
-          mappedSeasonNumber = matchingSeason.seasonNumber;
-        }
-      }
-
-      String episodeName = next.name;
-      List<TmdbEpisode> additionalEpisodes = [];
-      final placeholderRe = RegExp(r'^Episodio\s+\d+$|^Episode\s+\d+$', caseSensitive: false);
-      try {
-        final seasonDetail = await ref.read(seasonDetailProvider(
-          showId: show.tmdbId,
-          seasonNumber: mappedSeasonNumber,
-        ).future);
-        final ep = seasonDetail.episodes
-            ?.where((e) => e.episodeNumber == next.episodeNumber)
-            .firstOrNull;
-            
-        if (episodeName.isEmpty || placeholderRe.hasMatch(episodeName.trim())) {
-          if (ep != null && ep.name.isNotEmpty) episodeName = ep.name;
-        }
-        
-        if (seasonDetail.episodes != null) {
-           additionalEpisodes = seasonDetail.episodes!
-               .where((e) => e.airDate == next.airDate && e.episodeNumber > next.episodeNumber)
-               .toList();
-        }
-      } catch (_) {}
-
-      String? sName;
-      if (detail.isAnime) {
-        final sSeason = detail.seasons.where((s) => s.seasonNumber == mappedSeasonNumber).firstOrNull;
-        if (sSeason != null && sSeason.name != null) {
-          sName = sSeason.name!.split(' · ').first.trim();
-        }
-      }
-
-      localResults.add(UpcomingEpisodeInfo(
-        show: show,
-        episode: TmdbNextEpisode(
-          seasonNumber: mappedSeasonNumber,
-          episodeNumber: next.episodeNumber,
-          name: episodeName,
-          overview: next.overview,
-          stillPath: next.stillPath,
-          airDate: next.airDate,
-          voteAverage: next.voteAverage,
-        ),
-        airDate: airMidnight,
-        seasonName: sName,
-        additionalEpisodes: additionalEpisodes,
-      ));
-    } catch (_) {
-      // Ignora show non caricabili
+  for (final show in watchingShows) {
+    if (show.nextEpisodeAirDate == null || show.nextEpisodeSeason == null || show.nextEpisodeNumber == null) {
+      continue;
     }
-    return localResults;
-  }));
 
-  final results = resultsNested.expand((x) => x).toList();
+    final airMidnight = DateTime(
+      show.nextEpisodeAirDate!.year, 
+      show.nextEpisodeAirDate!.month, 
+      show.nextEpisodeAirDate!.day
+    );
+
+    if (airMidnight.isBefore(todayMidnight)) {
+      continue;
+    }
+
+    results.add(UpcomingEpisodeInfo(
+      show: show,
+      episode: TmdbNextEpisode(
+        seasonNumber: show.nextEpisodeSeason!,
+        episodeNumber: show.nextEpisodeNumber!,
+        name: show.nextEpisodeName ?? '',
+        airDate: show.nextEpisodeAirDate!.toIso8601String(),
+      ),
+      airDate: airMidnight,
+      preciseAirTime: show.isAnime ? show.nextEpisodeAirDate : null,
+      seasonName: null,
+      additionalEpisodes: const [], 
+    ));
+  }
+
   results.sort((a, b) => a.airDate.compareTo(b.airDate));
   return results;
 }

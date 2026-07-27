@@ -99,6 +99,30 @@ class $TrackedShowsTable extends TrackedShows
   late final GeneratedColumn<DateTime> lastWatchedAt =
       GeneratedColumn<DateTime>('last_watched_at', aliasedName, true,
           type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _nextEpisodeNumberMeta =
+      const VerificationMeta('nextEpisodeNumber');
+  @override
+  late final GeneratedColumn<int> nextEpisodeNumber = GeneratedColumn<int>(
+      'next_episode_number', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _nextEpisodeSeasonMeta =
+      const VerificationMeta('nextEpisodeSeason');
+  @override
+  late final GeneratedColumn<int> nextEpisodeSeason = GeneratedColumn<int>(
+      'next_episode_season', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _nextEpisodeNameMeta =
+      const VerificationMeta('nextEpisodeName');
+  @override
+  late final GeneratedColumn<String> nextEpisodeName = GeneratedColumn<String>(
+      'next_episode_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _nextEpisodeAirDateMeta =
+      const VerificationMeta('nextEpisodeAirDate');
+  @override
+  late final GeneratedColumn<DateTime> nextEpisodeAirDate =
+      GeneratedColumn<DateTime>('next_episode_air_date', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -114,7 +138,11 @@ class $TrackedShowsTable extends TrackedShows
         tmdbStatus,
         isAnime,
         addedAt,
-        lastWatchedAt
+        lastWatchedAt,
+        nextEpisodeNumber,
+        nextEpisodeSeason,
+        nextEpisodeName,
+        nextEpisodeAirDate
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -195,6 +223,30 @@ class $TrackedShowsTable extends TrackedShows
           lastWatchedAt.isAcceptableOrUnknown(
               data['last_watched_at']!, _lastWatchedAtMeta));
     }
+    if (data.containsKey('next_episode_number')) {
+      context.handle(
+          _nextEpisodeNumberMeta,
+          nextEpisodeNumber.isAcceptableOrUnknown(
+              data['next_episode_number']!, _nextEpisodeNumberMeta));
+    }
+    if (data.containsKey('next_episode_season')) {
+      context.handle(
+          _nextEpisodeSeasonMeta,
+          nextEpisodeSeason.isAcceptableOrUnknown(
+              data['next_episode_season']!, _nextEpisodeSeasonMeta));
+    }
+    if (data.containsKey('next_episode_name')) {
+      context.handle(
+          _nextEpisodeNameMeta,
+          nextEpisodeName.isAcceptableOrUnknown(
+              data['next_episode_name']!, _nextEpisodeNameMeta));
+    }
+    if (data.containsKey('next_episode_air_date')) {
+      context.handle(
+          _nextEpisodeAirDateMeta,
+          nextEpisodeAirDate.isAcceptableOrUnknown(
+              data['next_episode_air_date']!, _nextEpisodeAirDateMeta));
+    }
     return context;
   }
 
@@ -233,6 +285,15 @@ class $TrackedShowsTable extends TrackedShows
           .read(DriftSqlType.dateTime, data['${effectivePrefix}added_at'])!,
       lastWatchedAt: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}last_watched_at']),
+      nextEpisodeNumber: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}next_episode_number']),
+      nextEpisodeSeason: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}next_episode_season']),
+      nextEpisodeName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}next_episode_name']),
+      nextEpisodeAirDate: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime,
+          data['${effectivePrefix}next_episode_air_date']),
     );
   }
 
@@ -263,6 +324,10 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
   final bool isAnime;
   final DateTime addedAt;
   final DateTime? lastWatchedAt;
+  final int? nextEpisodeNumber;
+  final int? nextEpisodeSeason;
+  final String? nextEpisodeName;
+  final DateTime? nextEpisodeAirDate;
   const TrackedShow(
       {required this.id,
       required this.tmdbId,
@@ -277,7 +342,11 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       this.tmdbStatus,
       required this.isAnime,
       required this.addedAt,
-      this.lastWatchedAt});
+      this.lastWatchedAt,
+      this.nextEpisodeNumber,
+      this.nextEpisodeSeason,
+      this.nextEpisodeName,
+      this.nextEpisodeAirDate});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -314,6 +383,18 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
     if (!nullToAbsent || lastWatchedAt != null) {
       map['last_watched_at'] = Variable<DateTime>(lastWatchedAt);
     }
+    if (!nullToAbsent || nextEpisodeNumber != null) {
+      map['next_episode_number'] = Variable<int>(nextEpisodeNumber);
+    }
+    if (!nullToAbsent || nextEpisodeSeason != null) {
+      map['next_episode_season'] = Variable<int>(nextEpisodeSeason);
+    }
+    if (!nullToAbsent || nextEpisodeName != null) {
+      map['next_episode_name'] = Variable<String>(nextEpisodeName);
+    }
+    if (!nullToAbsent || nextEpisodeAirDate != null) {
+      map['next_episode_air_date'] = Variable<DateTime>(nextEpisodeAirDate);
+    }
     return map;
   }
 
@@ -349,6 +430,18 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       lastWatchedAt: lastWatchedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastWatchedAt),
+      nextEpisodeNumber: nextEpisodeNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextEpisodeNumber),
+      nextEpisodeSeason: nextEpisodeSeason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextEpisodeSeason),
+      nextEpisodeName: nextEpisodeName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextEpisodeName),
+      nextEpisodeAirDate: nextEpisodeAirDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextEpisodeAirDate),
     );
   }
 
@@ -371,6 +464,11 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       isAnime: serializer.fromJson<bool>(json['isAnime']),
       addedAt: serializer.fromJson<DateTime>(json['addedAt']),
       lastWatchedAt: serializer.fromJson<DateTime?>(json['lastWatchedAt']),
+      nextEpisodeNumber: serializer.fromJson<int?>(json['nextEpisodeNumber']),
+      nextEpisodeSeason: serializer.fromJson<int?>(json['nextEpisodeSeason']),
+      nextEpisodeName: serializer.fromJson<String?>(json['nextEpisodeName']),
+      nextEpisodeAirDate:
+          serializer.fromJson<DateTime?>(json['nextEpisodeAirDate']),
     );
   }
   @override
@@ -392,6 +490,10 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       'isAnime': serializer.toJson<bool>(isAnime),
       'addedAt': serializer.toJson<DateTime>(addedAt),
       'lastWatchedAt': serializer.toJson<DateTime?>(lastWatchedAt),
+      'nextEpisodeNumber': serializer.toJson<int?>(nextEpisodeNumber),
+      'nextEpisodeSeason': serializer.toJson<int?>(nextEpisodeSeason),
+      'nextEpisodeName': serializer.toJson<String?>(nextEpisodeName),
+      'nextEpisodeAirDate': serializer.toJson<DateTime?>(nextEpisodeAirDate),
     };
   }
 
@@ -409,7 +511,11 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           Value<String?> tmdbStatus = const Value.absent(),
           bool? isAnime,
           DateTime? addedAt,
-          Value<DateTime?> lastWatchedAt = const Value.absent()}) =>
+          Value<DateTime?> lastWatchedAt = const Value.absent(),
+          Value<int?> nextEpisodeNumber = const Value.absent(),
+          Value<int?> nextEpisodeSeason = const Value.absent(),
+          Value<String?> nextEpisodeName = const Value.absent(),
+          Value<DateTime?> nextEpisodeAirDate = const Value.absent()}) =>
       TrackedShow(
         id: id ?? this.id,
         tmdbId: tmdbId ?? this.tmdbId,
@@ -428,6 +534,18 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
         addedAt: addedAt ?? this.addedAt,
         lastWatchedAt:
             lastWatchedAt.present ? lastWatchedAt.value : this.lastWatchedAt,
+        nextEpisodeNumber: nextEpisodeNumber.present
+            ? nextEpisodeNumber.value
+            : this.nextEpisodeNumber,
+        nextEpisodeSeason: nextEpisodeSeason.present
+            ? nextEpisodeSeason.value
+            : this.nextEpisodeSeason,
+        nextEpisodeName: nextEpisodeName.present
+            ? nextEpisodeName.value
+            : this.nextEpisodeName,
+        nextEpisodeAirDate: nextEpisodeAirDate.present
+            ? nextEpisodeAirDate.value
+            : this.nextEpisodeAirDate,
       );
   TrackedShow copyWithCompanion(TrackedShowsCompanion data) {
     return TrackedShow(
@@ -454,6 +572,18 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       lastWatchedAt: data.lastWatchedAt.present
           ? data.lastWatchedAt.value
           : this.lastWatchedAt,
+      nextEpisodeNumber: data.nextEpisodeNumber.present
+          ? data.nextEpisodeNumber.value
+          : this.nextEpisodeNumber,
+      nextEpisodeSeason: data.nextEpisodeSeason.present
+          ? data.nextEpisodeSeason.value
+          : this.nextEpisodeSeason,
+      nextEpisodeName: data.nextEpisodeName.present
+          ? data.nextEpisodeName.value
+          : this.nextEpisodeName,
+      nextEpisodeAirDate: data.nextEpisodeAirDate.present
+          ? data.nextEpisodeAirDate.value
+          : this.nextEpisodeAirDate,
     );
   }
 
@@ -473,7 +603,11 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           ..write('tmdbStatus: $tmdbStatus, ')
           ..write('isAnime: $isAnime, ')
           ..write('addedAt: $addedAt, ')
-          ..write('lastWatchedAt: $lastWatchedAt')
+          ..write('lastWatchedAt: $lastWatchedAt, ')
+          ..write('nextEpisodeNumber: $nextEpisodeNumber, ')
+          ..write('nextEpisodeSeason: $nextEpisodeSeason, ')
+          ..write('nextEpisodeName: $nextEpisodeName, ')
+          ..write('nextEpisodeAirDate: $nextEpisodeAirDate')
           ..write(')'))
         .toString();
   }
@@ -493,7 +627,11 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       tmdbStatus,
       isAnime,
       addedAt,
-      lastWatchedAt);
+      lastWatchedAt,
+      nextEpisodeNumber,
+      nextEpisodeSeason,
+      nextEpisodeName,
+      nextEpisodeAirDate);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -511,7 +649,11 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           other.tmdbStatus == this.tmdbStatus &&
           other.isAnime == this.isAnime &&
           other.addedAt == this.addedAt &&
-          other.lastWatchedAt == this.lastWatchedAt);
+          other.lastWatchedAt == this.lastWatchedAt &&
+          other.nextEpisodeNumber == this.nextEpisodeNumber &&
+          other.nextEpisodeSeason == this.nextEpisodeSeason &&
+          other.nextEpisodeName == this.nextEpisodeName &&
+          other.nextEpisodeAirDate == this.nextEpisodeAirDate);
 }
 
 class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
@@ -529,6 +671,10 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
   final Value<bool> isAnime;
   final Value<DateTime> addedAt;
   final Value<DateTime?> lastWatchedAt;
+  final Value<int?> nextEpisodeNumber;
+  final Value<int?> nextEpisodeSeason;
+  final Value<String?> nextEpisodeName;
+  final Value<DateTime?> nextEpisodeAirDate;
   const TrackedShowsCompanion({
     this.id = const Value.absent(),
     this.tmdbId = const Value.absent(),
@@ -544,6 +690,10 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     this.isAnime = const Value.absent(),
     this.addedAt = const Value.absent(),
     this.lastWatchedAt = const Value.absent(),
+    this.nextEpisodeNumber = const Value.absent(),
+    this.nextEpisodeSeason = const Value.absent(),
+    this.nextEpisodeName = const Value.absent(),
+    this.nextEpisodeAirDate = const Value.absent(),
   });
   TrackedShowsCompanion.insert({
     this.id = const Value.absent(),
@@ -560,6 +710,10 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     this.isAnime = const Value.absent(),
     required DateTime addedAt,
     this.lastWatchedAt = const Value.absent(),
+    this.nextEpisodeNumber = const Value.absent(),
+    this.nextEpisodeSeason = const Value.absent(),
+    this.nextEpisodeName = const Value.absent(),
+    this.nextEpisodeAirDate = const Value.absent(),
   })  : tmdbId = Value(tmdbId),
         title = Value(title),
         status = Value(status),
@@ -579,6 +733,10 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     Expression<bool>? isAnime,
     Expression<DateTime>? addedAt,
     Expression<DateTime>? lastWatchedAt,
+    Expression<int>? nextEpisodeNumber,
+    Expression<int>? nextEpisodeSeason,
+    Expression<String>? nextEpisodeName,
+    Expression<DateTime>? nextEpisodeAirDate,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -595,6 +753,11 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       if (isAnime != null) 'is_anime': isAnime,
       if (addedAt != null) 'added_at': addedAt,
       if (lastWatchedAt != null) 'last_watched_at': lastWatchedAt,
+      if (nextEpisodeNumber != null) 'next_episode_number': nextEpisodeNumber,
+      if (nextEpisodeSeason != null) 'next_episode_season': nextEpisodeSeason,
+      if (nextEpisodeName != null) 'next_episode_name': nextEpisodeName,
+      if (nextEpisodeAirDate != null)
+        'next_episode_air_date': nextEpisodeAirDate,
     });
   }
 
@@ -612,7 +775,11 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       Value<String?>? tmdbStatus,
       Value<bool>? isAnime,
       Value<DateTime>? addedAt,
-      Value<DateTime?>? lastWatchedAt}) {
+      Value<DateTime?>? lastWatchedAt,
+      Value<int?>? nextEpisodeNumber,
+      Value<int?>? nextEpisodeSeason,
+      Value<String?>? nextEpisodeName,
+      Value<DateTime?>? nextEpisodeAirDate}) {
     return TrackedShowsCompanion(
       id: id ?? this.id,
       tmdbId: tmdbId ?? this.tmdbId,
@@ -628,6 +795,10 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       isAnime: isAnime ?? this.isAnime,
       addedAt: addedAt ?? this.addedAt,
       lastWatchedAt: lastWatchedAt ?? this.lastWatchedAt,
+      nextEpisodeNumber: nextEpisodeNumber ?? this.nextEpisodeNumber,
+      nextEpisodeSeason: nextEpisodeSeason ?? this.nextEpisodeSeason,
+      nextEpisodeName: nextEpisodeName ?? this.nextEpisodeName,
+      nextEpisodeAirDate: nextEpisodeAirDate ?? this.nextEpisodeAirDate,
     );
   }
 
@@ -677,6 +848,19 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     if (lastWatchedAt.present) {
       map['last_watched_at'] = Variable<DateTime>(lastWatchedAt.value);
     }
+    if (nextEpisodeNumber.present) {
+      map['next_episode_number'] = Variable<int>(nextEpisodeNumber.value);
+    }
+    if (nextEpisodeSeason.present) {
+      map['next_episode_season'] = Variable<int>(nextEpisodeSeason.value);
+    }
+    if (nextEpisodeName.present) {
+      map['next_episode_name'] = Variable<String>(nextEpisodeName.value);
+    }
+    if (nextEpisodeAirDate.present) {
+      map['next_episode_air_date'] =
+          Variable<DateTime>(nextEpisodeAirDate.value);
+    }
     return map;
   }
 
@@ -696,7 +880,11 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
           ..write('tmdbStatus: $tmdbStatus, ')
           ..write('isAnime: $isAnime, ')
           ..write('addedAt: $addedAt, ')
-          ..write('lastWatchedAt: $lastWatchedAt')
+          ..write('lastWatchedAt: $lastWatchedAt, ')
+          ..write('nextEpisodeNumber: $nextEpisodeNumber, ')
+          ..write('nextEpisodeSeason: $nextEpisodeSeason, ')
+          ..write('nextEpisodeName: $nextEpisodeName, ')
+          ..write('nextEpisodeAirDate: $nextEpisodeAirDate')
           ..write(')'))
         .toString();
   }
@@ -3813,6 +4001,10 @@ typedef $$TrackedShowsTableCreateCompanionBuilder = TrackedShowsCompanion
   Value<bool> isAnime,
   required DateTime addedAt,
   Value<DateTime?> lastWatchedAt,
+  Value<int?> nextEpisodeNumber,
+  Value<int?> nextEpisodeSeason,
+  Value<String?> nextEpisodeName,
+  Value<DateTime?> nextEpisodeAirDate,
 });
 typedef $$TrackedShowsTableUpdateCompanionBuilder = TrackedShowsCompanion
     Function({
@@ -3830,6 +4022,10 @@ typedef $$TrackedShowsTableUpdateCompanionBuilder = TrackedShowsCompanion
   Value<bool> isAnime,
   Value<DateTime> addedAt,
   Value<DateTime?> lastWatchedAt,
+  Value<int?> nextEpisodeNumber,
+  Value<int?> nextEpisodeSeason,
+  Value<String?> nextEpisodeName,
+  Value<DateTime?> nextEpisodeAirDate,
 });
 
 final class $$TrackedShowsTableReferences
@@ -3921,6 +4117,22 @@ class $$TrackedShowsTableFilterComposer
 
   ColumnFilters<DateTime> get lastWatchedAt => $composableBuilder(
       column: $table.lastWatchedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get nextEpisodeNumber => $composableBuilder(
+      column: $table.nextEpisodeNumber,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get nextEpisodeSeason => $composableBuilder(
+      column: $table.nextEpisodeSeason,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get nextEpisodeName => $composableBuilder(
+      column: $table.nextEpisodeName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get nextEpisodeAirDate => $composableBuilder(
+      column: $table.nextEpisodeAirDate,
+      builder: (column) => ColumnFilters(column));
 
   Expression<bool> trackedEpisodesRefs(
       Expression<bool> Function($$TrackedEpisodesTableFilterComposer f) f) {
@@ -4018,6 +4230,22 @@ class $$TrackedShowsTableOrderingComposer
   ColumnOrderings<DateTime> get lastWatchedAt => $composableBuilder(
       column: $table.lastWatchedAt,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get nextEpisodeNumber => $composableBuilder(
+      column: $table.nextEpisodeNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get nextEpisodeSeason => $composableBuilder(
+      column: $table.nextEpisodeSeason,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get nextEpisodeName => $composableBuilder(
+      column: $table.nextEpisodeName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get nextEpisodeAirDate => $composableBuilder(
+      column: $table.nextEpisodeAirDate,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$TrackedShowsTableAnnotationComposer
@@ -4070,6 +4298,18 @@ class $$TrackedShowsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get lastWatchedAt => $composableBuilder(
       column: $table.lastWatchedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get nextEpisodeNumber => $composableBuilder(
+      column: $table.nextEpisodeNumber, builder: (column) => column);
+
+  GeneratedColumn<int> get nextEpisodeSeason => $composableBuilder(
+      column: $table.nextEpisodeSeason, builder: (column) => column);
+
+  GeneratedColumn<String> get nextEpisodeName => $composableBuilder(
+      column: $table.nextEpisodeName, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextEpisodeAirDate => $composableBuilder(
+      column: $table.nextEpisodeAirDate, builder: (column) => column);
 
   Expression<T> trackedEpisodesRefs<T extends Object>(
       Expression<T> Function($$TrackedEpisodesTableAnnotationComposer a) f) {
@@ -4152,6 +4392,10 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             Value<bool> isAnime = const Value.absent(),
             Value<DateTime> addedAt = const Value.absent(),
             Value<DateTime?> lastWatchedAt = const Value.absent(),
+            Value<int?> nextEpisodeNumber = const Value.absent(),
+            Value<int?> nextEpisodeSeason = const Value.absent(),
+            Value<String?> nextEpisodeName = const Value.absent(),
+            Value<DateTime?> nextEpisodeAirDate = const Value.absent(),
           }) =>
               TrackedShowsCompanion(
             id: id,
@@ -4168,6 +4412,10 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             isAnime: isAnime,
             addedAt: addedAt,
             lastWatchedAt: lastWatchedAt,
+            nextEpisodeNumber: nextEpisodeNumber,
+            nextEpisodeSeason: nextEpisodeSeason,
+            nextEpisodeName: nextEpisodeName,
+            nextEpisodeAirDate: nextEpisodeAirDate,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -4184,6 +4432,10 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             Value<bool> isAnime = const Value.absent(),
             required DateTime addedAt,
             Value<DateTime?> lastWatchedAt = const Value.absent(),
+            Value<int?> nextEpisodeNumber = const Value.absent(),
+            Value<int?> nextEpisodeSeason = const Value.absent(),
+            Value<String?> nextEpisodeName = const Value.absent(),
+            Value<DateTime?> nextEpisodeAirDate = const Value.absent(),
           }) =>
               TrackedShowsCompanion.insert(
             id: id,
@@ -4200,6 +4452,10 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             isAnime: isAnime,
             addedAt: addedAt,
             lastWatchedAt: lastWatchedAt,
+            nextEpisodeNumber: nextEpisodeNumber,
+            nextEpisodeSeason: nextEpisodeSeason,
+            nextEpisodeName: nextEpisodeName,
+            nextEpisodeAirDate: nextEpisodeAirDate,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
