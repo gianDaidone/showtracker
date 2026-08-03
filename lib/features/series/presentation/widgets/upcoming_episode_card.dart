@@ -1,13 +1,16 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/database/app_database.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/models/tmdb_episode.dart';
 import '../../data/models/tmdb_show_detail.dart';
+import '../../providers/series_providers.dart';
 import 'episode_detail_sheet.dart';
 
-class UpcomingEpisodeCard extends StatefulWidget {
+class UpcomingEpisodeCard extends ConsumerStatefulWidget {
   final TrackedShow show;
   final TmdbNextEpisode episode;
   final DateTime airDate;
@@ -29,15 +32,15 @@ class UpcomingEpisodeCard extends StatefulWidget {
   });
 
   @override
-  State<UpcomingEpisodeCard> createState() => _UpcomingEpisodeCardState();
+  ConsumerState<UpcomingEpisodeCard> createState() => _UpcomingEpisodeCardState();
 }
 
-class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
+class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
   bool _expanded = false;
 
-  String get _imageUrl {
-    if (widget.episode.stillPath != null) {
-      return 'https://image.tmdb.org/t/p/w300${widget.episode.stillPath}';
+  String _getImageUrl(String? stillPath) {
+    if (stillPath != null) {
+      return 'https://image.tmdb.org/t/p/w300$stillPath';
     }
     if (widget.show.posterPath != null) {
       return 'https://image.tmdb.org/t/p/w185${widget.show.posterPath}';
@@ -117,7 +120,22 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = _imageUrl.isNotEmpty;
+    final seasonAsync = ref.watch(seasonDetailProvider(
+      showId: widget.show.tmdbId,
+      seasonNumber: widget.episode.seasonNumber,
+    ));
+    final loadedEpisodes = seasonAsync.valueOrNull?.episodes;
+    final fullEpisode = loadedEpisodes
+        ?.where((e) => e.episodeNumber == widget.episode.episodeNumber)
+        .firstOrNull;
+
+    final episodeName = fullEpisode?.name ?? widget.episode.name;
+    final displayTitle = episodeName.isNotEmpty ? episodeName : 'Titolo non disponibile';
+
+    final stillPath = fullEpisode?.stillPath ?? widget.episode.stillPath;
+    final imageUrl = _getImageUrl(stillPath);
+    final hasImage = imageUrl.isNotEmpty;
+    
     String pad(int n) => n.toString().padLeft(2, '0');
 
     final hasAdditional = widget.additionalEpisodes.isNotEmpty;
@@ -164,7 +182,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
                     children: [
                       hasImage
                           ? CachedNetworkImage(
-                              imageUrl: _imageUrl,
+                              imageUrl: imageUrl,
                               fit: BoxFit.cover,
                               placeholder: (_, __) =>
                                   const ColoredBox(color: AppColors.divider),
@@ -276,9 +294,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
 
                     // Titolo episodio
                     Text(
-                      widget.episode.name.isNotEmpty
-                          ? widget.episode.name
-                          : 'Titolo non disponibile',
+                      displayTitle,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
@@ -355,7 +371,7 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
   }
 }
 
-class _SubEpisodeCard extends StatelessWidget {
+class _SubEpisodeCard extends ConsumerWidget {
   final TrackedShow show;
   final TmdbEpisode episode;
   final int seasonNumber;
@@ -369,10 +385,24 @@ class _SubEpisodeCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     String pad(int n) => n.toString().padLeft(2, '0');
-    final imageUrl = episode.stillPath != null
-        ? 'https://image.tmdb.org/t/p/w185${episode.stillPath}'
+    
+    final seasonAsync = ref.watch(seasonDetailProvider(
+      showId: show.tmdbId,
+      seasonNumber: seasonNumber,
+    ));
+    final loadedEpisodes = seasonAsync.valueOrNull?.episodes;
+    final fullEpisode = loadedEpisodes
+        ?.where((e) => e.episodeNumber == episode.episodeNumber)
+        .firstOrNull;
+
+    final episodeName = fullEpisode?.name ?? episode.name;
+    final displayTitle = episodeName.isNotEmpty ? episodeName : 'Titolo non disponibile';
+
+    final stillPath = fullEpisode?.stillPath ?? episode.stillPath;
+    final imageUrl = stillPath != null
+        ? 'https://image.tmdb.org/t/p/w185$stillPath'
         : show.posterPath != null
             ? 'https://image.tmdb.org/t/p/w185${show.posterPath}'
             : null;
@@ -454,7 +484,7 @@ class _SubEpisodeCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      episode.name.isNotEmpty ? episode.name : 'Titolo non disponibile',
+                      displayTitle,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,

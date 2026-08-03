@@ -175,7 +175,7 @@ final visibleWatchingShowsProvider = FutureProvider.autoDispose<List<ShowWithWat
       nextEp = lastEp + 1;
       final countInSeason = seasonCounts[lastSeason];
       
-      if (countInSeason != null && countInSeason > 0 && nextEp > countInSeason) {
+      if (countInSeason != null && nextEp > countInSeason) {
         final sortedSeasons = seasonCounts.keys.toList()..sort();
         int? nextAvailableSeason = sortedSeasons
             .where((s) => s > lastSeason && (seasonCounts[s] ?? 0) > 0)
@@ -195,10 +195,10 @@ final visibleWatchingShowsProvider = FutureProvider.autoDispose<List<ShowWithWat
     }
 
     // Verifichiamo se l'episodio che l'utente deve guardare coincide proprio con 
-    // l'episodio in uscita salvato nel DB. Se coincide e la data è nel futuro,
+    // l'episodio in uscita salvato nel DB. Se coincide e la data è nel futuro (o assente),
     // significa che l'utente è in pari e sta aspettando la messa in onda: non mostriamo la card!
     if (show.nextEpisodeSeason == nextSeason && show.nextEpisodeNumber == nextEp) {
-       if (show.nextEpisodeAirDate != null && show.nextEpisodeAirDate!.isAfter(now)) {
+       if (show.nextEpisodeAirDate == null || show.nextEpisodeAirDate!.isAfter(now)) {
          continue; // Non ancora uscito
        }
     }

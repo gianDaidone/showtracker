@@ -91,6 +91,16 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       _lockedShowData = widget.showData; // congela l'intera card
     });
     
+    // Mostriamo un piccolo ritardo fittizio per dare feedback visivo
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    if (mounted) {
+      setState(() => _markState = _MarkState.success);
+    }
+
+    // Diamo il tempo all'animazione del check verde di completarsi
+    await Future.delayed(const Duration(milliseconds: 700));
+
     final dao = ref.read(showsDaoProvider);
     final notifier = ref.read(trackedShowsNotifierProvider.notifier);
     final tmdbId = widget.showData.show.tmdbId;
@@ -104,10 +114,6 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       
       notifier.rescheduleNotificationById(tmdbId);
       
-      if (!mounted) return;
-      // Mantieni lo stato di caricamento fino a quando non mostriamo il successo
-      setState(() => _markState = _MarkState.success);
-      await Future.delayed(const Duration(milliseconds: 700));
       if (mounted) {
         setState(() {
           _markState = _MarkState.idle;

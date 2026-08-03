@@ -39,13 +39,21 @@ class AnimeCacheDao extends DatabaseAccessor<AppDatabase>
   Future<List<NormalizedAnimeSeason>?> getFreshAnimeSeasons(
       int tmdbShowId) async {
     final now = DateTime.now();
+    // Ottieni tutte le stagioni in cache per questo show
     final rows = await (select(animeSeasonCache)
-          ..where((t) =>
-              t.tmdbShowId.equals(tmdbShowId) &
-              t.validUntil.isBiggerThanValue(now))
+          ..where((t) => t.tmdbShowId.equals(tmdbShowId))
           ..orderBy([(t) => OrderingTerm.asc(t.seasonNumber)]))
         .get();
+        
     if (rows.isEmpty) return null;
+    
+    // Se anche solo una stagione è scaduta, invalida tutta la cache.
+    // Questo previene il bug in cui una stagione in corso scade prima delle
+    // stagioni concluse, scomparendo silenziosamente dall'interfaccia.
+    if (rows.any((r) => r.validUntil.isBefore(now) || r.validUntil.isAtSameMomentAs(now))) {
+      return null;
+    }
+    
     return rows
         .map((r) => NormalizedAnimeSeason.fromJson(
             jsonDecode(r.animeSeasonJson) as Map<String, dynamic>))
