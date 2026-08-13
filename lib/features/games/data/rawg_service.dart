@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../../../core/constants.dart';
 import 'models/rawg_game.dart';
 import 'models/rawg_game_detail.dart';
 
@@ -19,9 +18,15 @@ class RawgService {
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
     final response = await _client.get(uri);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('RAWG ${response.statusCode}: ${response.reasonPhrase}');
+    
+    if (response.statusCode >= 500) {
+      throw RawgException('Il servizio RAWG è temporaneamente non disponibile (Errore ${response.statusCode}). Riprova più tardi.');
     }
+    
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw RawgException('Errore RAWG ${response.statusCode}: ${response.reasonPhrase ?? ""}');
+    }
+    
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
@@ -52,4 +57,12 @@ class RawgService {
       return [];
     }
   }
+}
+
+class RawgException implements Exception {
+  final String message;
+  RawgException(this.message);
+
+  @override
+  String toString() => message;
 }

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../../../core/constants.dart';
 import 'models/tmdb_show.dart';
 import 'models/tmdb_show_detail.dart';
 import 'models/tmdb_season.dart';
@@ -26,9 +25,15 @@ class TmdbService {
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
     final response = await _client.get(uri);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('TMDB ${response.statusCode}: ${response.reasonPhrase}');
+    
+    if (response.statusCode >= 500) {
+      throw TmdbException('Il servizio TMDB è temporaneamente non disponibile (Errore ${response.statusCode}). Riprova più tardi.');
     }
+    
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw TmdbException('Errore TMDB ${response.statusCode}: ${response.reasonPhrase ?? ""}');
+    }
+    
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
@@ -243,4 +248,12 @@ class TmdbService {
     ]);
     return TmdbMovieDetail.fromJson(results[0], en: results[1]);
   }
+}
+
+class TmdbException implements Exception {
+  final String message;
+  TmdbException(this.message);
+
+  @override
+  String toString() => message;
 }
