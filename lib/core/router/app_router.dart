@@ -20,6 +20,7 @@ import '../services/app_toast.dart';
 import '../../core/auth/auth_state.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/sync/presentation/sync_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authStateAsync = ref.watch(authControllerProvider);
@@ -159,6 +160,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final rawgId = int.parse(state.pathParameters['id']!);
           return GameDetailScreen(rawgId: rawgId);
         },
+      ),
+      GoRoute(
+        path: '/sync',
+        builder: (context, state) => const SyncScreen(),
       ),
     ],
   );

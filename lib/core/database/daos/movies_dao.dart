@@ -16,11 +16,11 @@ class MoviesDao extends DatabaseAccessor<AppDatabase> with _$MoviesDaoMixin {
 
   Future<void> updateStatus(int id, MediaStatus status) =>
       (update(trackedMovies)..where((t) => t.id.equals(id)))
-          .write(TrackedMoviesCompanion(status: Value(status)));
+          .write(TrackedMoviesCompanion(status: Value(status), updatedAt: Value(DateTime.now())));
 
   Future<void> updateRating(int id, double? rating) =>
       (update(trackedMovies)..where((t) => t.id.equals(id)))
-          .write(TrackedMoviesCompanion(userRating: Value(rating)));
+          .write(TrackedMoviesCompanion(userRating: Value(rating), updatedAt: Value(DateTime.now())));
 
   Future<int> deleteMovie(int id) =>
       (delete(trackedMovies)..where((t) => t.id.equals(id))).go();

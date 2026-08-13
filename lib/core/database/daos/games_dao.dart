@@ -16,11 +16,11 @@ class GamesDao extends DatabaseAccessor<AppDatabase> with _$GamesDaoMixin {
 
   Future<void> updateStatus(int id, MediaStatus status) =>
       (update(trackedGames)..where((t) => t.id.equals(id)))
-          .write(TrackedGamesCompanion(status: Value(status)));
+          .write(TrackedGamesCompanion(status: Value(status), updatedAt: Value(DateTime.now())));
 
   Future<void> updateRating(int id, double? rating) =>
       (update(trackedGames)..where((t) => t.id.equals(id)))
-          .write(TrackedGamesCompanion(userRating: Value(rating)));
+          .write(TrackedGamesCompanion(userRating: Value(rating), updatedAt: Value(DateTime.now())));
 
   Future<int> deleteGame(int id) =>
       (delete(trackedGames)..where((t) => t.id.equals(id))).go();

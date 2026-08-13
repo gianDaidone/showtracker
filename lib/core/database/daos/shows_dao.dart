@@ -41,11 +41,11 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
 
   Future<void> updateStatus(int id, MediaStatus status) =>
       (update(trackedShows)..where((t) => t.id.equals(id)))
-          .write(TrackedShowsCompanion(status: Value(status)));
+          .write(TrackedShowsCompanion(status: Value(status), updatedAt: Value(DateTime.now())));
 
   Future<void> updateRating(int id, double? rating) =>
       (update(trackedShows)..where((t) => t.id.equals(id)))
-          .write(TrackedShowsCompanion(userRating: Value(rating)));
+          .write(TrackedShowsCompanion(userRating: Value(rating), updatedAt: Value(DateTime.now())));
 
   Future<int> deleteShow(int id) =>
       (delete(trackedShows)..where((t) => t.id.equals(id))).go();
@@ -69,7 +69,7 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
   }) async {
     if (watched) {
       await (update(trackedShows)..where((t) => t.id.equals(showId)))
-          .write(TrackedShowsCompanion(lastWatchedAt: Value(DateTime.now())));
+          .write(TrackedShowsCompanion(lastWatchedAt: Value(DateTime.now()), updatedAt: Value(DateTime.now())));
     }
 
     final updated = await (update(trackedEpisodes)
@@ -79,7 +79,7 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
                 t.seasonNumber.equals(season) &
                 t.episodeNumber.equals(episode),
           ))
-        .write(TrackedEpisodesCompanion(watched: Value(watched)));
+        .write(TrackedEpisodesCompanion(watched: Value(watched), updatedAt: Value(DateTime.now())));
 
     if (updated == 0) {
       await into(trackedEpisodes).insert(
@@ -88,6 +88,7 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
           seasonNumber: Value(season),
           episodeNumber: Value(episode),
           watched: Value(watched),
+          updatedAt: Value(DateTime.now()),
         ),
       );
     }
@@ -129,6 +130,7 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
         nextEpisodeSeason: nextEpisodeSeason,
         nextEpisodeName: nextEpisodeName,
         nextEpisodeAirDate: nextEpisodeAirDate,
+        updatedAt: Value(DateTime.now()),
       ),
     );
   }
@@ -200,7 +202,7 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
   ) async {
     if (targetSeason > 1 || targetEpisode > 1) {
       await (update(trackedShows)..where((t) => t.id.equals(showId)))
-          .write(TrackedShowsCompanion(lastWatchedAt: Value(DateTime.now())));
+          .write(TrackedShowsCompanion(lastWatchedAt: Value(DateTime.now()), updatedAt: Value(DateTime.now())));
     }
     
     final seasonCounts = await getSeasonCounts(showId);
@@ -216,6 +218,7 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
               seasonNumber: Value(s),
               episodeNumber: Value(e),
               watched: const Value(true),
+              updatedAt: Value(DateTime.now()),
             ),
             mode: InsertMode.insertOrReplace,
           );

@@ -123,6 +123,12 @@ class $TrackedShowsTable extends TrackedShows
   late final GeneratedColumn<DateTime> nextEpisodeAirDate =
       GeneratedColumn<DateTime>('next_episode_air_date', aliasedName, true,
           type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -142,7 +148,8 @@ class $TrackedShowsTable extends TrackedShows
         nextEpisodeNumber,
         nextEpisodeSeason,
         nextEpisodeName,
-        nextEpisodeAirDate
+        nextEpisodeAirDate,
+        updatedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -247,6 +254,10 @@ class $TrackedShowsTable extends TrackedShows
           nextEpisodeAirDate.isAcceptableOrUnknown(
               data['next_episode_air_date']!, _nextEpisodeAirDateMeta));
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
     return context;
   }
 
@@ -294,6 +305,8 @@ class $TrackedShowsTable extends TrackedShows
       nextEpisodeAirDate: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime,
           data['${effectivePrefix}next_episode_air_date']),
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at']),
     );
   }
 
@@ -328,6 +341,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
   final int? nextEpisodeSeason;
   final String? nextEpisodeName;
   final DateTime? nextEpisodeAirDate;
+  final DateTime? updatedAt;
   const TrackedShow(
       {required this.id,
       required this.tmdbId,
@@ -346,7 +360,8 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       this.nextEpisodeNumber,
       this.nextEpisodeSeason,
       this.nextEpisodeName,
-      this.nextEpisodeAirDate});
+      this.nextEpisodeAirDate,
+      this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -395,6 +410,9 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
     if (!nullToAbsent || nextEpisodeAirDate != null) {
       map['next_episode_air_date'] = Variable<DateTime>(nextEpisodeAirDate);
     }
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
     return map;
   }
 
@@ -442,6 +460,9 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       nextEpisodeAirDate: nextEpisodeAirDate == null && nullToAbsent
           ? const Value.absent()
           : Value(nextEpisodeAirDate),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
     );
   }
 
@@ -469,6 +490,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       nextEpisodeName: serializer.fromJson<String?>(json['nextEpisodeName']),
       nextEpisodeAirDate:
           serializer.fromJson<DateTime?>(json['nextEpisodeAirDate']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
     );
   }
   @override
@@ -494,6 +516,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       'nextEpisodeSeason': serializer.toJson<int?>(nextEpisodeSeason),
       'nextEpisodeName': serializer.toJson<String?>(nextEpisodeName),
       'nextEpisodeAirDate': serializer.toJson<DateTime?>(nextEpisodeAirDate),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
     };
   }
 
@@ -515,7 +538,8 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           Value<int?> nextEpisodeNumber = const Value.absent(),
           Value<int?> nextEpisodeSeason = const Value.absent(),
           Value<String?> nextEpisodeName = const Value.absent(),
-          Value<DateTime?> nextEpisodeAirDate = const Value.absent()}) =>
+          Value<DateTime?> nextEpisodeAirDate = const Value.absent(),
+          Value<DateTime?> updatedAt = const Value.absent()}) =>
       TrackedShow(
         id: id ?? this.id,
         tmdbId: tmdbId ?? this.tmdbId,
@@ -546,6 +570,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
         nextEpisodeAirDate: nextEpisodeAirDate.present
             ? nextEpisodeAirDate.value
             : this.nextEpisodeAirDate,
+        updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
       );
   TrackedShow copyWithCompanion(TrackedShowsCompanion data) {
     return TrackedShow(
@@ -584,6 +609,7 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       nextEpisodeAirDate: data.nextEpisodeAirDate.present
           ? data.nextEpisodeAirDate.value
           : this.nextEpisodeAirDate,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -607,7 +633,8 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           ..write('nextEpisodeNumber: $nextEpisodeNumber, ')
           ..write('nextEpisodeSeason: $nextEpisodeSeason, ')
           ..write('nextEpisodeName: $nextEpisodeName, ')
-          ..write('nextEpisodeAirDate: $nextEpisodeAirDate')
+          ..write('nextEpisodeAirDate: $nextEpisodeAirDate, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -631,7 +658,8 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
       nextEpisodeNumber,
       nextEpisodeSeason,
       nextEpisodeName,
-      nextEpisodeAirDate);
+      nextEpisodeAirDate,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -653,7 +681,8 @@ class TrackedShow extends DataClass implements Insertable<TrackedShow> {
           other.nextEpisodeNumber == this.nextEpisodeNumber &&
           other.nextEpisodeSeason == this.nextEpisodeSeason &&
           other.nextEpisodeName == this.nextEpisodeName &&
-          other.nextEpisodeAirDate == this.nextEpisodeAirDate);
+          other.nextEpisodeAirDate == this.nextEpisodeAirDate &&
+          other.updatedAt == this.updatedAt);
 }
 
 class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
@@ -675,6 +704,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
   final Value<int?> nextEpisodeSeason;
   final Value<String?> nextEpisodeName;
   final Value<DateTime?> nextEpisodeAirDate;
+  final Value<DateTime?> updatedAt;
   const TrackedShowsCompanion({
     this.id = const Value.absent(),
     this.tmdbId = const Value.absent(),
@@ -694,6 +724,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     this.nextEpisodeSeason = const Value.absent(),
     this.nextEpisodeName = const Value.absent(),
     this.nextEpisodeAirDate = const Value.absent(),
+    this.updatedAt = const Value.absent(),
   });
   TrackedShowsCompanion.insert({
     this.id = const Value.absent(),
@@ -714,6 +745,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     this.nextEpisodeSeason = const Value.absent(),
     this.nextEpisodeName = const Value.absent(),
     this.nextEpisodeAirDate = const Value.absent(),
+    this.updatedAt = const Value.absent(),
   })  : tmdbId = Value(tmdbId),
         title = Value(title),
         status = Value(status),
@@ -737,6 +769,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
     Expression<int>? nextEpisodeSeason,
     Expression<String>? nextEpisodeName,
     Expression<DateTime>? nextEpisodeAirDate,
+    Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -758,6 +791,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       if (nextEpisodeName != null) 'next_episode_name': nextEpisodeName,
       if (nextEpisodeAirDate != null)
         'next_episode_air_date': nextEpisodeAirDate,
+      if (updatedAt != null) 'updated_at': updatedAt,
     });
   }
 
@@ -779,7 +813,8 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       Value<int?>? nextEpisodeNumber,
       Value<int?>? nextEpisodeSeason,
       Value<String?>? nextEpisodeName,
-      Value<DateTime?>? nextEpisodeAirDate}) {
+      Value<DateTime?>? nextEpisodeAirDate,
+      Value<DateTime?>? updatedAt}) {
     return TrackedShowsCompanion(
       id: id ?? this.id,
       tmdbId: tmdbId ?? this.tmdbId,
@@ -799,6 +834,7 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       nextEpisodeSeason: nextEpisodeSeason ?? this.nextEpisodeSeason,
       nextEpisodeName: nextEpisodeName ?? this.nextEpisodeName,
       nextEpisodeAirDate: nextEpisodeAirDate ?? this.nextEpisodeAirDate,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -861,6 +897,9 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
       map['next_episode_air_date'] =
           Variable<DateTime>(nextEpisodeAirDate.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     return map;
   }
 
@@ -884,7 +923,8 @@ class TrackedShowsCompanion extends UpdateCompanion<TrackedShow> {
           ..write('nextEpisodeNumber: $nextEpisodeNumber, ')
           ..write('nextEpisodeSeason: $nextEpisodeSeason, ')
           ..write('nextEpisodeName: $nextEpisodeName, ')
-          ..write('nextEpisodeAirDate: $nextEpisodeAirDate')
+          ..write('nextEpisodeAirDate: $nextEpisodeAirDate, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -935,9 +975,15 @@ class $TrackedEpisodesTable extends TrackedEpisodes
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("watched" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, showId, seasonNumber, episodeNumber, watched];
+      [id, showId, seasonNumber, episodeNumber, watched, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -977,6 +1023,10 @@ class $TrackedEpisodesTable extends TrackedEpisodes
       context.handle(_watchedMeta,
           watched.isAcceptableOrUnknown(data['watched']!, _watchedMeta));
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
     return context;
   }
 
@@ -1000,6 +1050,8 @@ class $TrackedEpisodesTable extends TrackedEpisodes
           .read(DriftSqlType.int, data['${effectivePrefix}episode_number'])!,
       watched: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}watched'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at']),
     );
   }
 
@@ -1015,12 +1067,14 @@ class TrackedEpisode extends DataClass implements Insertable<TrackedEpisode> {
   final int seasonNumber;
   final int episodeNumber;
   final bool watched;
+  final DateTime? updatedAt;
   const TrackedEpisode(
       {required this.id,
       required this.showId,
       required this.seasonNumber,
       required this.episodeNumber,
-      required this.watched});
+      required this.watched,
+      this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1029,6 +1083,9 @@ class TrackedEpisode extends DataClass implements Insertable<TrackedEpisode> {
     map['season_number'] = Variable<int>(seasonNumber);
     map['episode_number'] = Variable<int>(episodeNumber);
     map['watched'] = Variable<bool>(watched);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
     return map;
   }
 
@@ -1039,6 +1096,9 @@ class TrackedEpisode extends DataClass implements Insertable<TrackedEpisode> {
       seasonNumber: Value(seasonNumber),
       episodeNumber: Value(episodeNumber),
       watched: Value(watched),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
     );
   }
 
@@ -1051,6 +1111,7 @@ class TrackedEpisode extends DataClass implements Insertable<TrackedEpisode> {
       seasonNumber: serializer.fromJson<int>(json['seasonNumber']),
       episodeNumber: serializer.fromJson<int>(json['episodeNumber']),
       watched: serializer.fromJson<bool>(json['watched']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
     );
   }
   @override
@@ -1062,6 +1123,7 @@ class TrackedEpisode extends DataClass implements Insertable<TrackedEpisode> {
       'seasonNumber': serializer.toJson<int>(seasonNumber),
       'episodeNumber': serializer.toJson<int>(episodeNumber),
       'watched': serializer.toJson<bool>(watched),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
     };
   }
 
@@ -1070,13 +1132,15 @@ class TrackedEpisode extends DataClass implements Insertable<TrackedEpisode> {
           int? showId,
           int? seasonNumber,
           int? episodeNumber,
-          bool? watched}) =>
+          bool? watched,
+          Value<DateTime?> updatedAt = const Value.absent()}) =>
       TrackedEpisode(
         id: id ?? this.id,
         showId: showId ?? this.showId,
         seasonNumber: seasonNumber ?? this.seasonNumber,
         episodeNumber: episodeNumber ?? this.episodeNumber,
         watched: watched ?? this.watched,
+        updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
       );
   TrackedEpisode copyWithCompanion(TrackedEpisodesCompanion data) {
     return TrackedEpisode(
@@ -1089,6 +1153,7 @@ class TrackedEpisode extends DataClass implements Insertable<TrackedEpisode> {
           ? data.episodeNumber.value
           : this.episodeNumber,
       watched: data.watched.present ? data.watched.value : this.watched,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -1099,14 +1164,15 @@ class TrackedEpisode extends DataClass implements Insertable<TrackedEpisode> {
           ..write('showId: $showId, ')
           ..write('seasonNumber: $seasonNumber, ')
           ..write('episodeNumber: $episodeNumber, ')
-          ..write('watched: $watched')
+          ..write('watched: $watched, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, showId, seasonNumber, episodeNumber, watched);
+      Object.hash(id, showId, seasonNumber, episodeNumber, watched, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1115,7 +1181,8 @@ class TrackedEpisode extends DataClass implements Insertable<TrackedEpisode> {
           other.showId == this.showId &&
           other.seasonNumber == this.seasonNumber &&
           other.episodeNumber == this.episodeNumber &&
-          other.watched == this.watched);
+          other.watched == this.watched &&
+          other.updatedAt == this.updatedAt);
 }
 
 class TrackedEpisodesCompanion extends UpdateCompanion<TrackedEpisode> {
@@ -1124,12 +1191,14 @@ class TrackedEpisodesCompanion extends UpdateCompanion<TrackedEpisode> {
   final Value<int> seasonNumber;
   final Value<int> episodeNumber;
   final Value<bool> watched;
+  final Value<DateTime?> updatedAt;
   const TrackedEpisodesCompanion({
     this.id = const Value.absent(),
     this.showId = const Value.absent(),
     this.seasonNumber = const Value.absent(),
     this.episodeNumber = const Value.absent(),
     this.watched = const Value.absent(),
+    this.updatedAt = const Value.absent(),
   });
   TrackedEpisodesCompanion.insert({
     this.id = const Value.absent(),
@@ -1137,6 +1206,7 @@ class TrackedEpisodesCompanion extends UpdateCompanion<TrackedEpisode> {
     required int seasonNumber,
     required int episodeNumber,
     this.watched = const Value.absent(),
+    this.updatedAt = const Value.absent(),
   })  : showId = Value(showId),
         seasonNumber = Value(seasonNumber),
         episodeNumber = Value(episodeNumber);
@@ -1146,6 +1216,7 @@ class TrackedEpisodesCompanion extends UpdateCompanion<TrackedEpisode> {
     Expression<int>? seasonNumber,
     Expression<int>? episodeNumber,
     Expression<bool>? watched,
+    Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1153,6 +1224,7 @@ class TrackedEpisodesCompanion extends UpdateCompanion<TrackedEpisode> {
       if (seasonNumber != null) 'season_number': seasonNumber,
       if (episodeNumber != null) 'episode_number': episodeNumber,
       if (watched != null) 'watched': watched,
+      if (updatedAt != null) 'updated_at': updatedAt,
     });
   }
 
@@ -1161,13 +1233,15 @@ class TrackedEpisodesCompanion extends UpdateCompanion<TrackedEpisode> {
       Value<int>? showId,
       Value<int>? seasonNumber,
       Value<int>? episodeNumber,
-      Value<bool>? watched}) {
+      Value<bool>? watched,
+      Value<DateTime?>? updatedAt}) {
     return TrackedEpisodesCompanion(
       id: id ?? this.id,
       showId: showId ?? this.showId,
       seasonNumber: seasonNumber ?? this.seasonNumber,
       episodeNumber: episodeNumber ?? this.episodeNumber,
       watched: watched ?? this.watched,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -1189,6 +1263,9 @@ class TrackedEpisodesCompanion extends UpdateCompanion<TrackedEpisode> {
     if (watched.present) {
       map['watched'] = Variable<bool>(watched.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     return map;
   }
 
@@ -1199,7 +1276,8 @@ class TrackedEpisodesCompanion extends UpdateCompanion<TrackedEpisode> {
           ..write('showId: $showId, ')
           ..write('seasonNumber: $seasonNumber, ')
           ..write('episodeNumber: $episodeNumber, ')
-          ..write('watched: $watched')
+          ..write('watched: $watched, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -2167,6 +2245,12 @@ class $TrackedMoviesTable extends TrackedMovies
   late final GeneratedColumn<DateTime> addedAt = GeneratedColumn<DateTime>(
       'added_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -2179,7 +2263,8 @@ class $TrackedMoviesTable extends TrackedMovies
         userNotes,
         releaseYear,
         releaseDate,
-        addedAt
+        addedAt,
+        updatedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2244,6 +2329,10 @@ class $TrackedMoviesTable extends TrackedMovies
     } else if (isInserting) {
       context.missing(_addedAtMeta);
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
     return context;
   }
 
@@ -2276,6 +2365,8 @@ class $TrackedMoviesTable extends TrackedMovies
           .read(DriftSqlType.dateTime, data['${effectivePrefix}release_date']),
       addedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}added_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at']),
     );
   }
 
@@ -2300,6 +2391,7 @@ class TrackedMovy extends DataClass implements Insertable<TrackedMovy> {
   final int? releaseYear;
   final DateTime? releaseDate;
   final DateTime addedAt;
+  final DateTime? updatedAt;
   const TrackedMovy(
       {required this.id,
       required this.tmdbId,
@@ -2311,7 +2403,8 @@ class TrackedMovy extends DataClass implements Insertable<TrackedMovy> {
       this.userNotes,
       this.releaseYear,
       this.releaseDate,
-      required this.addedAt});
+      required this.addedAt,
+      this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2341,6 +2434,9 @@ class TrackedMovy extends DataClass implements Insertable<TrackedMovy> {
       map['release_date'] = Variable<DateTime>(releaseDate);
     }
     map['added_at'] = Variable<DateTime>(addedAt);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
     return map;
   }
 
@@ -2369,6 +2465,9 @@ class TrackedMovy extends DataClass implements Insertable<TrackedMovy> {
           ? const Value.absent()
           : Value(releaseDate),
       addedAt: Value(addedAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
     );
   }
 
@@ -2388,6 +2487,7 @@ class TrackedMovy extends DataClass implements Insertable<TrackedMovy> {
       releaseYear: serializer.fromJson<int?>(json['releaseYear']),
       releaseDate: serializer.fromJson<DateTime?>(json['releaseDate']),
       addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
     );
   }
   @override
@@ -2406,6 +2506,7 @@ class TrackedMovy extends DataClass implements Insertable<TrackedMovy> {
       'releaseYear': serializer.toJson<int?>(releaseYear),
       'releaseDate': serializer.toJson<DateTime?>(releaseDate),
       'addedAt': serializer.toJson<DateTime>(addedAt),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
     };
   }
 
@@ -2420,7 +2521,8 @@ class TrackedMovy extends DataClass implements Insertable<TrackedMovy> {
           Value<String?> userNotes = const Value.absent(),
           Value<int?> releaseYear = const Value.absent(),
           Value<DateTime?> releaseDate = const Value.absent(),
-          DateTime? addedAt}) =>
+          DateTime? addedAt,
+          Value<DateTime?> updatedAt = const Value.absent()}) =>
       TrackedMovy(
         id: id ?? this.id,
         tmdbId: tmdbId ?? this.tmdbId,
@@ -2433,6 +2535,7 @@ class TrackedMovy extends DataClass implements Insertable<TrackedMovy> {
         releaseYear: releaseYear.present ? releaseYear.value : this.releaseYear,
         releaseDate: releaseDate.present ? releaseDate.value : this.releaseDate,
         addedAt: addedAt ?? this.addedAt,
+        updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
       );
   TrackedMovy copyWithCompanion(TrackedMoviesCompanion data) {
     return TrackedMovy(
@@ -2451,6 +2554,7 @@ class TrackedMovy extends DataClass implements Insertable<TrackedMovy> {
       releaseDate:
           data.releaseDate.present ? data.releaseDate.value : this.releaseDate,
       addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -2467,14 +2571,26 @@ class TrackedMovy extends DataClass implements Insertable<TrackedMovy> {
           ..write('userNotes: $userNotes, ')
           ..write('releaseYear: $releaseYear, ')
           ..write('releaseDate: $releaseDate, ')
-          ..write('addedAt: $addedAt')
+          ..write('addedAt: $addedAt, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, tmdbId, title, overview, posterPath,
-      status, userRating, userNotes, releaseYear, releaseDate, addedAt);
+  int get hashCode => Object.hash(
+      id,
+      tmdbId,
+      title,
+      overview,
+      posterPath,
+      status,
+      userRating,
+      userNotes,
+      releaseYear,
+      releaseDate,
+      addedAt,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2489,7 +2605,8 @@ class TrackedMovy extends DataClass implements Insertable<TrackedMovy> {
           other.userNotes == this.userNotes &&
           other.releaseYear == this.releaseYear &&
           other.releaseDate == this.releaseDate &&
-          other.addedAt == this.addedAt);
+          other.addedAt == this.addedAt &&
+          other.updatedAt == this.updatedAt);
 }
 
 class TrackedMoviesCompanion extends UpdateCompanion<TrackedMovy> {
@@ -2504,6 +2621,7 @@ class TrackedMoviesCompanion extends UpdateCompanion<TrackedMovy> {
   final Value<int?> releaseYear;
   final Value<DateTime?> releaseDate;
   final Value<DateTime> addedAt;
+  final Value<DateTime?> updatedAt;
   const TrackedMoviesCompanion({
     this.id = const Value.absent(),
     this.tmdbId = const Value.absent(),
@@ -2516,6 +2634,7 @@ class TrackedMoviesCompanion extends UpdateCompanion<TrackedMovy> {
     this.releaseYear = const Value.absent(),
     this.releaseDate = const Value.absent(),
     this.addedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
   });
   TrackedMoviesCompanion.insert({
     this.id = const Value.absent(),
@@ -2529,6 +2648,7 @@ class TrackedMoviesCompanion extends UpdateCompanion<TrackedMovy> {
     this.releaseYear = const Value.absent(),
     this.releaseDate = const Value.absent(),
     required DateTime addedAt,
+    this.updatedAt = const Value.absent(),
   })  : tmdbId = Value(tmdbId),
         title = Value(title),
         status = Value(status),
@@ -2545,6 +2665,7 @@ class TrackedMoviesCompanion extends UpdateCompanion<TrackedMovy> {
     Expression<int>? releaseYear,
     Expression<DateTime>? releaseDate,
     Expression<DateTime>? addedAt,
+    Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2558,6 +2679,7 @@ class TrackedMoviesCompanion extends UpdateCompanion<TrackedMovy> {
       if (releaseYear != null) 'release_year': releaseYear,
       if (releaseDate != null) 'release_date': releaseDate,
       if (addedAt != null) 'added_at': addedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
     });
   }
 
@@ -2572,7 +2694,8 @@ class TrackedMoviesCompanion extends UpdateCompanion<TrackedMovy> {
       Value<String?>? userNotes,
       Value<int?>? releaseYear,
       Value<DateTime?>? releaseDate,
-      Value<DateTime>? addedAt}) {
+      Value<DateTime>? addedAt,
+      Value<DateTime?>? updatedAt}) {
     return TrackedMoviesCompanion(
       id: id ?? this.id,
       tmdbId: tmdbId ?? this.tmdbId,
@@ -2585,6 +2708,7 @@ class TrackedMoviesCompanion extends UpdateCompanion<TrackedMovy> {
       releaseYear: releaseYear ?? this.releaseYear,
       releaseDate: releaseDate ?? this.releaseDate,
       addedAt: addedAt ?? this.addedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -2625,6 +2749,9 @@ class TrackedMoviesCompanion extends UpdateCompanion<TrackedMovy> {
     if (addedAt.present) {
       map['added_at'] = Variable<DateTime>(addedAt.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     return map;
   }
 
@@ -2641,7 +2768,8 @@ class TrackedMoviesCompanion extends UpdateCompanion<TrackedMovy> {
           ..write('userNotes: $userNotes, ')
           ..write('releaseYear: $releaseYear, ')
           ..write('releaseDate: $releaseDate, ')
-          ..write('addedAt: $addedAt')
+          ..write('addedAt: $addedAt, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -2727,6 +2855,12 @@ class $TrackedGamesTable extends TrackedGames
   late final GeneratedColumn<double> voteAverage = GeneratedColumn<double>(
       'vote_average', aliasedName, true,
       type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -2740,7 +2874,8 @@ class $TrackedGamesTable extends TrackedGames
         releaseDate,
         playtime,
         platforms,
-        voteAverage
+        voteAverage,
+        updatedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2807,6 +2942,10 @@ class $TrackedGamesTable extends TrackedGames
           voteAverage.isAcceptableOrUnknown(
               data['vote_average']!, _voteAverageMeta));
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
     return context;
   }
 
@@ -2841,6 +2980,8 @@ class $TrackedGamesTable extends TrackedGames
           .read(DriftSqlType.string, data['${effectivePrefix}platforms']),
       voteAverage: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}vote_average']),
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at']),
     );
   }
 
@@ -2866,6 +3007,7 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
   final int? playtime;
   final String? platforms;
   final double? voteAverage;
+  final DateTime? updatedAt;
   const TrackedGame(
       {required this.id,
       required this.rawgId,
@@ -2878,7 +3020,8 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
       this.releaseDate,
       this.playtime,
       this.platforms,
-      this.voteAverage});
+      this.voteAverage,
+      this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2911,6 +3054,9 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
     if (!nullToAbsent || voteAverage != null) {
       map['vote_average'] = Variable<double>(voteAverage);
     }
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
     return map;
   }
 
@@ -2942,6 +3088,9 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
       voteAverage: voteAverage == null && nullToAbsent
           ? const Value.absent()
           : Value(voteAverage),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
     );
   }
 
@@ -2962,6 +3111,7 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
       playtime: serializer.fromJson<int?>(json['playtime']),
       platforms: serializer.fromJson<String?>(json['platforms']),
       voteAverage: serializer.fromJson<double?>(json['voteAverage']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
     );
   }
   @override
@@ -2981,6 +3131,7 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
       'playtime': serializer.toJson<int?>(playtime),
       'platforms': serializer.toJson<String?>(platforms),
       'voteAverage': serializer.toJson<double?>(voteAverage),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
     };
   }
 
@@ -2996,7 +3147,8 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
           Value<DateTime?> releaseDate = const Value.absent(),
           Value<int?> playtime = const Value.absent(),
           Value<String?> platforms = const Value.absent(),
-          Value<double?> voteAverage = const Value.absent()}) =>
+          Value<double?> voteAverage = const Value.absent(),
+          Value<DateTime?> updatedAt = const Value.absent()}) =>
       TrackedGame(
         id: id ?? this.id,
         rawgId: rawgId ?? this.rawgId,
@@ -3010,6 +3162,7 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
         playtime: playtime.present ? playtime.value : this.playtime,
         platforms: platforms.present ? platforms.value : this.platforms,
         voteAverage: voteAverage.present ? voteAverage.value : this.voteAverage,
+        updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
       );
   TrackedGame copyWithCompanion(TrackedGamesCompanion data) {
     return TrackedGame(
@@ -3028,6 +3181,7 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
       platforms: data.platforms.present ? data.platforms.value : this.platforms,
       voteAverage:
           data.voteAverage.present ? data.voteAverage.value : this.voteAverage,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -3045,7 +3199,8 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
           ..write('releaseDate: $releaseDate, ')
           ..write('playtime: $playtime, ')
           ..write('platforms: $platforms, ')
-          ..write('voteAverage: $voteAverage')
+          ..write('voteAverage: $voteAverage, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -3063,7 +3218,8 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
       releaseDate,
       playtime,
       platforms,
-      voteAverage);
+      voteAverage,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3079,7 +3235,8 @@ class TrackedGame extends DataClass implements Insertable<TrackedGame> {
           other.releaseDate == this.releaseDate &&
           other.playtime == this.playtime &&
           other.platforms == this.platforms &&
-          other.voteAverage == this.voteAverage);
+          other.voteAverage == this.voteAverage &&
+          other.updatedAt == this.updatedAt);
 }
 
 class TrackedGamesCompanion extends UpdateCompanion<TrackedGame> {
@@ -3095,6 +3252,7 @@ class TrackedGamesCompanion extends UpdateCompanion<TrackedGame> {
   final Value<int?> playtime;
   final Value<String?> platforms;
   final Value<double?> voteAverage;
+  final Value<DateTime?> updatedAt;
   const TrackedGamesCompanion({
     this.id = const Value.absent(),
     this.rawgId = const Value.absent(),
@@ -3108,6 +3266,7 @@ class TrackedGamesCompanion extends UpdateCompanion<TrackedGame> {
     this.playtime = const Value.absent(),
     this.platforms = const Value.absent(),
     this.voteAverage = const Value.absent(),
+    this.updatedAt = const Value.absent(),
   });
   TrackedGamesCompanion.insert({
     this.id = const Value.absent(),
@@ -3122,6 +3281,7 @@ class TrackedGamesCompanion extends UpdateCompanion<TrackedGame> {
     this.playtime = const Value.absent(),
     this.platforms = const Value.absent(),
     this.voteAverage = const Value.absent(),
+    this.updatedAt = const Value.absent(),
   })  : rawgId = Value(rawgId),
         title = Value(title),
         status = Value(status),
@@ -3139,6 +3299,7 @@ class TrackedGamesCompanion extends UpdateCompanion<TrackedGame> {
     Expression<int>? playtime,
     Expression<String>? platforms,
     Expression<double>? voteAverage,
+    Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3153,6 +3314,7 @@ class TrackedGamesCompanion extends UpdateCompanion<TrackedGame> {
       if (playtime != null) 'playtime': playtime,
       if (platforms != null) 'platforms': platforms,
       if (voteAverage != null) 'vote_average': voteAverage,
+      if (updatedAt != null) 'updated_at': updatedAt,
     });
   }
 
@@ -3168,7 +3330,8 @@ class TrackedGamesCompanion extends UpdateCompanion<TrackedGame> {
       Value<DateTime?>? releaseDate,
       Value<int?>? playtime,
       Value<String?>? platforms,
-      Value<double?>? voteAverage}) {
+      Value<double?>? voteAverage,
+      Value<DateTime?>? updatedAt}) {
     return TrackedGamesCompanion(
       id: id ?? this.id,
       rawgId: rawgId ?? this.rawgId,
@@ -3182,6 +3345,7 @@ class TrackedGamesCompanion extends UpdateCompanion<TrackedGame> {
       playtime: playtime ?? this.playtime,
       platforms: platforms ?? this.platforms,
       voteAverage: voteAverage ?? this.voteAverage,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -3225,6 +3389,9 @@ class TrackedGamesCompanion extends UpdateCompanion<TrackedGame> {
     if (voteAverage.present) {
       map['vote_average'] = Variable<double>(voteAverage.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     return map;
   }
 
@@ -3242,7 +3409,8 @@ class TrackedGamesCompanion extends UpdateCompanion<TrackedGame> {
           ..write('releaseDate: $releaseDate, ')
           ..write('playtime: $playtime, ')
           ..write('platforms: $platforms, ')
-          ..write('voteAverage: $voteAverage')
+          ..write('voteAverage: $voteAverage, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -4005,6 +4173,7 @@ typedef $$TrackedShowsTableCreateCompanionBuilder = TrackedShowsCompanion
   Value<int?> nextEpisodeSeason,
   Value<String?> nextEpisodeName,
   Value<DateTime?> nextEpisodeAirDate,
+  Value<DateTime?> updatedAt,
 });
 typedef $$TrackedShowsTableUpdateCompanionBuilder = TrackedShowsCompanion
     Function({
@@ -4026,6 +4195,7 @@ typedef $$TrackedShowsTableUpdateCompanionBuilder = TrackedShowsCompanion
   Value<int?> nextEpisodeSeason,
   Value<String?> nextEpisodeName,
   Value<DateTime?> nextEpisodeAirDate,
+  Value<DateTime?> updatedAt,
 });
 
 final class $$TrackedShowsTableReferences
@@ -4133,6 +4303,9 @@ class $$TrackedShowsTableFilterComposer
   ColumnFilters<DateTime> get nextEpisodeAirDate => $composableBuilder(
       column: $table.nextEpisodeAirDate,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 
   Expression<bool> trackedEpisodesRefs(
       Expression<bool> Function($$TrackedEpisodesTableFilterComposer f) f) {
@@ -4246,6 +4419,9 @@ class $$TrackedShowsTableOrderingComposer
   ColumnOrderings<DateTime> get nextEpisodeAirDate => $composableBuilder(
       column: $table.nextEpisodeAirDate,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$TrackedShowsTableAnnotationComposer
@@ -4310,6 +4486,9 @@ class $$TrackedShowsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get nextEpisodeAirDate => $composableBuilder(
       column: $table.nextEpisodeAirDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   Expression<T> trackedEpisodesRefs<T extends Object>(
       Expression<T> Function($$TrackedEpisodesTableAnnotationComposer a) f) {
@@ -4396,6 +4575,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             Value<int?> nextEpisodeSeason = const Value.absent(),
             Value<String?> nextEpisodeName = const Value.absent(),
             Value<DateTime?> nextEpisodeAirDate = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
           }) =>
               TrackedShowsCompanion(
             id: id,
@@ -4416,6 +4596,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             nextEpisodeSeason: nextEpisodeSeason,
             nextEpisodeName: nextEpisodeName,
             nextEpisodeAirDate: nextEpisodeAirDate,
+            updatedAt: updatedAt,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -4436,6 +4617,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             Value<int?> nextEpisodeSeason = const Value.absent(),
             Value<String?> nextEpisodeName = const Value.absent(),
             Value<DateTime?> nextEpisodeAirDate = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
           }) =>
               TrackedShowsCompanion.insert(
             id: id,
@@ -4456,6 +4638,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
             nextEpisodeSeason: nextEpisodeSeason,
             nextEpisodeName: nextEpisodeName,
             nextEpisodeAirDate: nextEpisodeAirDate,
+            updatedAt: updatedAt,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -4527,6 +4710,7 @@ typedef $$TrackedEpisodesTableCreateCompanionBuilder = TrackedEpisodesCompanion
   required int seasonNumber,
   required int episodeNumber,
   Value<bool> watched,
+  Value<DateTime?> updatedAt,
 });
 typedef $$TrackedEpisodesTableUpdateCompanionBuilder = TrackedEpisodesCompanion
     Function({
@@ -4535,6 +4719,7 @@ typedef $$TrackedEpisodesTableUpdateCompanionBuilder = TrackedEpisodesCompanion
   Value<int> seasonNumber,
   Value<int> episodeNumber,
   Value<bool> watched,
+  Value<DateTime?> updatedAt,
 });
 
 final class $$TrackedEpisodesTableReferences extends BaseReferences<
@@ -4578,6 +4763,9 @@ class $$TrackedEpisodesTableFilterComposer
 
   ColumnFilters<bool> get watched => $composableBuilder(
       column: $table.watched, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 
   $$TrackedShowsTableFilterComposer get showId {
     final $$TrackedShowsTableFilterComposer composer = $composerBuilder(
@@ -4623,6 +4811,9 @@ class $$TrackedEpisodesTableOrderingComposer
   ColumnOrderings<bool> get watched => $composableBuilder(
       column: $table.watched, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
   $$TrackedShowsTableOrderingComposer get showId {
     final $$TrackedShowsTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -4664,6 +4855,9 @@ class $$TrackedEpisodesTableAnnotationComposer
 
   GeneratedColumn<bool> get watched =>
       $composableBuilder(column: $table.watched, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   $$TrackedShowsTableAnnotationComposer get showId {
     final $$TrackedShowsTableAnnotationComposer composer = $composerBuilder(
@@ -4715,6 +4909,7 @@ class $$TrackedEpisodesTableTableManager extends RootTableManager<
             Value<int> seasonNumber = const Value.absent(),
             Value<int> episodeNumber = const Value.absent(),
             Value<bool> watched = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
           }) =>
               TrackedEpisodesCompanion(
             id: id,
@@ -4722,6 +4917,7 @@ class $$TrackedEpisodesTableTableManager extends RootTableManager<
             seasonNumber: seasonNumber,
             episodeNumber: episodeNumber,
             watched: watched,
+            updatedAt: updatedAt,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -4729,6 +4925,7 @@ class $$TrackedEpisodesTableTableManager extends RootTableManager<
             required int seasonNumber,
             required int episodeNumber,
             Value<bool> watched = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
           }) =>
               TrackedEpisodesCompanion.insert(
             id: id,
@@ -4736,6 +4933,7 @@ class $$TrackedEpisodesTableTableManager extends RootTableManager<
             seasonNumber: seasonNumber,
             episodeNumber: episodeNumber,
             watched: watched,
+            updatedAt: updatedAt,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -5341,6 +5539,7 @@ typedef $$TrackedMoviesTableCreateCompanionBuilder = TrackedMoviesCompanion
   Value<int?> releaseYear,
   Value<DateTime?> releaseDate,
   required DateTime addedAt,
+  Value<DateTime?> updatedAt,
 });
 typedef $$TrackedMoviesTableUpdateCompanionBuilder = TrackedMoviesCompanion
     Function({
@@ -5355,6 +5554,7 @@ typedef $$TrackedMoviesTableUpdateCompanionBuilder = TrackedMoviesCompanion
   Value<int?> releaseYear,
   Value<DateTime?> releaseDate,
   Value<DateTime> addedAt,
+  Value<DateTime?> updatedAt,
 });
 
 class $$TrackedMoviesTableFilterComposer
@@ -5400,6 +5600,9 @@ class $$TrackedMoviesTableFilterComposer
 
   ColumnFilters<DateTime> get addedAt => $composableBuilder(
       column: $table.addedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 }
 
 class $$TrackedMoviesTableOrderingComposer
@@ -5443,6 +5646,9 @@ class $$TrackedMoviesTableOrderingComposer
 
   ColumnOrderings<DateTime> get addedAt => $composableBuilder(
       column: $table.addedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$TrackedMoviesTableAnnotationComposer
@@ -5486,6 +5692,9 @@ class $$TrackedMoviesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get addedAt =>
       $composableBuilder(column: $table.addedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
 class $$TrackedMoviesTableTableManager extends RootTableManager<
@@ -5525,6 +5734,7 @@ class $$TrackedMoviesTableTableManager extends RootTableManager<
             Value<int?> releaseYear = const Value.absent(),
             Value<DateTime?> releaseDate = const Value.absent(),
             Value<DateTime> addedAt = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
           }) =>
               TrackedMoviesCompanion(
             id: id,
@@ -5538,6 +5748,7 @@ class $$TrackedMoviesTableTableManager extends RootTableManager<
             releaseYear: releaseYear,
             releaseDate: releaseDate,
             addedAt: addedAt,
+            updatedAt: updatedAt,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5551,6 +5762,7 @@ class $$TrackedMoviesTableTableManager extends RootTableManager<
             Value<int?> releaseYear = const Value.absent(),
             Value<DateTime?> releaseDate = const Value.absent(),
             required DateTime addedAt,
+            Value<DateTime?> updatedAt = const Value.absent(),
           }) =>
               TrackedMoviesCompanion.insert(
             id: id,
@@ -5564,6 +5776,7 @@ class $$TrackedMoviesTableTableManager extends RootTableManager<
             releaseYear: releaseYear,
             releaseDate: releaseDate,
             addedAt: addedAt,
+            updatedAt: updatedAt,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -5601,6 +5814,7 @@ typedef $$TrackedGamesTableCreateCompanionBuilder = TrackedGamesCompanion
   Value<int?> playtime,
   Value<String?> platforms,
   Value<double?> voteAverage,
+  Value<DateTime?> updatedAt,
 });
 typedef $$TrackedGamesTableUpdateCompanionBuilder = TrackedGamesCompanion
     Function({
@@ -5616,6 +5830,7 @@ typedef $$TrackedGamesTableUpdateCompanionBuilder = TrackedGamesCompanion
   Value<int?> playtime,
   Value<String?> platforms,
   Value<double?> voteAverage,
+  Value<DateTime?> updatedAt,
 });
 
 class $$TrackedGamesTableFilterComposer
@@ -5664,6 +5879,9 @@ class $$TrackedGamesTableFilterComposer
 
   ColumnFilters<double> get voteAverage => $composableBuilder(
       column: $table.voteAverage, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 }
 
 class $$TrackedGamesTableOrderingComposer
@@ -5710,6 +5928,9 @@ class $$TrackedGamesTableOrderingComposer
 
   ColumnOrderings<double> get voteAverage => $composableBuilder(
       column: $table.voteAverage, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$TrackedGamesTableAnnotationComposer
@@ -5756,6 +5977,9 @@ class $$TrackedGamesTableAnnotationComposer
 
   GeneratedColumn<double> get voteAverage => $composableBuilder(
       column: $table.voteAverage, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
 class $$TrackedGamesTableTableManager extends RootTableManager<
@@ -5796,6 +6020,7 @@ class $$TrackedGamesTableTableManager extends RootTableManager<
             Value<int?> playtime = const Value.absent(),
             Value<String?> platforms = const Value.absent(),
             Value<double?> voteAverage = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
           }) =>
               TrackedGamesCompanion(
             id: id,
@@ -5810,6 +6035,7 @@ class $$TrackedGamesTableTableManager extends RootTableManager<
             playtime: playtime,
             platforms: platforms,
             voteAverage: voteAverage,
+            updatedAt: updatedAt,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5824,6 +6050,7 @@ class $$TrackedGamesTableTableManager extends RootTableManager<
             Value<int?> playtime = const Value.absent(),
             Value<String?> platforms = const Value.absent(),
             Value<double?> voteAverage = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
           }) =>
               TrackedGamesCompanion.insert(
             id: id,
@@ -5838,6 +6065,7 @@ class $$TrackedGamesTableTableManager extends RootTableManager<
             playtime: playtime,
             platforms: platforms,
             voteAverage: voteAverage,
+            updatedAt: updatedAt,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

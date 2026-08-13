@@ -25,4 +25,5 @@ class TrackedShows extends Table {
   IntColumn get nextEpisodeSeason => integer().nullable()();
   TextColumn get nextEpisodeName => text().nullable()();
   DateTimeColumn get nextEpisodeAirDate => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
 }

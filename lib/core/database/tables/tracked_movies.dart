@@ -13,4 +13,5 @@ class TrackedMovies extends Table {
   IntColumn get releaseYear => integer().nullable()();
   DateTimeColumn get releaseDate => dateTime().nullable()();
   DateTimeColumn get addedAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
 }

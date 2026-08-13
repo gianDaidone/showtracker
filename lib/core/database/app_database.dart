@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -123,6 +123,19 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(trackedShows, trackedShows.nextEpisodeSeason);
             await m.addColumn(trackedShows, trackedShows.nextEpisodeName);
             await m.addColumn(trackedShows, trackedShows.nextEpisodeAirDate);
+          }
+          if (from < 13) {
+            await m.addColumn(trackedShows, trackedShows.updatedAt);
+            await m.addColumn(trackedGames, trackedGames.updatedAt);
+            await m.addColumn(trackedMovies, trackedMovies.updatedAt);
+            await m.addColumn(trackedEpisodes, trackedEpisodes.updatedAt);
+            
+            await customStatement('UPDATE tracked_shows SET updated_at = added_at WHERE updated_at IS NULL');
+            await customStatement('UPDATE tracked_games SET updated_at = added_at WHERE updated_at IS NULL');
+            await customStatement('UPDATE tracked_movies SET updated_at = added_at WHERE updated_at IS NULL');
+            
+            final nowUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+            await customStatement('UPDATE tracked_episodes SET updated_at = $nowUnix WHERE updated_at IS NULL');
           }
         },
       );

@@ -14,4 +14,5 @@ class TrackedGames extends Table {
   IntColumn get playtime => integer().nullable()();
   TextColumn get platforms => text().nullable()(); // JSON-encoded List<String>
   RealColumn get voteAverage => real().nullable()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
 }

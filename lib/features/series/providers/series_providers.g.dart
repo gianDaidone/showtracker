@@ -1039,7 +1039,7 @@ final watchingShowsWithEpisodesProvider =
 // ignore: unused_element
 typedef WatchingShowsWithEpisodesRef
     = AutoDisposeStreamProviderRef<List<ShowWithWatchedEpisodes>>;
-String _$upcomingEpisodesHash() => r'b9d65f003f2d90d8c17169b7ae3073f4cc54ff90';
+String _$upcomingEpisodesHash() => r'c7ae7d90038a49892ee666d920e31426736eb55b';
 
 /// See also [upcomingEpisodes].
 @ProviderFor(upcomingEpisodes)
@@ -1059,7 +1059,7 @@ final upcomingEpisodesProvider =
 typedef UpcomingEpisodesRef
     = AutoDisposeFutureProviderRef<List<UpcomingEpisodeInfo>>;
 String _$trackedShowsNotifierHash() =>
-    r'5f409c60668a4f19cecb89d1aa5e4119c027ec55';
+    r'3de233f51978d115a17c6ee7d8050a0d1a3d2edc';
 
 /// See also [TrackedShowsNotifier].
 @ProviderFor(TrackedShowsNotifier)

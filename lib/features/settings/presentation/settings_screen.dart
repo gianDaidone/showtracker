@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 import 'tmdb_account_section.dart';
 import 'rawg_account_section.dart';
 
@@ -81,6 +82,54 @@ class SettingsScreen extends StatelessWidget {
                   const TmdbAccountSection(),
                   const SizedBox(height: 16),
                   const RawgAccountSection(),
+                  const SizedBox(height: 32),
+                  const Text(
+                    'SINCRONIZZAZIONE DATI',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.divider),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.qr_code_scanner, color: AppColors.textPrimary, size: 24),
+                      ),
+                      title: const Text(
+                        'Trasferimento / Sync',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Sincronizza lo storico via QR Code',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                      onTap: () {
+                        context.push('/sync');
+                      },
+                    ),
+                  ),
                   const SizedBox(height: 32),
                   const Text(
                     'INFORMAZIONI SULL\'APP',

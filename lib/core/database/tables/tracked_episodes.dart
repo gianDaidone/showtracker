@@ -7,6 +7,7 @@ class TrackedEpisodes extends Table {
   IntColumn get seasonNumber => integer()();
   IntColumn get episodeNumber => integer()();
   BoolColumn get watched => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
 
   /// Ensures each episode is stored at most once per show.
   @override
