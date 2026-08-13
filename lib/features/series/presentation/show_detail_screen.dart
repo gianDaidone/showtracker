@@ -53,22 +53,18 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   @override
   void initState() {
     super.initState();
-    // Reschedule anime notification once when the detail page opens so that
-    // stale cached nextAiringEpisode data doesn't block scheduling.
-    if (widget.detail.isAnime && widget.detail.animeSeasonsData != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref
-            .read(trackedShowsNotifierProvider.notifier)
-            .rescheduleNotification(widget.detail);
-      });
-    }
-
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final trackedList = ref.read(trackedShowsNotifierProvider).valueOrNull ?? [];
       final trackedShow = trackedList.where((s) => s.tmdbId == widget.detail.id).firstOrNull;
       if (trackedShow != null) {
+        // Reschedule anime notification once when the detail page opens so that
+        // stale cached nextAiringEpisode data doesn't block scheduling.
+        if (widget.detail.isAnime && widget.detail.animeSeasonsData != null) {
+          ref
+              .read(trackedShowsNotifierProvider.notifier)
+              .rescheduleNotification(widget.detail);
+        }
         await ref.read(trackedShowsNotifierProvider.notifier).syncMetadata(widget.detail, trackedShow.id);
       }
     });
@@ -77,27 +73,27 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   @override
   void didUpdateWidget(_DetailBody oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Quando i dati anime arrivano per la prima volta dopo un refresh
-    // (animeSeasonsData passa da null a popolato), riprogramma la notifica
-    // con l'orario preciso AniList: initState non si rinnova sui rebuild.
     final wasMissing = oldWidget.detail.animeSeasonsData == null;
     final isPresent = widget.detail.animeSeasonsData != null;
-    if (widget.detail.isAnime && wasMissing && isPresent) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref
-            .read(trackedShowsNotifierProvider.notifier)
-            .rescheduleNotification(widget.detail);
-      });
-    }
+    final shouldReschedule = widget.detail.isAnime && wasMissing && isPresent;
 
-    if (oldWidget.detail != widget.detail) {
+    if (shouldReschedule || oldWidget.detail != widget.detail) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
         final trackedList = ref.read(trackedShowsNotifierProvider).valueOrNull ?? [];
         final trackedShow = trackedList.where((s) => s.tmdbId == widget.detail.id).firstOrNull;
         if (trackedShow != null) {
-          await ref.read(trackedShowsNotifierProvider.notifier).syncMetadata(widget.detail, trackedShow.id);
+          if (shouldReschedule) {
+            // Quando i dati anime arrivano per la prima volta dopo un refresh
+            // (animeSeasonsData passa da null a popolato), riprogramma la notifica
+            // con l'orario preciso AniList: initState non si rinnova sui rebuild.
+            ref
+                .read(trackedShowsNotifierProvider.notifier)
+                .rescheduleNotification(widget.detail);
+          }
+          if (oldWidget.detail != widget.detail) {
+            await ref.read(trackedShowsNotifierProvider.notifier).syncMetadata(widget.detail, trackedShow.id);
+          }
         }
       });
     }
