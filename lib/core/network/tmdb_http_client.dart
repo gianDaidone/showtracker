@@ -1,7 +1,7 @@
 import 'package:http/http.dart' as http;
 import '../auth/auth_state.dart';
 import '../auth/rawg_auth_state.dart';
-import '../constants.dart';
+import '../constants/api_keys.dart';
 
 class AppInterceptor extends http.BaseClient {
   final http.Client _inner;
@@ -22,11 +22,11 @@ class AppInterceptor extends http.BaseClient {
           queryParams['api_key'] = apiKey;
           break;
         case AuthenticatedWithSession(:final sessionId):
-          queryParams['api_key'] = kTmdbApiKey; 
+          queryParams['api_key'] = ApiKeys.tmdb; 
           queryParams['session_id'] = sessionId;
           break;
         case Unauthenticated():
-          queryParams['api_key'] = kTmdbApiKey; 
+          queryParams['api_key'] = ApiKeys.tmdb; 
           break;
         case null:
           break;
@@ -43,7 +43,7 @@ class AppInterceptor extends http.BaseClient {
           queryParams['key'] = apiKey;
           break;
         case RawgUnauthenticated():
-          queryParams['key'] = kRawgApiKey;
+          queryParams['key'] = ApiKeys.rawg;
           break;
         case null:
           break;

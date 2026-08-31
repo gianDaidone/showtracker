@@ -28,7 +28,8 @@ Thumbs.db
 
 # Environment / secrets
 *.env
-dart_defines/
+dart_defines/*
+!dart_defines/*.example.json
 
 # Database
 db.sqlite

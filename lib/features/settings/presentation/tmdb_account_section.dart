@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/auth/auth_state.dart';
-import '../../../core/constants.dart';
+import '../../../core/constants/api_keys.dart';
 import '../../../core/theme/app_theme.dart';
 
 class TmdbAccountSection extends ConsumerWidget {
@@ -14,7 +14,7 @@ class TmdbAccountSection extends ConsumerWidget {
     
     if (state is AuthenticatedWithSession) {
       try {
-        final url = Uri.parse('https://api.themoviedb.org/3/authentication/session?api_key=$kTmdbApiKey');
+        final url = Uri.parse('https://api.themoviedb.org/3/authentication/session?api_key=${ApiKeys.tmdb}');
         await http.delete(
           url,
           headers: {'Content-Type': 'application/json'},

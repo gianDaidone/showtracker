@@ -6,6 +6,7 @@ import 'app.dart';
 import 'core/services/notification_service.dart';
 import 'widgets_manager.dart';
 import 'features/series/providers/series_providers.dart';
+import 'core/constants/api_keys.dart';
 
 void main() async {
   runZoned(() async {
@@ -13,6 +14,17 @@ void main() async {
     
     if (kReleaseMode) {
       debugPrint = (String? message, {int? wrapWidth}) {};
+    }
+
+    // I --dart-define sono compile-time: se l'app viene avviata senza passarli,
+    // ApiKeys.tmdb resta vuota e OGNI chiamata a TMDB risponde 401. Senza
+    // questo avviso il sintomo è una schermata vuota senza spiegazione.
+    if (kDebugMode && ApiKeys.tmdb.isEmpty) {
+      debugPrint(
+        '⚠️  TMDB_KEY non definita: le chiamate a TMDB falliranno con 401.\n'
+        '    Avvia con: flutter run --dart-define-from-file=dart_defines/dev.json\n'
+        '    In Android Studio: Run > Edit Configurations > Additional run args.',
+      );
     }
 
     await NotificationService.init();

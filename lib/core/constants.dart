@@ -1,11 +1,9 @@
-/// Chiave API per TMDB.
-const kTmdbApiKey = '***REMOVED***';
+// Le chiavi API non vivono più qui: vedi `constants/api_keys.dart`, che le
+// legge dai `--dart-define` (TMDB_KEY, RAWG_KEY). Non reintrodurre segreti in
+// questo file — è tracciato da git.
 
 /// Base URL per le immagini TMDB.
 const kTmdbImageBase = 'https://image.tmdb.org/t/p';
-
-/// Chiave API per RAWG (videogiochi).
-const kRawgApiKey = 'INSERISCI_QUI_LA_TUA_API_KEY_RAWG';
 
 /// Feature flag per abilitare/disabilitare i videogiochi.
 /// Di default è disabilitato (false) finché non sarà pronta un'infrastruttura sicura.

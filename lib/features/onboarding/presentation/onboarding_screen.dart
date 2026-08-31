@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/rawg_auth_state.dart';
-import '../../../core/constants.dart';
+import '../../../core/constants/api_keys.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -62,14 +62,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<String> _createRequestToken() async {
-    final url = Uri.parse('https://api.themoviedb.org/3/authentication/token/new?api_key=$kTmdbApiKey');
+    final url = Uri.parse('https://api.themoviedb.org/3/authentication/token/new?api_key=${ApiKeys.tmdb}');
     final response = await http.get(url);
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return data['request_token'];
     } else {
       if (response.statusCode == 401) {
-        throw Exception('Non autorizzato. Hai inserito la tua API Key TMDB in constants.dart?');
+        throw Exception('Chiave TMDB mancante o non valida. Compila con --dart-define=TMDB_KEY=la_tua_chiave');
       }
       throw Exception('Failed to create request token: ${response.statusCode}');
     }
@@ -83,7 +83,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       if (approved == 'true' && requestToken != null) {
         setState(() => _isLoading = true);
         try {
-          final sessionUrl = Uri.parse('https://api.themoviedb.org/3/authentication/session/new?api_key=$kTmdbApiKey');
+          final sessionUrl = Uri.parse('https://api.themoviedb.org/3/authentication/session/new?api_key=${ApiKeys.tmdb}');
           final response = await http.post(
             sessionUrl,
             headers: {'Content-Type': 'application/json'},
