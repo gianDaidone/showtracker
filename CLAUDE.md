@@ -99,7 +99,9 @@ A show is anime when `TmdbShowDetail.isAnime`: Animation genre (matched in Engli
 
 `showDetailProvider` then synthesises a `TmdbSeason` list from the normalised data (splitting a TMDB season into "Parte N · cour label" entries) so the existing season UI works unchanged. TMDB often groups multiple cours into one season, so raw TMDB episode totals are wrong for anime — `addShow` deliberately awaits AniList data before persisting totals.
 
-Cache TTLs are content-aware (`_seasonCacheTtl` + `NormalizedAnimeSeason.cacheTtl`): ended/cancelled → 30 days, current season → 1 day, older seasons → 7 days.
+Cache TTLs are content-aware (`_seasonCacheTtl` + `NormalizedAnimeSeason.cacheTtl`): ended/cancelled → 30 days, current season → 1 day, older seasons → 7 days. A `RELEASING` cour's TTL expires *at the next episode's airing time*, so the expensive path runs exactly when the user opens the app to mark that episode watched.
+
+**Anime data must never silently degrade to raw TMDB.** Cour numbers are synthetic (1..N) and watched episodes are stored against them, so raw TMDB seasons are a different, incompatible numbering — falling back to them shows nonsense ratios ("11/23"), 404s `seasonDetail` on cours TMDB doesn't have, and corrupts `TrackedSeasons` on the next sync. Hence: `animeData` falls back to `getStaleAnimeSeasons` (expired cache) rather than returning null; `seasonDetail` refuses to ask TMDB for a season number TMDB doesn't list; and `syncMetadata` is a no-op when `isAnime && animeSeasonsData == null`.
 
 ### Notifications
 
