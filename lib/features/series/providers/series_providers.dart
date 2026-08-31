@@ -87,7 +87,6 @@ Future<List<NormalizedAnimeSeason>?> animeData(
   int tmdbId,
 ) async {
   final animeCacheDao = ref.read(animeCacheDaoProvider);
-  final tmdbSvc = ref.read(tmdbServiceProvider);
 
   // 1. Check cache
   final cached = await animeCacheDao.getFreshAnimeSeasons(tmdbId);
@@ -95,60 +94,92 @@ Future<List<NormalizedAnimeSeason>?> animeData(
 
   // 2. Fetch fresh from Yuna + AniList
   try {
-    final yunaSvc = ref.read(yunaServiceProvider);
-    final anilistSvc = ref.read(anilistServiceProvider);
-
-    // 2a. Yuna mapping: TMDB ID → AniList IDs
-    var anilistIds = await animeCacheDao.getYunaIds(tmdbId);
-    if (anilistIds == null) {
-      anilistIds = await yunaSvc.getAniListIds(tmdbId);
-      await animeCacheDao.saveYunaIds(tmdbId, anilistIds);
+    final seasons = await _fetchAnimeSeasons(ref, tmdbId);
+    if (seasons != null) {
+      await animeCacheDao.saveAnimeSeasons(tmdbId, seasons);
+      return seasons;
     }
-
-    // 2b. If Yuna has no mapping, try searching by title
-    if (anilistIds.isEmpty) {
-      final detail = await tmdbSvc.getShowDetails(tmdbId);
-      final found = await _searchAniListByTmdbTitles(anilistSvc, detail);
-      if (found != null) anilistIds = [found.id];
-    }
-
-    if (anilistIds.isEmpty) return null;
-
-    // 2c. Fetch AniList media for each ID
-    var anilistMedia = await anilistSvc.fetchBatch(anilistIds);
-
-    // 2c-bis. Resilienza: se gli ID Yuna non hanno restituito media validi
-    // (mapping obsoleto, ID errati, anime appena annunciato non ancora
-    // indicizzato) riprova con la ricerca per titolo prima di arrenderti.
-    if (anilistMedia.isEmpty) {
-      final detail = await tmdbSvc.getShowDetails(tmdbId);
-      final found = await _searchAniListByTmdbTitles(anilistSvc, detail);
-      if (found != null) {
-        anilistMedia = [found];
-        // Sostituisci il mapping Yuna stale con l'ID corretto trovato per
-        // titolo, così le successive richieste passano subito da AniList.
-        await animeCacheDao.saveYunaIds(tmdbId, [found.id]);
-      }
-    }
-
-    if (anilistMedia.isEmpty) return null;
-
-    // 2d. Merge with TMDB season structure
-    final detail = await tmdbSvc.getShowDetails(tmdbId);
-    final seasons = AnimeDataMerger.merge(
-      tmdbSeasons: detail.seasons,
-      anilistMedia: anilistMedia,
-    );
-
-    if (seasons.isEmpty) return null;
-
-    // 2e. Persist to cache
-    await animeCacheDao.saveAnimeSeasons(tmdbId, seasons);
-
-    return seasons;
   } catch (_) {
-    return null;
+    // Gestito dal fallback qui sotto.
   }
+
+  // 3. Fallback: la cache è scaduta ma il refresh non ha prodotto nulla (rete
+  // assente, Yuna/AniList non raggiungibili, rate limit). Restituire null
+  // farebbe ricadere `showDetail` sulle stagioni TMDB grezze, che per un anime
+  // usano una numerazione diversa da quella dei cours con cui sono salvati gli
+  // episodi visti: l'utente vedrebbe conteggi senza senso ("11/23") e card
+  // rotte. I dati stantii restano coerenti, quindi sono la scelta migliore.
+  //
+  // NB: la TTL di un cour RELEASING scade esattamente all'ora di messa in onda
+  // dell'episodio successivo, quindi questo percorso è tutt'altro che raro —
+  // è proprio il momento in cui l'utente apre l'app per segnare il nuovo
+  // episodio.
+  return animeCacheDao.getStaleAnimeSeasons(tmdbId);
+}
+
+/// Scarica e normalizza le stagioni AniList per [tmdbId].
+///
+/// Restituisce null quando non c'è alcun dato utilizzabile; solleva l'eccezione
+/// originale in caso di errore di rete, così il chiamante può distinguere
+/// "nessun dato" da "richiesta fallita".
+Future<List<NormalizedAnimeSeason>?> _fetchAnimeSeasons(
+  AnimeDataRef ref,
+  int tmdbId,
+) async {
+  final animeCacheDao = ref.read(animeCacheDaoProvider);
+  final tmdbSvc = ref.read(tmdbServiceProvider);
+  final yunaSvc = ref.read(yunaServiceProvider);
+  final anilistSvc = ref.read(anilistServiceProvider);
+
+  // Il detail TMDB serve fino a tre volte qui sotto e ogni chiamata sono due
+  // richieste HTTP (it-IT + en-US): memoizziamo la Future così ne parte una sola.
+  Future<TmdbShowDetail>? detailFuture;
+  Future<TmdbShowDetail> showDetails() =>
+      detailFuture ??= tmdbSvc.getShowDetails(tmdbId);
+
+  // 2a. Yuna mapping: TMDB ID → AniList IDs
+  var anilistIds = await animeCacheDao.getYunaIds(tmdbId);
+  if (anilistIds == null) {
+    anilistIds = await yunaSvc.getAniListIds(tmdbId);
+    await animeCacheDao.saveYunaIds(tmdbId, anilistIds);
+  }
+
+  // 2b. If Yuna has no mapping, try searching by title
+  if (anilistIds.isEmpty) {
+    final found =
+        await _searchAniListByTmdbTitles(anilistSvc, await showDetails());
+    if (found != null) anilistIds = [found.id];
+  }
+
+  if (anilistIds.isEmpty) return null;
+
+  // 2c. Fetch AniList media for each ID
+  var anilistMedia = await anilistSvc.fetchBatch(anilistIds);
+
+  // 2c-bis. Resilienza: se gli ID Yuna non hanno restituito media validi
+  // (mapping obsoleto, ID errati, anime appena annunciato non ancora
+  // indicizzato) riprova con la ricerca per titolo prima di arrenderti.
+  if (anilistMedia.isEmpty) {
+    final found =
+        await _searchAniListByTmdbTitles(anilistSvc, await showDetails());
+    if (found != null) {
+      anilistMedia = [found];
+      // Sostituisci il mapping Yuna stale con l'ID corretto trovato per
+      // titolo, così le successive richieste passano subito da AniList.
+      await animeCacheDao.saveYunaIds(tmdbId, [found.id]);
+    }
+  }
+
+  if (anilistMedia.isEmpty) return null;
+
+  // 2d. Merge with TMDB season structure
+  final detail = await showDetails();
+  final seasons = AnimeDataMerger.merge(
+    tmdbSeasons: detail.seasons,
+    anilistMedia: anilistMedia,
+  );
+
+  return seasons.isEmpty ? null : seasons;
 }
 
 /// Cerca l'anime su AniList provando prima il nome localizzato (TMDB it-IT
@@ -354,6 +385,18 @@ Future<TmdbSeason> seasonDetail(
   }
 
   // ── Standard TMDB path ─────────────────────────────────────────────────────
+
+  // Per gli anime i numeri di stagione sono cours sintetici (1..N) che non
+  // corrispondono alle stagioni TMDB. Se arriviamo qui con un anime significa
+  // che l'arricchimento AniList non è disponibile: chiedere a TMDB una stagione
+  // che non esiste (es. la 5 quando TMDB ne ha 3) risponde 404, il provider
+  // finisce in errore e la card mostra un episodio senza titolo né immagine.
+  // Meglio dichiarare la stagione vuota e riprovare al prossimo refresh.
+  if (detail.isAnime &&
+      !detail.seasons.any((s) => s.seasonNumber == seasonNumber)) {
+    return TmdbSeason(seasonNumber: seasonNumber, episodeCount: 0);
+  }
+
   final ttl = _seasonCacheTtl(show?.tmdbStatus, seasonNumber, show?.totalSeasons);
 
   // Compute 09:00 airingAt for the next airing episode of this season.
@@ -563,17 +606,26 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
     }
   }
 
-  Future<void> syncMetadata(TmdbShowDetail detail, int dbId, {bool clearCache = true}) async {
+  /// Allinea i metadati salvati (totali, stagioni, prossimo episodio) al
+  /// [detail] appena caricato.
+  ///
+  /// Non svuota le cache: è il pulsante di refresh nella pagina dettaglio a
+  /// farlo quando l'utente lo chiede esplicitamente. Farlo qui significherebbe
+  /// cancellare episodi e mapping AniList a ogni apertura della pagina — e
+  /// quindi pagare un fetch completo (Yuna + N query AniList + stagioni TMDB)
+  /// al successivo accesso alla lista.
+  Future<void> syncMetadata(TmdbShowDetail detail, int dbId) async {
     final show = await ref.read(showsDaoProvider).getById(dbId);
     if (show == null) return;
-    
-    if (clearCache) {
-      // Forza la pulizia della cache locale per la serie, così forziamo un refresh 
-      // dal web ed evitiamo problemi di mapping sporco (es. Episodio 0)
-      await ref.read(cacheDaoProvider).clearCacheForShow(show.tmdbId);
-      await ref.read(animeCacheDaoProvider).clearAnimeCacheForShow(show.tmdbId);
-    }
-    
+
+    // Per un anime la struttura in stagioni viene da AniList (un cour per
+    // stagione). Se `animeSeasonsData` è null l'arricchimento non è disponibile
+    // e `detail` contiene la suddivisione TMDB grezza, che raggruppa più cours:
+    // scriverla sovrascriverebbe i conteggi corretti con numeri di stagione
+    // incompatibili con quelli degli episodi visti (da cui "11/23", "12/24").
+    // Meglio non toccare nulla e riprovare quando AniList torna disponibile.
+    if (detail.isAnime && detail.animeSeasonsData == null) return;
+
     // Per gli anime, usa la somma degli episodi dalle stagioni sintetiche AniList
     // invece del numberOfEpisodes TMDB grezzo (che può escludere cours futuri).
     final effectiveTotal = _effectiveTotalEpisodes(detail);
@@ -677,7 +729,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
       try {
         final detail = await ref.read(showDetailProvider(show.tmdbId).future);
         // Aggiorna anche il database con il prossimo episodio, ma non cancellare la cache!
-        await syncMetadata(detail, show.id, clearCache: false);
+        await syncMetadata(detail, show.id);
         await _scheduleNotification(detail);
       } catch (_) {}
       

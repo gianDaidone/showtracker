@@ -40,25 +40,43 @@ class AnimeCacheDao extends DatabaseAccessor<AppDatabase>
       int tmdbShowId) async {
     final now = DateTime.now();
     // Ottieni tutte le stagioni in cache per questo show
-    final rows = await (select(animeSeasonCache)
-          ..where((t) => t.tmdbShowId.equals(tmdbShowId))
-          ..orderBy([(t) => OrderingTerm.asc(t.seasonNumber)]))
-        .get();
-        
+    final rows = await _seasonRows(tmdbShowId);
+
     if (rows.isEmpty) return null;
-    
+
     // Se anche solo una stagione è scaduta, invalida tutta la cache.
     // Questo previene il bug in cui una stagione in corso scade prima delle
     // stagioni concluse, scomparendo silenziosamente dall'interfaccia.
     if (rows.any((r) => r.validUntil.isBefore(now) || r.validUntil.isAtSameMomentAs(now))) {
       return null;
     }
-    
-    return rows
-        .map((r) => NormalizedAnimeSeason.fromJson(
-            jsonDecode(r.animeSeasonJson) as Map<String, dynamic>))
-        .toList();
+
+    return rows.map(_decodeSeason).toList();
   }
+
+  /// Come [getFreshAnimeSeasons] ma ignora la scadenza.
+  ///
+  /// Serve da fallback offline-first quando il refresh da Yuna/AniList
+  /// fallisce: dati stantii sono molto meglio di nessun dato. Senza AniList la
+  /// serie ricadrebbe sulla suddivisione in stagioni di TMDB, che per gli anime
+  /// raggruppa più cours in una sola stagione e usa quindi numeri di stagione
+  /// incompatibili con quelli con cui sono salvati gli episodi visti.
+  Future<List<NormalizedAnimeSeason>?> getStaleAnimeSeasons(
+      int tmdbShowId) async {
+    final rows = await _seasonRows(tmdbShowId);
+    if (rows.isEmpty) return null;
+    return rows.map(_decodeSeason).toList();
+  }
+
+  Future<List<AnimeSeasonCacheData>> _seasonRows(int tmdbShowId) =>
+      (select(animeSeasonCache)
+            ..where((t) => t.tmdbShowId.equals(tmdbShowId))
+            ..orderBy([(t) => OrderingTerm.asc(t.seasonNumber)]))
+          .get();
+
+  NormalizedAnimeSeason _decodeSeason(AnimeSeasonCacheData row) =>
+      NormalizedAnimeSeason.fromJson(
+          jsonDecode(row.animeSeasonJson) as Map<String, dynamic>);
 
   /// True if the earliest-expiring season has consumed >80% of its TTL.
   Future<bool> isNearExpiry(int tmdbShowId) async {
