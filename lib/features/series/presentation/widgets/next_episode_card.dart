@@ -15,6 +15,63 @@ import 'episode_detail_sheet.dart';
 
 enum _MarkState { idle, marking, success }
 
+// ── "L'episodio è già uscito?" ────────────────────────────────────────────────
+
+/// Verdetto di AniList sulla messa in onda di [episode] nella stagione
+/// (cour) [season]: true = già uscito, false = non ancora, null = non lo sappiamo.
+///
+/// AniList è la fonte autorevole sul calendario degli anime e conosce i nuovi
+/// episodi prima di TMDB, che può ritardare di un giorno nel pubblicarli.
+bool? _anilistHasAired(
+  List<NormalizedAnimeSeason>? animeSeasonsData,
+  int season,
+  int episode,
+) {
+  final s =
+      animeSeasonsData?.where((x) => x.seasonNumber == season).firstOrNull;
+  if (s == null) return null;
+
+  final next = s.nextAiringEpisode;
+  if (next != null) {
+    // `nextAiringEpisode.episode` è relativo al cour, come i nostri numeri.
+    if (episode == next.episode) {
+      return !next.airingDateTime.isAfter(DateTime.now());
+    }
+    if (episode < next.episode) return true;
+    // Oltre il prossimo episodio in programma: se i dati in cache sono stantii
+    // potrebbe essere uscito comunque, quindi ci asteniamo.
+    return null;
+  }
+
+  // Nessuna prossima messa in onda: se il cour è finito, tutti i suoi episodi
+  // sono usciti.
+  if (s.status == 'FINISHED' || s.status == 'CANCELLED') {
+    return s.episodeCount > 0 ? episode <= s.episodeCount : null;
+  }
+  return null;
+}
+
+/// Verdetto basato solo sui dati salvati in locale, usato quando né AniList né
+/// TMDB sanno dirci nulla (offline, richiesta fallita).
+///
+/// Replica la regola di `visibleWatchingShowsProvider`, che decide quante card
+/// contare nell'intestazione: tenendole allineate evitiamo intestazioni tipo
+/// "Da Vedere (2)" con una sola card visibile.
+bool _existsPerDatabase(
+  TrackedShow show,
+  Map<int, int> dbSeasonCounts,
+  int season,
+  int episode,
+) {
+  final count = dbSeasonCounts[season] ?? 0;
+  if (count <= 0 || episode > count) return false;
+  if (show.nextEpisodeSeason == season && show.nextEpisodeNumber == episode) {
+    final airDate = show.nextEpisodeAirDate;
+    return airDate != null && !airDate.isAfter(DateTime.now());
+  }
+  return true;
+}
+
 // ── Card principale ───────────────────────────────────────────────────────────
 
 class NextEpisodeCard extends ConsumerStatefulWidget {
@@ -221,10 +278,25 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       }
     }
 
-    // Se i dati della stagione sono caricati ma l'episodio non è ancora
-    // uscito, non mostrare la card (l'episodio apparirà in "In Uscita").
-    if (seasonAsync.hasValue && nextEpisode != null && !nextEpisode.hasAired) {
-      return const SizedBox.shrink();
+    // ── L'episodio è già uscito? ───────────────────────────────────────────
+    // TMDB fornisce i metadati estetici dell'episodio (titolo, immagine), ma
+    // non è la fonte della verità su cosa sia già andato in onda: pubblica i
+    // nuovi episodi degli anime con un ritardo che può arrivare a un giorno, e
+    // la richiesta può fallire del tutto (404 su un cour che TMDB non conosce,
+    // rete assente). Consultiamo quindi tutte le fonti disponibili e mostriamo
+    // la card se una di esse conferma l'uscita: senza titolo e immagine, ma
+    // pronta per essere segnata come vista.
+    final airedPerAniList =
+        _anilistHasAired(detail?.animeSeasonsData, nextSeason, nextEp);
+    final airedPerTmdb = nextEpisode?.hasAired;
+
+    final bool hasAired;
+    if (airedPerAniList == true || airedPerTmdb == true) {
+      hasAired = true;
+    } else if (airedPerAniList == false || airedPerTmdb == false) {
+      hasAired = false;
+    } else {
+      hasAired = _existsPerDatabase(show, dbSeasonCounts, nextSeason, nextEp);
     }
 
     // ── Logica di completamento ────────────────────────────────────────────
@@ -243,32 +315,25 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
                 (as_.status == 'RELEASING' || as_.status == 'NOT_YET_RELEASED')))
         : (total != null && watchedCount >= total);
 
-    if (isCompleted) {
-      if (seasonAsync.hasValue && nextEpisode != null && nextEpisode.hasAired) {
-        // Ignora il completamento, c'è un nuovo episodio da guardare!
-      } else {
-        final isTerminata = show.tmdbStatus == 'Ended' || show.tmdbStatus == 'Canceled';
-        if (isTerminata) {
-          return _CardShell(
-            show: show,
-            loading: false,
-            child: _CompletedContent(
-              show: show,
-              watchedCount: watchedCount,
-              onMarkCompleted: _markCompleted,
-            ),
-          );
-        } else {
-          return const SizedBox.shrink();
-        }
-      }
+    // Serie finita e vista tutta: la card riepiloga e offre "Completata".
+    // Se però è uscito un nuovo episodio il completamento va ignorato.
+    if (isCompleted && !hasAired) {
+      final isTerminata =
+          show.tmdbStatus == 'Ended' || show.tmdbStatus == 'Canceled';
+      if (!isTerminata) return const SizedBox.shrink();
+      return _CardShell(
+        show: show,
+        loading: false,
+        child: _CompletedContent(
+          show: show,
+          watchedCount: watchedCount,
+          onMarkCompleted: _markCompleted,
+        ),
+      );
     }
 
-    // Se l'episodio richiesto non esiste (es: stagione in corso ma nessun episodio caricato)
-    // nascondi la card. L'episodio apparirà in "In Uscita" quando avrà una data.
-    if (seasonAsync.hasValue && nextEpisode == null) {
-      return const SizedBox.shrink();
-    }
+    // Episodio non ancora uscito: niente card, apparirà in "In Uscita".
+    if (!hasAired) return const SizedBox.shrink();
 
 
 
