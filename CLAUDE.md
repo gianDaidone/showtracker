@@ -44,6 +44,10 @@ All shared state is Riverpod; no `setState` beyond local widget state. Services 
 
 `lib/features/series/providers/series_providers.dart` (~880 lines) is the centre of gravity: it owns `TrackedShowsNotifier` (add/remove/status/`syncMetadata` + notification scheduling) plus the cached `showDetail`/`seasonDetail`/`animeData` chain. Read it before changing series behaviour.
 
+**The "Da Vedere" list has exactly one authority.** `visibleWatchingShowsProvider` (same file) decides which watching shows have something to watch; the list *and* the "Da Vedere (n)" header are the same value, and `NextEpisodeCard` applies the same rules — `lib/features/series/data/watch_next_rules.dart`, shared by both — so a card can never hide itself while the header still counts it. When the card ends up with fresher TMDB data than the provider had and hides anyway, it invalidates the provider once to let the count catch up. Never reimplement "which episode is next" or "has it aired" in either place; change the rules file.
+
+Related: the denormalised `TrackedShows.nextEpisode*` pointer must never lag behind an already-aired episode — `TrackedShowsNotifier._resolveNextEpisode` advances past it, because TMDB's `next_episode_to_air` keeps pointing at the just-aired episode for hours. A stale pointer suppresses the notification, lists an aired episode under "In Uscita", and breaks the offline "has it aired?" fallback.
+
 ### Database — Drift (SQLite)
 
 `lib/core/database/app_database.dart` — single `AppDatabase` singleton (`AppDatabase.instance`), schema **v13**. Tables: `TrackedShows`, `TrackedEpisodes`, `TrackedSeasons`, `TrackedMovies`, `TrackedGames`, `CachedEpisodes`, `YunaCache`, `AnimeSeasonCache`. DAOs (`ShowsDao`, `MoviesDao`, `GamesDao`, `CacheDao`, `AnimeCacheDao`) are exposed as Riverpod providers from `lib/core/database/database_provider.dart`.
