@@ -28,6 +28,25 @@ class CacheDao extends DatabaseAccessor<AppDatabase> with _$CacheDaoMixin {
         .get();
   }
 
+  /// Come [getFreshSeasonEpisodes] ma ignora la scadenza.
+  ///
+  /// Serve a decidere offline se un episodio è già andato in onda: la data di
+  /// messa in onda è la parte più stabile del payload TMDB, quindi un dato
+  /// stantio è comunque molto meglio di nessun dato (e ci evita di scatenare
+  /// una richiesta di rete solo per contare le card della lista "Da Vedere").
+  Future<List<CachedEpisode>> getSeasonEpisodesIgnoringTtl(
+    int tmdbShowId,
+    int seasonNumber,
+  ) =>
+      (select(cachedEpisodes)
+            ..where(
+              (t) =>
+                  t.tmdbShowId.equals(tmdbShowId) &
+                  t.seasonNumber.equals(seasonNumber),
+            )
+            ..orderBy([(t) => OrderingTerm.asc(t.episodeNumber)]))
+          .get();
+
   /// Salva (o aggiorna) i dettagli degli episodi di una stagione in cache.
   Future<void> saveSeasonEpisodes(List<CachedEpisodesCompanion> rows) async {
     await transaction(() async {

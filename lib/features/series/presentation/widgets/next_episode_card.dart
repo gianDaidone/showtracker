@@ -7,70 +7,13 @@ import '../../../../core/database/app_database.dart';
 import '../../../../core/database/database_provider.dart';
 import '../../../../core/services/app_toast.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../data/models/normalized_anime_season.dart';
+import '../../data/watch_next_rules.dart';
 import '../../providers/series_providers.dart';
 import 'episode_detail_sheet.dart';
 
 // ── Stati del pulsante ────────────────────────────────────────────────────────
 
 enum _MarkState { idle, marking, success }
-
-// ── "L'episodio è già uscito?" ────────────────────────────────────────────────
-
-/// Verdetto di AniList sulla messa in onda di [episode] nella stagione
-/// (cour) [season]: true = già uscito, false = non ancora, null = non lo sappiamo.
-///
-/// AniList è la fonte autorevole sul calendario degli anime e conosce i nuovi
-/// episodi prima di TMDB, che può ritardare di un giorno nel pubblicarli.
-bool? _anilistHasAired(
-  List<NormalizedAnimeSeason>? animeSeasonsData,
-  int season,
-  int episode,
-) {
-  final s =
-      animeSeasonsData?.where((x) => x.seasonNumber == season).firstOrNull;
-  if (s == null) return null;
-
-  final next = s.nextAiringEpisode;
-  if (next != null) {
-    // `nextAiringEpisode.episode` è relativo al cour, come i nostri numeri.
-    if (episode == next.episode) {
-      return !next.airingDateTime.isAfter(DateTime.now());
-    }
-    if (episode < next.episode) return true;
-    // Oltre il prossimo episodio in programma: se i dati in cache sono stantii
-    // potrebbe essere uscito comunque, quindi ci asteniamo.
-    return null;
-  }
-
-  // Nessuna prossima messa in onda: se il cour è finito, tutti i suoi episodi
-  // sono usciti.
-  if (s.status == 'FINISHED' || s.status == 'CANCELLED') {
-    return s.episodeCount > 0 ? episode <= s.episodeCount : null;
-  }
-  return null;
-}
-
-/// Verdetto basato solo sui dati salvati in locale, usato quando né AniList né
-/// TMDB sanno dirci nulla (offline, richiesta fallita).
-///
-/// Replica la regola di `visibleWatchingShowsProvider`, che decide quante card
-/// contare nell'intestazione: tenendole allineate evitiamo intestazioni tipo
-/// "Da Vedere (2)" con una sola card visibile.
-bool _existsPerDatabase(
-  TrackedShow show,
-  Map<int, int> dbSeasonCounts,
-  int season,
-  int episode,
-) {
-  final count = dbSeasonCounts[season] ?? 0;
-  if (count <= 0 || episode > count) return false;
-  if (show.nextEpisodeSeason == season && show.nextEpisodeNumber == episode) {
-    final airDate = show.nextEpisodeAirDate;
-    return airDate != null && !airDate.isAfter(DateTime.now());
-  }
-  return true;
-}
 
 // ── Card principale ───────────────────────────────────────────────────────────
 
@@ -90,55 +33,24 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
   /// prima che l'animazione sia completata.
   ShowWithWatchedEpisodes? _lockedShowData;
 
-  /// Calcola il prossimo episodio da guardare.
-  /// [seasonCounts] è la mappa stagione→episodeCount dal DB locale:
-  /// consente di rilevare l'overflow di stagione senza alcuna chiamata API.
-  /// [animeSeasonsData] è opzionale e viene usato per gli anime per trovare
-  /// stagioni successive con episodeCount=0 ma ancora in produzione.
-  (int season, int episode) _computeNext(
-    Map<int, Set<int>> watched,
-    Map<int, int> seasonCounts, {
-    List<NormalizedAnimeSeason>? animeSeasonsData,
-  }) {
-    if (watched.isEmpty) return (1, 1);
-    final lastSeason = watched.keys.reduce((a, b) => a > b ? a : b);
-    final lastEp = watched[lastSeason]!.reduce((a, b) => a > b ? a : b);
-    final nextEp = lastEp + 1;
-    final countInSeason = seasonCounts[lastSeason];
-    // Avanza alla stagione successiva solo se conosciamo il totale episodi
-    // della stagione corrente (>0) e l'abbiamo superato. Per anime in onda
-    // AniList può restituire episodes=null → episodeCount=0: in quel caso
-    // 0 significa "totale ignoto", non "stagione vuota", quindi non saltiamo.
-    if (countInSeason != null &&
-        countInSeason > 0 &&
-        nextEp > countInSeason) {
-      final sortedSeasons = seasonCounts.keys.toList()..sort();
-      int? nextAvailableSeason = sortedSeasons
-          .where((s) => s > lastSeason && (seasonCounts[s] ?? 0) > 0)
-          .firstOrNull;
+  bool _resyncRequested = false;
 
-      // Per gli anime: fallback su stagioni con episodeCount=0 ma ancora in
-      // produzione (AniList non conosce ancora il totale episodi di una stagione
-      // in corso).
-      if (nextAvailableSeason == null && animeSeasonsData != null) {
-        nextAvailableSeason = sortedSeasons
-            .where((s) {
-              if (s <= lastSeason) return false;
-              final animeSeason = animeSeasonsData
-                  .where((as_) => as_.seasonNumber == s)
-                  .firstOrNull;
-              if (animeSeason == null) return false;
-              return animeSeason.status == 'RELEASING' ||
-                  animeSeason.status == 'NOT_YET_RELEASED';
-            })
-            .firstOrNull;
-      }
-
-      if (nextAvailableSeason != null) {
-        return (nextAvailableSeason, 1);
-      }
-    }
-    return (lastSeason, nextEp);
+  /// Chiede a [visibleWatchingShowsProvider] di ricalcolare la lista.
+  ///
+  /// Il provider decide la visibilità sui soli dati locali; qui possiamo avere
+  /// dati TMDB più freschi — appena scaricati da `seasonDetail`, che li ha anche
+  /// scritti in cache — e concludere che l'episodio non è ancora uscito. Se la
+  /// card si nascondesse in silenzio l'intestazione continuerebbe a contarla
+  /// ("Da Vedere (1)" senza nessuna card sotto): il ricalcolo, ora che la cache
+  /// è aggiornata, arriva alla stessa conclusione e il conteggio si allinea.
+  ///
+  /// Una sola richiesta per card, così non si innescano cicli di invalidazione.
+  void _requestVisibilityResync() {
+    if (_resyncRequested) return;
+    _resyncRequested = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.invalidate(visibleWatchingShowsProvider);
+    });
   }
 
   Future<void> _markWatched(int season, int episode) async {
@@ -215,7 +127,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
         ? {for (final s in detail.seasons) s.seasonNumber: s.episodeCount}
         : dbSeasonCounts;
 
-    var (nextSeason, nextEp) = _computeNext(
+    var (nextSeason, nextEp) = computeNextToWatch(
       watchedBySeason,
       seasonCounts,
       animeSeasonsData: detail?.animeSeasonsData,
@@ -253,7 +165,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       // Correggi il conteggio per questa stagione con il valore reale da TMDB
       final correctedCounts = Map<int, int>.from(seasonCounts);
       correctedCounts[nextSeason] = loadedEpisodes.length;
-      final (corrSeason, corrEp) = _computeNext(
+      final (corrSeason, corrEp) = computeNextToWatch(
         watchedBySeason,
         correctedCounts,
         animeSeasonsData: detail?.animeSeasonsData,
@@ -286,18 +198,14 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     // rete assente). Consultiamo quindi tutte le fonti disponibili e mostriamo
     // la card se una di esse conferma l'uscita: senza titolo e immagine, ma
     // pronta per essere segnata come vista.
-    final airedPerAniList =
-        _anilistHasAired(detail?.animeSeasonsData, nextSeason, nextEp);
-    final airedPerTmdb = nextEpisode?.hasAired;
-
-    final bool hasAired;
-    if (airedPerAniList == true || airedPerTmdb == true) {
-      hasAired = true;
-    } else if (airedPerAniList == false || airedPerTmdb == false) {
-      hasAired = false;
-    } else {
-      hasAired = _existsPerDatabase(show, dbSeasonCounts, nextSeason, nextEp);
-    }
+    final hasAired = resolveHasAired(
+      show: show,
+      dbSeasonCounts: dbSeasonCounts,
+      season: nextSeason,
+      episode: nextEp,
+      animeSeasonsData: detail?.animeSeasonsData,
+      airedPerTmdb: nextEpisode?.hasAired,
+    );
 
     // ── Logica di completamento ────────────────────────────────────────────
     // Per gli anime con dati AniList, non usiamo watchedCount >= total perché
@@ -305,14 +213,14 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     // rendendo il confronto inaffidabile (e potendo triggerare "completato"
     // prematuro). Usiamo la logica stagione/episodio come fonte di verità.
     final isAnimeWithData = detail != null && detail.isAnime && detail.animeSeasonsData != null;
+    final lastWatchedSeason = watchedBySeason.keys.isEmpty
+        ? 0
+        : watchedBySeason.keys.reduce((a, b) => a > b ? a : b);
     final isCompleted = isAnimeWithData
         ? (nextEpisode == null &&
             (loadedEpisodes == null || loadedEpisodes.isEmpty) &&
-            !detail.animeSeasonsData!.any((as_) =>
-                as_.seasonNumber > (watchedBySeason.keys.isEmpty
-                    ? 0
-                    : watchedBySeason.keys.reduce((a, b) => a > b ? a : b)) &&
-                (as_.status == 'RELEASING' || as_.status == 'NOT_YET_RELEASED')))
+            !hasLaterUpcomingAnimeSeason(
+                detail.animeSeasonsData!, lastWatchedSeason))
         : (total != null && watchedCount >= total);
 
     // Serie finita e vista tutta: la card riepiloga e offre "Completata".
@@ -320,7 +228,10 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     if (isCompleted && !hasAired) {
       final isTerminata =
           show.tmdbStatus == 'Ended' || show.tmdbStatus == 'Canceled';
-      if (!isTerminata) return const SizedBox.shrink();
+      if (!isTerminata) {
+        _requestVisibilityResync();
+        return const SizedBox.shrink();
+      }
       return _CardShell(
         show: show,
         loading: false,
@@ -333,7 +244,10 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     }
 
     // Episodio non ancora uscito: niente card, apparirà in "In Uscita".
-    if (!hasAired) return const SizedBox.shrink();
+    if (!hasAired) {
+      _requestVisibilityResync();
+      return const SizedBox.shrink();
+    }
 
 
 
