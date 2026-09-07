@@ -142,7 +142,12 @@ Future<List<NormalizedAnimeSeason>?> _fetchAnimeSeasons(
   var anilistIds = await animeCacheDao.getYunaIds(tmdbId);
   if (anilistIds == null) {
     anilistIds = await yunaSvc.getAniListIds(tmdbId);
-    await animeCacheDao.saveYunaIds(tmdbId, anilistIds);
+    // Non mettiamo in cache una mappatura vuota: `getAniListIds` restituisce []
+    // anche quando Yuna è irraggiungibile, e la TTL di 7 giorni congelerebbe
+    // quel fallimento in "questo show non esiste su AniList".
+    if (anilistIds.isNotEmpty) {
+      await animeCacheDao.saveYunaIds(tmdbId, anilistIds);
+    }
   }
 
   // 2b. If Yuna has no mapping, try searching by title

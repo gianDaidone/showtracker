@@ -126,6 +126,10 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 const SizedBox(height: 24),
                 _InfoBox(detail: detail),
                 const SizedBox(height: 24),
+                if (detail.isAnime && detail.animeSeasonsData == null) ...[
+                  const _AnimeDataUnavailableBanner(),
+                  const SizedBox(height: 24),
+                ],
                 if (detail.overview?.isNotEmpty == true) ...[
                   const Text(
                     'Trama',
@@ -180,6 +184,49 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
           ),
         const SliverToBoxAdapter(child: SizedBox(height: 32)),
       ],
+    );
+  }
+}
+
+// ── Avviso: dati AniList non disponibili ──────────────────────────────────────
+
+/// Mostrato quando un anime non ha dati AniList: le stagioni visualizzate sono
+/// quelle grezze di TMDB, che raggruppa più cours e usa quindi una numerazione
+/// diversa da quella con cui sono stati salvati gli episodi visti. Senza questo
+/// avviso l'utente vede sparire "Stagione 1 Parte 1 · Fall 2017", trova
+/// conteggi che non tornano e non ha modo di capire perché.
+class _AnimeDataUnavailableBanner extends StatelessWidget {
+  const _AnimeDataUnavailableBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withAlpha(20),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.accent.withAlpha(90)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.cloud_off_rounded, color: AppColors.accent, size: 20),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Dati AniList non disponibili. Le stagioni qui sotto sono quelle '
+              'grezze di TMDB: nomi, suddivisione in parti e conteggi possono '
+              'non corrispondere. Meglio non segnare episodi finché il servizio '
+              'non torna disponibile.',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -258,39 +305,45 @@ class _RefreshButtonState extends ConsumerState<_RefreshButton> {
     if (_state != RefreshState.idle) return;
     setState(() => _state = RefreshState.refreshing);
 
+    var ok = true;
     try {
-      await Future.wait([
-        Future(() async {
-          // Clear standard TMDB episode cache so we fetch fresh data.
-          await ref.read(cacheDaoProvider).clearCacheForShow(widget.tmdbId);
-          
-          if (widget.isAnime) {
-            await ref
-                .read(animeCacheDaoProvider)
-                .clearAnimeCacheForShow(widget.tmdbId);
-            ref.invalidate(animeDataProvider(widget.tmdbId));
-          }
-          // The invalidate might not be async, but Future.wait takes futures.
-          // Reading the provider future forces us to wait for it to resolve
-          // if we wanted to await the new data. However, ref.invalidate is sync.
-          // Let's just do it inside this future block so we don't block the UI thread.
-          ref.invalidate(showDetailProvider(widget.tmdbId));
-        }),
-        Future.delayed(const Duration(milliseconds: 1500)),
-      ]);
+      // La cache episodi TMDB si può cancellare: TMDB è affidabile e i dati si
+      // riscaricano subito.
+      await ref.read(cacheDaoProvider).clearCacheForShow(widget.tmdbId);
 
-      if (mounted) {
-        setState(() => _state = RefreshState.success);
-        await Future.delayed(const Duration(milliseconds: 1500));
+      if (widget.isAnime) {
+        // La cache anime NO: la marchiamo solo come scaduta. Cancellarla
+        // significa che, se AniList non risponde, non resta nessun fallback e
+        // la serie degrada alle stagioni TMDB grezze — perdendo cours,
+        // etichette e conteggi proprio mentre l'utente cerca di aggiornarla.
+        await ref
+            .read(animeCacheDaoProvider)
+            .expireAnimeCacheForShow(widget.tmdbId);
+        ref.invalidate(animeDataProvider(widget.tmdbId));
+      }
+      ref.invalidate(showDetailProvider(widget.tmdbId));
+
+      // Aspettiamo davvero i dati nuovi prima di dichiarare il successo: prima
+      // il pulsante mostrava la spunta verde dopo 1,5 s qualunque cosa fosse
+      // andata storta.
+      final detailFuture = ref.read(showDetailProvider(widget.tmdbId).future);
+      await Future.delayed(const Duration(milliseconds: 1200));
+      final detail = await detailFuture;
+
+      if (detail.isAnime && detail.animeSeasonsData == null) {
+        ok = false;
+        AppToast.show(
+          'AniList non raggiungibile: stagioni e conteggi anime non aggiornati.',
+        );
       }
     } catch (_) {
-      if (mounted) {
-        setState(() => _state = RefreshState.error);
-        await Future.delayed(const Duration(milliseconds: 1500));
-      }
-    } finally {
-      if (mounted) setState(() => _state = RefreshState.idle);
+      ok = false;
     }
+
+    if (!mounted) return;
+    setState(() => _state = ok ? RefreshState.success : RefreshState.error);
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (mounted) setState(() => _state = RefreshState.idle);
   }
 
   @override

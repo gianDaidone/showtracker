@@ -123,9 +123,17 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
 
     final detailAsync = ref.watch(showDetailProvider(show.tmdbId));
     final detail = detailAsync.valueOrNull;
-    final seasonCounts = (detail != null && detail.seasons.isNotEmpty)
-        ? {for (final s in detail.seasons) s.seasonNumber: s.episodeCount}
-        : dbSeasonCounts;
+
+    // Per un anime senza dati AniList `detail.seasons` è la suddivisione TMDB
+    // grezza, che raggruppa più cours: numeri di stagione e totali incompatibili
+    // con quelli con cui sono salvati gli episodi visti. In quel caso restiamo
+    // sui conteggi del DB, che sono cour-based.
+    final animeDataMissing =
+        detail != null && detail.isAnime && detail.animeSeasonsData == null;
+    final seasonCounts =
+        (detail != null && detail.seasons.isNotEmpty && !animeDataMissing)
+            ? {for (final s in detail.seasons) s.seasonNumber: s.episodeCount}
+            : dbSeasonCounts;
 
     var (nextSeason, nextEp) = computeNextToWatch(
       watchedBySeason,

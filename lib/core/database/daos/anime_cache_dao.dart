@@ -117,15 +117,26 @@ class AnimeCacheDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  /// Cancella tutta la cache anime (Yuna mapping + season cache) per un dato
-  /// show. Usato quando AniList ha aggiunto nuove stagioni ma il record in
-  /// cache è ancora valido e non si rifresca da solo.
-  Future<void> clearAnimeCacheForShow(int tmdbId) async {
+  /// Marca come scaduta la cache anime (Yuna mapping + season cache) di uno
+  /// show, senza cancellarla.
+  ///
+  /// È ciò che serve al refresh manuale, richiesto quando AniList ha aggiunto
+  /// stagioni ma il record in cache è ancora valido: la prossima lettura è un
+  /// miss garantito, quindi si rifetcha da Yuna + AniList, ma se il fetch
+  /// fallisce `getStaleAnimeSeasons` ha ancora qualcosa da restituire.
+  ///
+  /// Cancellare le righe distrugge l'unico fallback: con AniList irraggiungibile
+  /// la serie ricade sulle stagioni TMDB grezze e perde cours, etichette
+  /// ("Stagione 1 Parte 1 · Fall 2017") e conteggi — in modo irreversibile
+  /// finché il servizio non torna.
+  Future<void> expireAnimeCacheForShow(int tmdbId) async {
+    final expired = DateTime.fromMillisecondsSinceEpoch(0);
     await transaction(() async {
-      await (delete(animeSeasonCache)
+      await (update(animeSeasonCache)
             ..where((t) => t.tmdbShowId.equals(tmdbId)))
-          .go();
-      await (delete(yunaCache)..where((t) => t.tmdbId.equals(tmdbId))).go();
+          .write(AnimeSeasonCacheCompanion(validUntil: Value(expired)));
+      await (update(yunaCache)..where((t) => t.tmdbId.equals(tmdbId)))
+          .write(YunaCacheCompanion(cachedAt: Value(expired)));
     });
   }
 }
