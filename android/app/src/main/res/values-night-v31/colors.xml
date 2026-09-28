@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="upcoming_widget_bg">@android:color/system_accent1_900</color>
+    <color name="upcoming_widget_text_primary">@android:color/system_accent1_50</color>
+    <color name="upcoming_widget_text_secondary">@android:color/system_accent2_200</color>
+    <color name="upcoming_widget_placeholder">@android:color/system_accent2_800</color>
+</resources>

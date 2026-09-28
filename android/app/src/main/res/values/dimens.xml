@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Raggi del widget "Prossimamente"; su Android 12+ values-v31 usa quelli del launcher -->
+    <dimen name="upcoming_widget_radius">16dp</dimen>
+    <dimen name="upcoming_widget_inner_radius">10dp</dimen>
+</resources>

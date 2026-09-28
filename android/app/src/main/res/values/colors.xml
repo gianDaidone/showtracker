@@ -8,4 +8,11 @@
     <color name="widget_badge_bg">#E58A00</color>
     <color name="black_overlay_start">#00000000</color>
     <color name="black_overlay_end">#D912131C</color>
+
+    <!-- Widget "Prossimamente": segue il tema di sistema (chiaro qui, scuro in
+         values-night, colori dinamici Material You in values-v31 / values-night-v31) -->
+    <color name="upcoming_widget_bg">#F4F4F8</color>
+    <color name="upcoming_widget_text_primary">#1B1B21</color>
+    <color name="upcoming_widget_text_secondary">#5E5E6A</color>
+    <color name="upcoming_widget_placeholder">#E1E1E8</color>
 </resources>
