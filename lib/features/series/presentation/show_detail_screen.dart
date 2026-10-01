@@ -335,6 +335,19 @@ class _RefreshButtonState extends ConsumerState<_RefreshButton> {
         AppToast.show(
           'AniList non raggiungibile: stagioni e conteggi anime non aggiornati.',
         );
+      } else if (detail.isAnime &&
+          await ref
+                  .read(animeCacheDaoProvider)
+                  .getFreshAnimeSeasons(widget.tmdbId) ==
+              null) {
+        // Ci sono dati anime, ma la cache è ancora quella fatta scadere qui
+        // sopra: il download (o il salvataggio) è fallito e `animeData` ha
+        // ripiegato sulla copia vecchia. Mostrare la spunta verde farebbe
+        // credere all'utente di vedere dati aggiornati.
+        ok = false;
+        AppToast.show(
+          'Aggiornamento da AniList non riuscito: stagioni e conteggi sono quelli salvati in precedenza.',
+        );
       }
     } catch (_) {
       ok = false;
