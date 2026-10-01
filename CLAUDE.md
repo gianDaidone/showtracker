@@ -137,4 +137,3 @@ To publish an update: bump **both** parts of `version:` in `pubspec.yaml` (the n
 - **Dark theme only** — use `AppTheme.dark()` and `AppColors` from `lib/core/theme/app_theme.dart` (bg `#161622`, surface `#1E1E2E`, accent `#E68A00`), Material 3.
 - `avoid_print` is enforced; use `debugPrint`, which `main.dart` silences in release via a custom zone.
 - `scratch*.dart` and `db.sqlite` at the repo root are throwaway dev artifacts, not part of the app.
-- `.agents/rules/project-context.md` is an older, partly stale mirror of this document (it still claims schema v9 and five router branches). Update this file, not that one.

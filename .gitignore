@@ -37,3 +37,6 @@ db.sqlite-*
 
 # Scratch files
 scratch*.dart
+
+# Claude Code: impostazioni locali (permessi personali)
+.claude/settings.local.json
