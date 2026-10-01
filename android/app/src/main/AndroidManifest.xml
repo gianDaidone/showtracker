@@ -2,6 +2,13 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Aggiornamento in-app (ota_update): installazione dell'APK scaricato -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- ota_update la dichiara senza limiti; l'APK finisce in storage interno,
+         quindi la limitiamo ai vecchi Android -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/>
     <application
         android:label="showtracker"
         android:name="${applicationName}"
@@ -55,6 +62,16 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </receiver>
+        <!-- Aggiornamento in-app: espone l'APK scaricato all'installer di sistema -->
+        <provider
+            android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
+            android:authorities="${applicationId}.ota_update_provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
         <!-- Widget 1: Prossimamente -->
         <receiver android:name=".ProssimamenteWidgetProvider" android:exported="true">
             <intent-filter>

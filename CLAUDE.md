@@ -13,7 +13,7 @@ flutter run
 flutter run --dart-define-from-file=dart_defines/dev.json
 flutter run --dart-define=TMDB_KEY=... --dart-define=RAWG_KEY=...
 
-# Tests — the suite is currently a single smoke test in test/widget_test.dart
+# Tests — a smoke test in test/widget_test.dart plus unit tests in test/features/
 flutter test
 flutter test test/widget_test.dart --plain-name 'App smoke test'   # single test
 
@@ -34,7 +34,7 @@ Local-first media tracker (TV shows, movies, games). All user data lives on-devi
 
 ### Feature structure
 
-Code lives in `lib/features/` with three content domains — **series**, **movies**, **games** — plus **search** (cross-content), **settings**, **onboarding**, **sync**, and **debug** (mounted only in debug builds). Each follows `data/ → providers/ → presentation/`: services make raw API calls and return typed models, providers wrap services and DAOs, screens/widgets consume providers via `ConsumerWidget`/`ConsumerStatefulWidget`.
+Code lives in `lib/features/` with three content domains — **series**, **movies**, **games** — plus **search** (cross-content), **settings**, **onboarding**, **sync**, **update** (in-app APK updates), and **debug** (mounted only in debug builds). Each follows `data/ → providers/ → presentation/`: services make raw API calls and return typed models, providers wrap services and DAOs, screens/widgets consume providers via `ConsumerWidget`/`ConsumerStatefulWidget`.
 
 `lib/models/`, `lib/services/`, `lib/shared/` are empty placeholders — don't put new code there.
 
@@ -120,6 +120,16 @@ That fallback only works while the cache still holds something, so **the anime c
 ### P2P sync
 
 `lib/features/sync/` exchanges tracked state between two devices on the same LAN, with no server. `SyncService.exportData()` builds a `SyncPayload` in which watched episodes are compacted to range strings (`RangeUtils`, `"1-3,5"`), `SyncCompressor` zlib+base64-encodes it, and `LocalSyncServer` (shelf, port 8080, random token) serves it at `/sync?token=…`. The receiving device scans a QR of that URL (`mobile_scanner`). Import runs in one transaction and resolves conflicts per item by `updatedAt` (last write wins).
+
+### In-app update (GitHub Releases)
+
+The app is distributed as an APK, not through a store. `lib/features/update/` adds a "Cerca aggiornamenti" card to Profilo; the check runs **only** when tapped — never at startup or in the background. `GithubReleaseService` reads `releases/latest` for `kGithubRepo` (`lib/core/constants.dart`) without a token (60 req/h per IP; 403 + `x-ratelimit-remaining: 0` → `UpdateRateLimited`), picks the first asset ending in `.apk`, and `AppVersion` compares `major.minor.patch` only (ignores `v` and `+build`). Every failure is an `UpdateException` subclass carrying its Italian message.
+
+`ota_update` downloads and fires the system installer, but it never checks Android's "Installa app sconosciute" permission — its `PERMISSION_NOT_GRANTED_ERROR` is effectively unreachable. So `InstallPermission` (MethodChannel `showtracker/install_permission`, handled in `MainActivity.kt`) checks `canRequestPackageInstalls()` *before* downloading and, if needed, opens the settings page and re-checks on resume.
+
+To publish an update: bump **both** parts of `version:` in `pubspec.yaml` (the name is what the app compares; Android refuses an install whose `versionCode` isn't higher), sign with the same `key.properties` keystore (a different signature makes the install fail), and attach the APK to a non-draft, non-prerelease GitHub release tagged e.g. `v1.0.1`.
+
+`package_info_plus` is pinned to 9.x: 10.x needs `win32` 6, which conflicts with `network_info_plus` 5 (sync). 9.x needs AGP ≥ 8.12.1.
 
 ## Conventions
 

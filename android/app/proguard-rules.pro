@@ -24,5 +24,11 @@
 # sqlite3 (Drift)
 -keep class com.simolus3.sqlite3.** { *; }
 
+# ota_update (aggiornamento in-app)
+-keep class sk.fourq.otaupdate.** { *; }
+
+# package_info_plus
+-keep class dev.fluttercommunity.plus.packageinfo.** { *; }
+
 # Google Play Core (Deferred Components warning fix)
 -dontwarn com.google.android.play.core.**

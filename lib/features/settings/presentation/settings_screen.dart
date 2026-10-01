@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import 'tmdb_account_section.dart';
 import 'rawg_account_section.dart';
+import '../../update/presentation/app_update_section.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -130,6 +131,18 @@ class SettingsScreen extends StatelessWidget {
                       },
                     ),
                   ),
+                  const SizedBox(height: 32),
+                  const Text(
+                    'AGGIORNAMENTI',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const AppUpdateSection(),
                   const SizedBox(height: 32),
                   const Text(
                     'INFORMAZIONI SULL\'APP',
