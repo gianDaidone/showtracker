@@ -199,15 +199,68 @@ Future<AniListMedia?> _searchAniListByTmdbTitles(
   AniListService anilistSvc,
   TmdbShowDetail detail,
 ) async {
+  final tmdbStart = _tmdbStartDate(detail);
   if (detail.name.isNotEmpty) {
-    final found = await anilistSvc.searchByTitle(detail.name);
+    final found = _pickAniListCandidate(
+        await anilistSvc.searchByTitle(detail.name), tmdbStart);
     if (found != null) return found;
   }
   final original = detail.originalName;
   if (original != null && original.isNotEmpty && original != detail.name) {
-    return anilistSvc.searchByTitle(original);
+    return _pickAniListCandidate(
+        await anilistSvc.searchByTitle(original), tmdbStart);
   }
   return null;
+}
+
+/// Scarto massimo tra la prima messa in onda su TMDB e su AniList perché un
+/// risultato della ricerca per titolo sia considerato la stessa serie.
+const _maxStartDateDrift = Duration(days: 60);
+
+/// Sceglie tra i risultati della ricerca per titolo quello che corrisponde
+/// alla voce TMDB.
+///
+/// Il primo risultato per rilevanza non basta: un seguito pubblicato da TMDB
+/// come voce separata ha spesso lo stesso titolo della serie originale (es.
+/// "ブラッククローバー" per la seconda stagione di Black Clover), e AniList
+/// mette per prima la serie originale. Agganciarla vorrebbe dire mostrare un
+/// cour concluso anni fa con episodi "già usciti" al posto di quello in
+/// arrivo. Scegliamo quindi il candidato che ha iniziato più vicino alla data
+/// TMDB, scartando quelli troppo lontani; senza una data TMDB ci affidiamo
+/// alla rilevanza.
+AniListMedia? _pickAniListCandidate(
+  List<AniListMedia> candidates,
+  DateTime? tmdbStart,
+) {
+  if (candidates.isEmpty) return null;
+  if (tmdbStart == null) return candidates.first;
+
+  AniListMedia? best;
+  Duration? bestDrift;
+  for (final m in candidates) {
+    final start = m.startDate;
+    if (start == null) continue;
+    final drift = start.difference(tmdbStart).abs();
+    if (drift > _maxStartDateDrift) continue;
+    if (bestDrift == null || drift < bestDrift) {
+      best = m;
+      bestDrift = drift;
+    }
+  }
+  return best;
+}
+
+/// Prima messa in onda secondo TMDB. Per una voce non ancora uscita
+/// `first_air_date` è vuoto, ma `next_episode_to_air` riporta già la data del
+/// primo episodio.
+DateTime? _tmdbStartDate(TmdbShowDetail detail) {
+  final first = detail.firstAirDate;
+  if (first != null && first.isNotEmpty) {
+    final parsed = DateTime.tryParse(first);
+    if (parsed != null) return parsed;
+  }
+  final next = detail.nextEpisodeToAir?.airDate;
+  return next == null ? null : DateTime.tryParse(next);
 }
 
 /// Calcola il totalEpisodes effettivo per una serie.

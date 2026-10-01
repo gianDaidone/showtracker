@@ -33,17 +33,20 @@ query($id: Int) {
 
   static const _searchQuery = r'''
 query($search: String) {
-  Media(search: $search, type: ANIME, format_in: [TV, TV_SHORT]) {
-    id
-    title { romaji english }
-    status
-    format
-    episodes
-    season
-    seasonYear
-    averageScore
-    nextAiringEpisode { episode airingAt timeUntilAiring }
-    streamingEpisodes { title thumbnail }
+  Page(perPage: 10) {
+    media(search: $search, type: ANIME, format_in: [TV, TV_SHORT]) {
+      id
+      title { romaji english }
+      status
+      format
+      episodes
+      season
+      seasonYear
+      startDate { year month day }
+      averageScore
+      nextAiringEpisode { episode airingAt timeUntilAiring }
+      streamingEpisodes { title thumbnail }
+    }
   }
 }
 ''';
@@ -51,17 +54,24 @@ query($search: String) {
   // ── Public API ────────────────────────────────────────────────────────────
 
   Future<AniListMedia?> fetchById(int id) {
-    return _queue.enqueue(() => _graphql(
-          _detailsQuery,
-          {'id': id},
-        ));
+    return _queue.enqueue(() async {
+      final body = await _graphql(_detailsQuery, {'id': id});
+      return body == null ? null : AniListMedia.fromGraphqlResponse(body);
+    });
   }
 
-  Future<AniListMedia?> searchByTitle(String title) {
-    return _queue.enqueue(() => _graphql(
-          _searchQuery,
-          {'search': title},
-        ));
+  /// Serie TV che corrispondono a [title], in ordine di rilevanza AniList.
+  ///
+  /// Restituisce tutti i candidati e non solo il primo: titoli come
+  /// "ブラッククローバー" corrispondono sia alla serie originale sia ai suoi
+  /// seguiti, ed è il chiamante a sapere quale cerca.
+  Future<List<AniListMedia>> searchByTitle(String title) {
+    return _queue.enqueue(() async {
+      final body = await _graphql(_searchQuery, {'search': title});
+      if (body == null) return const <AniListMedia>[];
+      return AniListMedia.listFromGraphqlPageResponse(body) ??
+          const <AniListMedia>[];
+    });
   }
 
   /// Fetches up to [ids.length] entries, with the queue's built-in concurrency limit.
@@ -78,7 +88,7 @@ query($search: String) {
 
   // ── Internal ──────────────────────────────────────────────────────────────
 
-  Future<AniListMedia?> _graphql(
+  Future<Map<String, dynamic>?> _graphql(
     String query,
     Map<String, dynamic> variables, {
     int attempt = 0,
@@ -108,8 +118,7 @@ query($search: String) {
     if (response.statusCode < 200 || response.statusCode >= 300) return null;
 
     try {
-      final json = jsonDecode(response.body) as Map<String, dynamic>;
-      return AniListMedia.fromGraphqlResponse(json);
+      return jsonDecode(response.body) as Map<String, dynamic>;
     } catch (_) {
       return null;
     }

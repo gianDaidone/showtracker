@@ -54,6 +54,10 @@ class AniListMedia {
   final AniListNextAiring? nextAiringEpisode;
   final List<AniListStreamingEpisode> streamingEpisodes;
 
+  /// Data della prima messa in onda; null se AniList non conosce almeno anno,
+  /// mese e giorno. Richiesta solo dalla ricerca per titolo.
+  final DateTime? startDate;
+
   const AniListMedia({
     required this.id,
     this.titleRomaji,
@@ -66,12 +70,17 @@ class AniListMedia {
     this.averageScore,
     this.nextAiringEpisode,
     required this.streamingEpisodes,
+    this.startDate,
   });
 
   factory AniListMedia.fromJson(Map<String, dynamic> json) {
     final title = json['title'] as Map<String, dynamic>?;
     final nextAiring = json['nextAiringEpisode'] as Map<String, dynamic>?;
     final streamingEps = json['streamingEpisodes'] as List<dynamic>? ?? [];
+    final start = json['startDate'] as Map<String, dynamic>?;
+    final startYear = start?['year'] as int?;
+    final startMonth = start?['month'] as int?;
+    final startDay = start?['day'] as int?;
     return AniListMedia(
       id: json['id'] as int,
       titleRomaji: title?['romaji'] as String?,
@@ -88,6 +97,9 @@ class AniListMedia {
           .map((e) =>
               AniListStreamingEpisode.fromJson(e as Map<String, dynamic>))
           .toList(),
+      startDate: startYear != null && startMonth != null && startDay != null
+          ? DateTime(startYear, startMonth, startDay)
+          : null,
     );
   }
 
@@ -98,6 +110,19 @@ class AniListMedia {
     final media = data?['Media'] as Map<String, dynamic>?;
     if (media == null) return null;
     return AniListMedia.fromJson(media);
+  }
+
+  /// Risposta di una query `Page { media { ... } }`; null in caso di errore.
+  static List<AniListMedia>? listFromGraphqlPageResponse(
+      Map<String, dynamic> body) {
+    if (body['errors'] != null) return null;
+    final data = body['data'] as Map<String, dynamic>?;
+    final page = data?['Page'] as Map<String, dynamic>?;
+    final media = page?['media'] as List<dynamic>?;
+    if (media == null) return null;
+    return media
+        .map((m) => AniListMedia.fromJson(m as Map<String, dynamic>))
+        .toList();
   }
 
 }
