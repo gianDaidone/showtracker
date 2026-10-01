@@ -101,19 +101,39 @@ class AnimeCacheDao extends DatabaseAccessor<AppDatabase>
       for (final s in seasons) {
         final now = DateTime.now();
         final validUntil = now.add(s.cacheTtl);
-        await into(animeSeasonCache).insertOnConflictUpdate(
-          AnimeSeasonCacheCompanion(
-            tmdbShowId: Value(tmdbShowId),
-            seasonNumber: Value(s.seasonNumber),
-            anilistId: Value(s.anilistId),
-            episodeCount: Value(s.episodeCount),
-            status: Value(s.status),
-            animeSeasonJson: Value(jsonEncode(s.toJson())),
-            cachedAt: Value(now),
-            validUntil: Value(validUntil),
+        final row = AnimeSeasonCacheCompanion(
+          tmdbShowId: Value(tmdbShowId),
+          seasonNumber: Value(s.seasonNumber),
+          anilistId: Value(s.anilistId),
+          episodeCount: Value(s.episodeCount),
+          status: Value(s.status),
+          animeSeasonJson: Value(jsonEncode(s.toJson())),
+          cachedAt: Value(now),
+          validUntil: Value(validUntil),
+        );
+        // Il conflitto va cercato sulla chiave unica (show, stagione), non
+        // sulla chiave primaria `id`, che è autoincrementale e non coincide
+        // mai: `insertOnConflictUpdate` usa quella, e su una riga già presente
+        // fallirebbe con UNIQUE constraint failed. Da quando la cache si fa
+        // scadere invece di cancellarla la riga c'è sempre, quindi ogni
+        // refresh falliva e l'app restava sui dati del primo download.
+        await into(animeSeasonCache).insert(
+          row,
+          onConflict: DoUpdate(
+            (_) => row,
+            target: [animeSeasonCache.tmdbShowId, animeSeasonCache.seasonNumber],
           ),
         );
       }
+      // Cour che non esistono più nei dati nuovi (es. un aggancio AniList
+      // sbagliato che ne produceva di più): lasciarli farebbe convivere
+      // stagioni vecchie e nuove. Qui il download è riuscito, quindi non
+      // rischiamo di perdere l'unico fallback.
+      await (delete(animeSeasonCache)
+            ..where((t) =>
+                t.tmdbShowId.equals(tmdbShowId) &
+                t.seasonNumber.isBiggerThanValue(seasons.length)))
+          .go();
     });
   }
 

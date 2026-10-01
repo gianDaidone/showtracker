@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/network/tmdb_http_client.dart';
@@ -100,8 +101,10 @@ Future<List<NormalizedAnimeSeason>?> animeData(
       await animeCacheDao.saveAnimeSeasons(tmdbId, seasons);
       return seasons;
     }
-  } catch (_) {
-    // Gestito dal fallback qui sotto.
+  } catch (e) {
+    // Gestito dal fallback qui sotto, ma va loggato: il fallback rende
+    // l'errore invisibile all'utente (vede solo dati vecchi).
+    debugPrint('animeData($tmdbId): refresh fallito, uso la cache scaduta: $e');
   }
 
   // 3. Fallback: la cache è scaduta ma il refresh non ha prodotto nulla (rete
