@@ -116,6 +116,7 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
   Future<void> updateShowMetadata(
       int id, int? totalEpisodes, int? totalSeasons, String? status,
       {
+        Value<String> title = const Value.absent(),
         Value<int?> nextEpisodeNumber = const Value.absent(),
         Value<int?> nextEpisodeSeason = const Value.absent(),
         Value<String?> nextEpisodeName = const Value.absent(),
@@ -123,6 +124,7 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
       }) async {
     await (update(trackedShows)..where((t) => t.id.equals(id))).write(
       TrackedShowsCompanion(
+        title: title,
         totalEpisodes: Value(totalEpisodes),
         totalSeasons: Value(totalSeasons),
         tmdbStatus: Value(status),

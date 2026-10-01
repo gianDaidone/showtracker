@@ -100,9 +100,22 @@ class TmdbShowDetail {
 
     final rawSeasons = it['seasons'] as List<dynamic>? ?? [];
 
+    // Senza traduzione italiana TMDB non lascia `name` vuoto: restituisce il
+    // titolo originale (per un anime, in giapponese). In quel caso preferiamo
+    // il titolo inglese, se esiste — tranne per le produzioni italiane, il cui
+    // titolo originale è già quello giusto.
+    var name = nonEmpty('name') ?? '';
+    final enName = en?['name'] as String?;
+    if (name == it['original_name'] &&
+        it['original_language'] != 'it' &&
+        enName != null &&
+        enName.isNotEmpty) {
+      name = enName;
+    }
+
     return TmdbShowDetail(
       id: it['id'] as int,
-      name: nonEmpty('name') ?? '',
+      name: name,
       originalName: (it['original_name'] as String?)?.isNotEmpty == true
           ? it['original_name'] as String
           : null,
@@ -132,12 +145,13 @@ class TmdbShowDetail {
   }
 
   TmdbShowDetail copyWith({
+    String? name,
     List<TmdbSeason>? seasons,
     List<NormalizedAnimeSeason>? animeSeasonsData,
   }) =>
       TmdbShowDetail(
         id: id,
-        name: name,
+        name: name ?? this.name,
         originalName: originalName,
         overview: overview,
         posterPath: posterPath,

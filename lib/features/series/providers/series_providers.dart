@@ -357,7 +357,19 @@ Future<TmdbShowDetail> showDetail(ShowDetailRef ref, int tmdbId) async {
     );
   }).toList();
 
+  // Se TMDB non ha né il titolo italiano né quello inglese, `name` è rimasto
+  // quello originale (giapponese, coreano...): ripieghiamo sul titolo AniList.
+  // Le stagioni con anilistId -1 sono segnaposto costruiti da TMDB e come
+  // titolo hanno il nome della stagione, quindi le saltiamo.
+  String? anilistName;
+  if (detail.name == detail.originalName) {
+    final matched = animeSeasonsData.where((s) => s.anilistId != -1).firstOrNull;
+    final title = matched?.titleEnglish ?? matched?.titleRomaji;
+    if (title != null && title.isNotEmpty) anilistName = title;
+  }
+
   return detail.copyWith(
+    name: anilistName,
     seasons: syntheticSeasons,
     animeSeasonsData: animeSeasonsData,
   );
@@ -687,7 +699,13 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
         
     final next = await _resolveNextEpisode(detail);
 
-    if (show.totalEpisodes != effectiveTotal ||
+    // Il titolo è un metadato TMDB come gli altri: va riallineato quando
+    // compare una traduzione (o il fallback inglese/AniList) assente al
+    // momento dell'aggiunta. Un titolo vuoto non sovrascrive quello salvato.
+    final title = detail.name.isNotEmpty ? detail.name : show.title;
+
+    if (show.title != title ||
+        show.totalEpisodes != effectiveTotal ||
         show.totalSeasons != effectiveSeasons ||
         show.tmdbStatus != detail.status ||
         show.nextEpisodeNumber != next.episode ||
@@ -698,13 +716,14 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
         effectiveTotal,
         effectiveSeasons,
         detail.status,
+        title: Value(title),
         nextEpisodeNumber: Value(next.episode),
         nextEpisodeSeason: Value(next.season),
         nextEpisodeName: Value(next.name),
         nextEpisodeAirDate: Value(next.airDate),
       );
     }
-    
+
     final counts = {for (final s in detail.seasons) s.seasonNumber: s.episodeCount};
     final currentCounts = await ref.read(showsDaoProvider).getSeasonCounts(dbId);
     bool countsChanged = counts.length != currentCounts.length;
