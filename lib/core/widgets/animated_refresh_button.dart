@@ -8,11 +8,19 @@ class AnimatedRefreshButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final Color idleBackgroundColor;
 
+  /// Il default è pensato per le `actions` di un'AppBar: il cerchio (36 px)
+  /// ha il centro a 28 px dal bordo destro, come la freccia indietro nello
+  /// slot `leading` (56 px) dal bordo sinistro. Verticalmente l'AppBar
+  /// Material 3 centra già le actions. Passa [EdgeInsets.zero] quando il
+  /// pulsante è posizionato a mano.
+  final EdgeInsetsGeometry margin;
+
   const AnimatedRefreshButton({
     super.key,
     required this.state,
     this.onPressed,
     this.idleBackgroundColor = Colors.transparent,
+    this.margin = const EdgeInsets.only(left: 8, right: 10),
   });
 
   @override
@@ -85,7 +93,7 @@ class AnimatedRefreshButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        margin: margin,
         padding: isExpanded
             ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
             : const EdgeInsets.all(8),

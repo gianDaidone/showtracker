@@ -72,9 +72,22 @@ class _DetailBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return CustomScrollView(
       slivers: [
-        // ── Carosello screenshot ─────────────────────────────────────────
+        // ── Intestazione: pulsanti, titolo, carosello screenshot ─────────
         SliverToBoxAdapter(
-          child: _ScreenshotCarousel(frames: frames, rawgId: detail.id),
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _TopBar(rawgId: detail.id),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+                  child: _TitleBlock(detail: detail),
+                ),
+                _ScreenshotCarousel(frames: frames),
+              ],
+            ),
+          ),
         ),
 
         SliverToBoxAdapter(
@@ -83,53 +96,8 @@ class _DetailBody extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Titolo
-                Text(
-                  detail.name,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-
-                // Rating and Year
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    if (detail.voteAverage > 0)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.star, color: AppColors.accent, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            detail.voteAverage.toStringAsFixed(1),
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    if (detail.year != null)
-                      Text(
-                        '${detail.year}',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
-                  ],
-                ),
-                
                 // Generi
                 if (detail.genres.isNotEmpty) ...[
-                  const SizedBox(height: 12),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -145,9 +113,8 @@ class _DetailBody extends ConsumerWidget {
                       ),
                     )).toList(),
                   ),
+                  const SizedBox(height: 16),
                 ],
-
-                const SizedBox(height: 16),
 
                 // Pulsante aggiungi / rimuovi
                 _TrackButton(detail: detail, trackedGame: trackedGame),
@@ -243,12 +210,118 @@ class _DetailBody extends ConsumerWidget {
   }
 }
 
+// ── Top bar ───────────────────────────────────────────────────────────────────
+
+class _TopBar extends StatelessWidget {
+  final int rawgId;
+  const _TopBar({required this.rawgId});
+
+  @override
+  Widget build(BuildContext context) {
+    // Nella stessa Row: restano centrati sulla stessa linea anche quando il
+    // pulsante aggiorna si allarga in "Aggiornamento…".
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: SizedBox(
+        height: 36,
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/games');
+                }
+              },
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.arrow_back,
+                    color: Colors.white, size: 20),
+              ),
+            ),
+            const Spacer(),
+            _RefreshButton(rawgId: rawgId),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Titolo + voto/anno ────────────────────────────────────────────────────────
+
+class _TitleBlock extends StatelessWidget {
+  final RawgGameDetail detail;
+  const _TitleBlock({required this.detail});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasRating = detail.voteAverage > 0;
+    final hasYear = detail.year != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          detail.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            height: 1.2,
+          ),
+        ),
+        if (hasRating || hasYear) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              if (hasRating) ...[
+                const Icon(Icons.star, color: AppColors.accent, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  detail.voteAverage.toStringAsFixed(1),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+              if (hasRating && hasYear)
+                const Text(
+                  '  ·  ',
+                  style:
+                      TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                ),
+              if (hasYear)
+                Text(
+                  '${detail.year}',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 // ── Screenshot carousel ───────────────────────────────────────────────────────
 
 class _ScreenshotCarousel extends StatefulWidget {
   final List<String> frames;
-  final int rawgId;
-  const _ScreenshotCarousel({required this.frames, required this.rawgId});
+  const _ScreenshotCarousel({required this.frames});
 
   @override
   State<_ScreenshotCarousel> createState() => _ScreenshotCarouselState();
@@ -258,7 +331,7 @@ class _ScreenshotCarouselState extends State<_ScreenshotCarousel> {
   final _controller = PageController();
   int _currentIndex = 0;
 
-  static const double _height = 220;
+  static const double _hPadding = 16;
 
   @override
   void dispose() {
@@ -266,18 +339,37 @@ class _ScreenshotCarouselState extends State<_ScreenshotCarousel> {
     super.dispose();
   }
 
+  void _openViewer(int index) {
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => _ScreenshotViewer(
+          frames: widget.frames,
+          initialIndex: index,
+          // Al ritorno il carosello mostra l'ultima immagine vista
+          onPageChanged: (i) {
+            if (_controller.hasClients) _controller.jumpToPage(i);
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final frames = widget.frames;
+    // Gli screenshot RAWG sono 16:9: l'area immagine ha lo stesso rapporto,
+    // quindi si vedono interi invece di essere ritagliati.
+    final imageHeight =
+        (MediaQuery.sizeOf(context).width - 2 * _hPadding) * 9 / 16;
 
-    return Stack(
+    return Column(
       children: [
         // ── Immagini ─────────────────────────────────────────────────────
         SizedBox(
-          height: _height,
+          height: imageHeight,
           child: frames.isEmpty
-              ? const ColoredBox(
-                  color: AppColors.divider,
+              ? const _FrameCard(
                   child: Center(
                     child: Icon(Icons.videogame_asset,
                         size: 64, color: AppColors.textSecondary),
@@ -287,49 +379,27 @@ class _ScreenshotCarouselState extends State<_ScreenshotCarousel> {
                   controller: _controller,
                   itemCount: frames.length,
                   onPageChanged: (i) => setState(() => _currentIndex = i),
-                  itemBuilder: (_, i) => CachedNetworkImage(
-                    imageUrl: frames[i],
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) =>
-                        const ColoredBox(color: AppColors.divider),
-                    errorWidget: (_, __, ___) => const ColoredBox(
-                      color: AppColors.divider,
-                      child: Center(
-                        child: Icon(Icons.videogame_asset,
-                            size: 48, color: AppColors.textSecondary),
+                  itemBuilder: (_, i) => GestureDetector(
+                    onTap: () => _openViewer(i),
+                    child: _FrameCard(
+                      child: CachedNetworkImage(
+                        imageUrl: frames[i],
+                        fit: BoxFit.contain,
+                        placeholder: (_, __) => const SizedBox.shrink(),
+                        errorWidget: (_, __, ___) => const Center(
+                          child: Icon(Icons.videogame_asset,
+                              size: 48, color: AppColors.textSecondary),
+                        ),
                       ),
                     ),
                   ),
                 ),
         ),
 
-        // ── Gradiente in basso (per leggibilità dot) ─────────────────────
-        if (frames.length > 1)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 48,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withAlpha(160),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
         // ── Dot indicators ────────────────────────────────────────────────
         if (frames.length > 1)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 10,
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(frames.length, (i) {
@@ -349,39 +419,166 @@ class _ScreenshotCarouselState extends State<_ScreenshotCarousel> {
               }),
             ),
           ),
+      ],
+    );
+  }
+}
 
-        // ── Back button ───────────────────────────────────────────────────────
-        Positioned(
-          top: MediaQuery.of(context).padding.top + 8,
-          left: 12,
-          child: GestureDetector(
-            onTap: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.go('/games');
-              }
+/// Riquadro arrotondato di una pagina del carosello, allineato ai margini del
+/// testo. Gli screenshot non 16:9 restano interi su sfondo `surface`.
+class _FrameCard extends StatelessWidget {
+  final Widget child;
+  const _FrameCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: _ScreenshotCarouselState._hPadding),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: ColoredBox(
+          color: AppColors.surface,
+          child: SizedBox.expand(child: child),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Screenshot viewer (schermo intero) ────────────────────────────────────────
+
+class _ScreenshotViewer extends StatefulWidget {
+  final List<String> frames;
+  final int initialIndex;
+  final ValueChanged<int> onPageChanged;
+  const _ScreenshotViewer({
+    required this.frames,
+    required this.initialIndex,
+    required this.onPageChanged,
+  });
+
+  @override
+  State<_ScreenshotViewer> createState() => _ScreenshotViewerState();
+}
+
+class _ScreenshotViewerState extends State<_ScreenshotViewer> {
+  late final _controller = PageController(initialPage: widget.initialIndex);
+  late int _index = widget.initialIndex;
+  // Con l'immagine ingrandita lo swipe orizzontale serve a spostarsi
+  // nell'immagine, non a cambiare pagina
+  bool _zoomed = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final frames = widget.frames;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _controller,
+            physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
+            itemCount: frames.length,
+            onPageChanged: (i) {
+              setState(() => _index = i);
+              widget.onPageChanged(i);
             },
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(140),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.arrow_back,
-                  color: Colors.white, size: 20),
+            itemBuilder: (_, i) => _ZoomableImage(
+              url: frames[i],
+              onZoomChanged: (z) => setState(() => _zoomed = z),
             ),
           ),
-        ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(140),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close,
+                          color: Colors.white, size: 20),
+                    ),
+                  ),
+                  const Spacer(),
+                  if (frames.length > 1)
+                    Text(
+                      '${_index + 1} / ${frames.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-        // ── Refresh button ────────────────────────────────────────────────────
-        Positioned(
-          top: MediaQuery.of(context).padding.top + 8,
-          right: 12,
-          child: _RefreshButton(rawgId: widget.rawgId),
+class _ZoomableImage extends StatefulWidget {
+  final String url;
+  final ValueChanged<bool> onZoomChanged;
+  const _ZoomableImage({required this.url, required this.onZoomChanged});
+
+  @override
+  State<_ZoomableImage> createState() => _ZoomableImageState();
+}
+
+class _ZoomableImageState extends State<_ZoomableImage> {
+  final _transform = TransformationController();
+  bool _zoomed = false;
+
+  @override
+  void dispose() {
+    _transform.dispose();
+    super.dispose();
+  }
+
+  void _onInteractionEnd(ScaleEndDetails _) {
+    final zoomed = _transform.value.getMaxScaleOnAxis() > 1.01;
+    if (zoomed == _zoomed) return;
+    setState(() => _zoomed = zoomed);
+    widget.onZoomChanged(zoomed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InteractiveViewer(
+      transformationController: _transform,
+      maxScale: 4,
+      // A scala 1 il pan resta disattivato, così lo swipe arriva al PageView
+      panEnabled: _zoomed,
+      onInteractionEnd: _onInteractionEnd,
+      child: Center(
+        child: CachedNetworkImage(
+          imageUrl: widget.url,
+          fit: BoxFit.contain,
+          placeholder: (_, __) => const Center(
+            child: CircularProgressIndicator(color: AppColors.accent),
+          ),
+          errorWidget: (_, __, ___) => const Icon(Icons.videogame_asset,
+              size: 64, color: AppColors.textSecondary),
         ),
-      ],
+      ),
     );
   }
 }
@@ -431,7 +628,9 @@ class _RefreshButtonState extends ConsumerState<_RefreshButton> {
     return AnimatedRefreshButton(
       state: _state,
       onPressed: _refresh,
-      idleBackgroundColor: Colors.black.withAlpha(140),
+      idleBackgroundColor: AppColors.surface,
+      // Lo posiziona già la Row dell'header, allineato al pulsante indietro
+      margin: EdgeInsets.zero,
     );
   }
 }
