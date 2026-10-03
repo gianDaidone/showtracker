@@ -65,7 +65,61 @@ class TmdbService {
       _get(_uri('/tv/$showId/season/$seasonNumber', {'language': 'it-IT'})),
       _get(_uri('/tv/$showId/season/$seasonNumber', {'language': 'en-US'})),
     ]);
-    return TmdbSeason.fromDetailJson(results[0], en: results[1]);
+    final season = TmdbSeason.fromDetailJson(results[0], en: results[1]);
+    if (season.episodes?.isNotEmpty == true) return season;
+
+    // TMDB può servire per giorni una copia vecchia e vuota di
+    // /season/{n} mentre i singoli episodi rispondono già: è successo con la
+    // Stagione 2 di Black Clover (73223) dopo che gli episodi sono stati
+    // spostati dalla voce 336735. Una stagione davvero vuota costa solo il
+    // 404 dell'episodio 1.
+    final episodes = await _getEpisodesOneByOne(showId, seasonNumber);
+    if (episodes.isEmpty) return season;
+    return TmdbSeason(
+      seasonNumber: season.seasonNumber,
+      episodeCount: episodes.length,
+      posterPath: season.posterPath,
+      name: season.name,
+      episodes: episodes,
+    );
+  }
+
+  static const _episodeProbeBatch = 5;
+  static const _episodeProbeMax = 100;
+
+  /// Scarica gli episodi di una stagione uno alla volta (a gruppi di
+  /// [_episodeProbeBatch]) finché TMDB risponde 404. Gli errori diversi dal
+  /// 404 vengono propagati: una lista parziale finirebbe in cache come se
+  /// fosse completa.
+  Future<List<TmdbEpisode>> _getEpisodesOneByOne(
+      int showId, int seasonNumber) async {
+    Future<TmdbEpisode?> fetch(int n) async {
+      final path = '/tv/$showId/season/$seasonNumber/episode/$n';
+      try {
+        final results = await Future.wait([
+          _get(_uri(path, {'language': 'it-IT'})),
+          _get(_uri(path, {'language': 'en-US'})),
+        ]);
+        return TmdbEpisode.fromJson(results[0], en: results[1]);
+      } on TmdbException catch (e) {
+        if (e.isNotFound) return null;
+        rethrow;
+      }
+    }
+
+    final episodes = <TmdbEpisode>[];
+    for (var first = 1;
+        first <= _episodeProbeMax;
+        first += _episodeProbeBatch) {
+      final batch = await Future.wait([
+        for (var n = first; n < first + _episodeProbeBatch; n++) fetch(n),
+      ]);
+      for (final ep in batch) {
+        if (ep == null) return episodes;
+        episodes.add(ep);
+      }
+    }
+    return episodes;
   }
 
   // ── Anime: redistribuisce gli episodi TMDB per stagione AniList ────────────
