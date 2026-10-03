@@ -183,32 +183,106 @@ Future<List<NormalizedAnimeSeason>?> _fetchAnimeSeasons(
 
   // 2d. Merge with TMDB season structure
   final detail = await showDetails();
-  final seasons = AnimeDataMerger.merge(
+  var seasons = AnimeDataMerger.merge(
     tmdbSeasons: detail.seasons,
     anilistMedia: anilistMedia,
   );
 
+  // 2e. Stagioni TMDB rimaste senza voce AniList: Yuna aggiorna le mappature
+  // a mano e con giorni o settimane di ritardo, quindi una stagione appena
+  // iniziata resta un segnaposto TMDB (niente etichetta del cour, niente
+  // orario preciso). Le cerchiamo per titolo e data di uscita della stagione.
+  try {
+    final extra = await _searchUnmappedSeasons(
+        anilistSvc, detail, seasons, anilistMedia);
+    if (extra.isNotEmpty) {
+      seasons = AnimeDataMerger.merge(
+        tmdbSeasons: detail.seasons,
+        anilistMedia: [...anilistMedia, ...extra],
+      );
+    }
+  } catch (e) {
+    // Senza la ricerca supplementare il risultato resta valido: si tiene il
+    // segnaposto TMDB, come prima.
+    debugPrint('animeData($tmdbId): ricerca stagioni non mappate fallita: $e');
+  }
+
   return seasons.isEmpty ? null : seasons;
+}
+
+/// Cerca su AniList le stagioni TMDB che il merge ha lasciato come segnaposto
+/// (`anilistId == -1`) perché la mappatura Yuna non le comprende — es. la
+/// seconda stagione di Black Clover (AniList 195604), uscita il 2026-10-03
+/// come Stagione 2 della voce TMDB 73223 quando Yuna conosceva solo la serie
+/// del 2017.
+///
+/// Considera solo le stagioni TMDB senza nessun cour AniList (non gli avanzi
+/// di una stagione già mappata in parte) e con una data di uscita, che serve a
+/// `_pickAniListCandidate` per non agganciare la serie originale con lo
+/// stesso titolo. Restituisce solo media non già presenti in [known].
+Future<List<AniListMedia>> _searchUnmappedSeasons(
+  AniListService anilistSvc,
+  TmdbShowDetail detail,
+  List<NormalizedAnimeSeason> seasons,
+  List<AniListMedia> known,
+) async {
+  final mappedTmdbSeasons = seasons
+      .where((s) => s.anilistId != -1)
+      .map((s) => s.tmdbSeasonNumber)
+      .toSet();
+  final knownIds = known.map((m) => m.id).toSet();
+  final found = <AniListMedia>[];
+
+  for (final s in seasons) {
+    if (s.anilistId != -1 || mappedTmdbSeasons.contains(s.tmdbSeasonNumber)) {
+      continue;
+    }
+    final airDate = detail.seasons
+        .where((t) => t.seasonNumber == s.tmdbSeasonNumber)
+        .firstOrNull
+        ?.airDate;
+    final start = airDate == null ? null : DateTime.tryParse(airDate);
+    if (start == null) continue;
+
+    final media = await _searchAniListByTmdbTitles(anilistSvc, detail,
+        start: start, exclude: knownIds);
+    if (media != null) {
+      found.add(media);
+      knownIds.add(media.id);
+    }
+  }
+  return found;
 }
 
 /// Cerca l'anime su AniList provando prima il nome localizzato (TMDB it-IT
 /// con fallback en-US) poi il `original_name` (di solito il titolo nativo:
 /// per anime giapponesi è la forma in romaji o in giapponese, che AniList
 /// indicizza meglio del titolo localizzato).
+///
+/// [start] è la data a cui deve corrispondere il candidato: di default la
+/// prima messa in onda della serie, oppure quella di una singola stagione.
+/// I media con ID in [exclude] vengono ignorati.
 Future<AniListMedia?> _searchAniListByTmdbTitles(
   AniListService anilistSvc,
-  TmdbShowDetail detail,
-) async {
-  final tmdbStart = _tmdbStartDate(detail);
+  TmdbShowDetail detail, {
+  DateTime? start,
+  Set<int> exclude = const {},
+}) async {
+  final tmdbStart = start ?? _tmdbStartDate(detail);
+  Future<AniListMedia?> search(String title) async {
+    final candidates = (await anilistSvc.searchByTitle(title))
+        .where((m) => !exclude.contains(m.id))
+        .toList();
+    return _pickAniListCandidate(candidates, tmdbStart);
+  }
+
   if (detail.name.isNotEmpty) {
-    final found = _pickAniListCandidate(
-        await anilistSvc.searchByTitle(detail.name), tmdbStart);
+    final found = await search(detail.name);
     if (found != null) return found;
   }
   final original = detail.originalName;
   if (original != null && original.isNotEmpty && original != detail.name) {
-    return _pickAniListCandidate(
-        await anilistSvc.searchByTitle(original), tmdbStart);
+    return search(original);
   }
   return null;
 }

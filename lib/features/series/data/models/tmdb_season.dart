@@ -8,12 +8,17 @@ class TmdbSeason {
   final String? name;
   final List<TmdbEpisode>? episodes;
 
+  /// Data di uscita del primo episodio (`YYYY-MM-DD`), solo dal blocco
+  /// `seasons[]` di /tv/{id}.
+  final String? airDate;
+
   const TmdbSeason({
     required this.seasonNumber,
     required this.episodeCount,
     this.posterPath,
     this.name,
     this.episodes,
+    this.airDate,
   });
 
   /// Costruito dal blocco `seasons[]` nella risposta /tv/{id}.
@@ -22,6 +27,7 @@ class TmdbSeason {
         episodeCount: json['episode_count'] as int? ?? 0,
         posterPath: json['poster_path'] as String?,
         name: json['name'] as String?,
+        airDate: json['air_date'] as String?,
       );
 
   /// Costruito dalla risposta completa /tv/{id}/season/{n}.
