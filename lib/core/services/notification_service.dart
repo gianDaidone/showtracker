@@ -66,14 +66,12 @@ class NotificationService {
           : DateTime(airDate.year, airDate.month, airDate.day, 9, 0);
       if (!scheduledAt.isAfter(DateTime.now())) return;
 
-      final eNum = episodeNumber.toString().padLeft(2, '0');
-      final sText = seasonName != null && seasonName.isNotEmpty 
-          ? seasonName 
-          : 'S${seasonNumber.toString().padLeft(2, '0')}';
-          
-      final body = episodeName.isNotEmpty 
-          ? '$sText E$eNum – $episodeName è disponibile oggi!'
-          : '$sText E$eNum è disponibile oggi!';
+      final body = episodeBody(
+        seasonNumber: seasonNumber,
+        episodeNumber: episodeNumber,
+        episodeName: episodeName,
+        seasonName: seasonName,
+      );
 
       await _plugin.zonedSchedule(
         id: tmdbId,
@@ -101,6 +99,29 @@ class NotificationService {
     } catch (_) {
       AppToast.show('Impossibile pianificare la notifica per $showTitle');
     }
+  }
+
+  static final _placeholderEpisodeName =
+      RegExp(r'^Episod(?:io|e)\s+\d+$', caseSensitive: false);
+
+  /// Testo della notifica di uscita, es. "Stagione 2, episodio 1: «Lo scoppio
+  /// della guerra» è disponibile oggi!". Parole intere anziché "S02E01" o un
+  /// misto come "Stagione 2 E01"; il titolo viene omesso quando è solo il
+  /// segnaposto TMDB "Episodio 1", che ripeterebbe il numero.
+  static String episodeBody({
+    required int seasonNumber,
+    required int episodeNumber,
+    required String episodeName,
+    String? seasonName,
+  }) {
+    final season = seasonName != null && seasonName.trim().isNotEmpty
+        ? seasonName.trim()
+        : 'Stagione $seasonNumber';
+    final name = episodeName.trim();
+    final hasTitle = name.isNotEmpty && !_placeholderEpisodeName.hasMatch(name);
+    return hasTitle
+        ? '$season, episodio $episodeNumber: «$name» è disponibile oggi!'
+        : '$season, episodio $episodeNumber è disponibile oggi!';
   }
 
   static Future<void> cancel(int tmdbId) async {

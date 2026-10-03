@@ -49,7 +49,7 @@ class _DebugScreenState extends State<DebugScreen> {
             label: 'Manda subito',
             onTap: () => NotificationService.showImmediate(
               title: 'Test ShowTracker',
-              body: 'S01E01 – Episodio pilota è disponibile oggi!',
+              body: 'Stagione 1, episodio 1: «Episodio pilota» è disponibile oggi!',
             ),
           ),
           const SizedBox(height: 12),
@@ -62,7 +62,7 @@ class _DebugScreenState extends State<DebugScreen> {
                   onTap: () => NotificationService.scheduleInSeconds(
                     seconds: _delaySeconds,
                     title: 'Test ShowTracker',
-                    body: 'S01E01 – Episodio pilota è disponibile oggi!',
+                    body: 'Stagione 1, episodio 1: «Episodio pilota» è disponibile oggi!',
                   ),
                 ),
               ),
