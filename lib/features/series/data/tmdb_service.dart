@@ -27,11 +27,17 @@ class TmdbService {
     final response = await _client.get(uri);
     
     if (response.statusCode >= 500) {
-      throw TmdbException('Il servizio TMDB è temporaneamente non disponibile (Errore ${response.statusCode}). Riprova più tardi.');
+      throw TmdbException(
+        'Il servizio TMDB è temporaneamente non disponibile (Errore ${response.statusCode}). Riprova più tardi.',
+        statusCode: response.statusCode,
+      );
     }
     
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw TmdbException('Errore TMDB ${response.statusCode}: ${response.reasonPhrase ?? ""}');
+      throw TmdbException(
+        'Errore TMDB ${response.statusCode}: ${response.reasonPhrase ?? ""}',
+        statusCode: response.statusCode,
+      );
     }
     
     return jsonDecode(response.body) as Map<String, dynamic>;
@@ -252,7 +258,13 @@ class TmdbService {
 
 class TmdbException implements Exception {
   final String message;
-  TmdbException(this.message);
+  final int? statusCode;
+  TmdbException(this.message, {this.statusCode});
+
+  /// La risorsa non esiste (più) su TMDB: capita quando una voce viene
+  /// eliminata o unita a un'altra, come la seconda stagione di Black Clover
+  /// (336735) confluita in Black Clover (73223).
+  bool get isNotFound => statusCode == 404;
 
   @override
   String toString() => message;

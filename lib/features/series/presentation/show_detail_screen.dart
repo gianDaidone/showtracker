@@ -9,8 +9,19 @@ import '../../../core/services/app_toast.dart';
 import '../../../core/widgets/animated_refresh_button.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/models/tmdb_show_detail.dart';
+import '../data/tmdb_service.dart';
 import '../providers/series_providers.dart';
 import 'widgets/season_section.dart';
+
+/// Torna alla schermata precedente, o alla lista serie se il dettaglio è
+/// stato aperto direttamente (deep link, widget) e non c'è niente sotto.
+void _leaveDetail(BuildContext context) {
+  if (context.canPop()) {
+    context.pop();
+  } else {
+    context.go('/series');
+  }
+}
 
 class ShowDetailScreen extends ConsumerWidget {
   final int tmdbId;
@@ -32,7 +43,7 @@ class ShowDetailScreen extends ConsumerWidget {
               loading: () => const Center(
                 child: CircularProgressIndicator(color: AppColors.accent),
               ),
-              error: (e, _) => _ErrorBody(error: e.toString()),
+              error: (e, _) => _ErrorBody(tmdbId: tmdbId, error: e),
               data: (_) => const SizedBox.shrink(),
             ),
     );
@@ -179,7 +190,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
-              child: _RemoveShowButton(detail: detail, trackedShow: trackedShow),
+              child: _RemoveShowButton(
+                  title: detail.name, trackedShow: trackedShow),
             ),
           ),
         const SliverToBoxAdapter(child: SizedBox(height: 32)),
@@ -246,13 +258,7 @@ class _BackdropAppBar extends StatelessWidget {
       surfaceTintColor: Colors.transparent,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back),
-        onPressed: () {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go('/series');
-          }
-        },
+        onPressed: () => _leaveDetail(context),
       ),
       actions: [
         _RefreshButton(tmdbId: detail.id, isAnime: detail.isAnime),
@@ -598,9 +604,17 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
 // ── Remove button (Secondary Action) ──────────────────────────────────────────
 
 class _RemoveShowButton extends ConsumerStatefulWidget {
-  final TmdbShowDetail detail;
+  final String title;
   final TrackedShow trackedShow;
-  const _RemoveShowButton({required this.detail, required this.trackedShow});
+
+  /// Chiamato dopo una rimozione riuscita.
+  final VoidCallback? onRemoved;
+
+  const _RemoveShowButton({
+    required this.title,
+    required this.trackedShow,
+    this.onRemoved,
+  });
 
   @override
   ConsumerState<_RemoveShowButton> createState() => _RemoveShowButtonState();
@@ -633,7 +647,7 @@ class _RemoveShowButtonState extends ConsumerState<_RemoveShowButton> {
         title: const Text('Rimuovi serie?',
             style: TextStyle(color: AppColors.textPrimary)),
         content: Text(
-          'Rimuoverai "${widget.detail.name}" e tutti i progressi episodi salvati.',
+          'Rimuoverai "${widget.title}" e tutti i progressi episodi salvati.',
           style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
@@ -655,8 +669,9 @@ class _RemoveShowButtonState extends ConsumerState<_RemoveShowButton> {
       await ref
           .read(trackedShowsNotifierProvider.notifier)
           .removeShow(widget.trackedShow.id);
+      widget.onRemoved?.call();
     } catch (_) {
-      AppToast.show('Impossibile rimuovere "${widget.detail.name}"');
+      AppToast.show('Impossibile rimuovere "${widget.title}"');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -706,27 +721,108 @@ class _StatusSelector extends ConsumerWidget {
 
 // ── Error body ────────────────────────────────────────────────────────────────
 
-class _ErrorBody extends StatelessWidget {
-  final String error;
-  const _ErrorBody({required this.error});
+/// Mostrato quando il dettaglio TMDB non si carica. Deve restare sempre
+/// possibile uscire e, se la serie è in libreria, rimuoverla: una voce
+/// eliminata da TMDB (404) non tornerà più e senza questi comandi resterebbe
+/// bloccata nella lista serie.
+class _ErrorBody extends ConsumerWidget {
+  final int tmdbId;
+  final Object error;
+  const _ErrorBody({required this.tmdbId, required this.error});
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
-            const SizedBox(height: 12),
-            Text(
-              error,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondary),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final trackedList =
+        ref.watch(trackedShowsNotifierProvider).valueOrNull ?? [];
+    final TrackedShow? trackedShow =
+        trackedList.where((s) => s.tmdbId == tmdbId).firstOrNull;
+    final error = this.error;
+    final isNotFound = error is TmdbException && error.isNotFound;
+
+    final String message;
+    if (isNotFound) {
+      message = trackedShow != null
+          ? 'Questa serie non esiste più su TMDB: potrebbe essere stata '
+              "eliminata o unita a un'altra voce. Puoi rimuoverla dalla "
+              "libreria e, se è confluita in un'altra serie, cercare e "
+              'seguire quella.'
+          : 'Questa serie non esiste più su TMDB: potrebbe essere stata '
+              "eliminata o unita a un'altra voce.";
+    } else {
+      message = error.toString();
+    }
+
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+            onPressed: () => _leaveDetail(context),
+          ),
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isNotFound
+                          ? Icons.search_off_rounded
+                          : Icons.error_outline,
+                      size: 48,
+                      color: Colors.redAccent,
+                    ),
+                    if (trackedShow != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        trackedShow.title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Anche un 404 può essere transitorio (cache TMDB in
+                    // aggiornamento), quindi il tentativo resta sempre possibile.
+                    TextButton.icon(
+                      onPressed: () =>
+                          ref.invalidate(showDetailProvider(tmdbId)),
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Riprova'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.accent,
+                      ),
+                    ),
+                    if (trackedShow != null) ...[
+                      const SizedBox(height: 8),
+                      _RemoveShowButton(
+                        title: trackedShow.title,
+                        trackedShow: trackedShow,
+                        onRemoved: () {
+                          if (context.mounted) _leaveDetail(context);
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
