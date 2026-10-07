@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/library_header_link.dart';
 import '../providers/series_providers.dart';
 import 'widgets/next_episode_card.dart';
 import 'widgets/upcoming_episode_card.dart';
@@ -458,58 +459,32 @@ class _SeriesHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        GestureDetector(
-          onTap: () => context.push('/series/list'),
-          child: Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              border: Border.all(color: AppColors.divider, width: 1.5),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.tv_rounded,
-              color: AppColors.accent,
-              size: 24,
-            ),
-          ),
-        ),
-        const SizedBox(width: 14),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Le Mie Serie',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              isLoading
-                  ? Container(
-                      width: 100,
-                      height: 14,
-                      margin: const EdgeInsets.only(top: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.divider,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    )
-                  : Text(
-                      totalCount == 0
-                          ? 'Nessuna serie aggiunta'
-                          : '$totalCount '
-                              '${totalCount == 1 ? 'serie seguita' : 'serie seguite'}',
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13,
-                      ),
+          child: LibraryHeaderLink(
+            icon: Icons.tv_rounded,
+            title: 'Le Mie Serie',
+            tooltip: 'Vai alle mie serie',
+            onTap: () => context.push('/series/list'),
+            subtitle: isLoading
+                ? Container(
+                    width: 100,
+                    height: 14,
+                    margin: const EdgeInsets.only(top: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.divider,
+                      borderRadius: BorderRadius.circular(4),
                     ),
-            ],
+                  )
+                : Text(
+                    totalCount == 0
+                        ? 'Nessuna serie aggiunta'
+                        : '$totalCount '
+                            '${totalCount == 1 ? 'serie seguita' : 'serie seguite'}',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
           ),
         ),
         IconButton(

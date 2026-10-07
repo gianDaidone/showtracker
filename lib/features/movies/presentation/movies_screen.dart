@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/app_toast.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/library_header_link.dart';
 import '../providers/movies_providers.dart';
 
 // ── Stati del pulsante "segna come visto" ─────────────────────────────────────
@@ -66,48 +67,22 @@ class _MoviesHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        GestureDetector(
-          onTap: () => context.push('/movies/list'),
-          child: Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              border: Border.all(color: AppColors.divider, width: 1.5),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.movie_rounded,
-              color: AppColors.accent,
-              size: 24,
-            ),
-          ),
-        ),
-        const SizedBox(width: 14),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'I Miei Film',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+          child: LibraryHeaderLink(
+            icon: Icons.movie_rounded,
+            title: 'I Miei Film',
+            tooltip: 'Vai ai miei film',
+            onTap: () => context.push('/movies/list'),
+            subtitle: Text(
+              totalCount == 0
+                  ? 'Nessun film aggiunto'
+                  : '$totalCount '
+                      '${totalCount == 1 ? 'film nel catalogo' : 'film nel catalogo'}',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
               ),
-              Text(
-                totalCount == 0
-                    ? 'Nessun film aggiunto'
-                    : '$totalCount '
-                        '${totalCount == 1 ? 'film nel catalogo' : 'film nel catalogo'}',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
         IconButton(
