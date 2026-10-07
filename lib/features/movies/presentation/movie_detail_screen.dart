@@ -488,7 +488,6 @@ class _StatusSelector extends ConsumerWidget {
     // Per i film usiamo solo gli status rilevanti
     const movieStatuses = [
       MediaStatus.planToWatch,
-      MediaStatus.watching,
       MediaStatus.completed,
       MediaStatus.dropped,
     ];

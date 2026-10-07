@@ -50,9 +50,9 @@ Related: the denormalised `TrackedShows.nextEpisode*` pointer must never lag beh
 
 ### Database — Drift (SQLite)
 
-`lib/core/database/app_database.dart` — single `AppDatabase` singleton (`AppDatabase.instance`), schema **v13**. Tables: `TrackedShows`, `TrackedEpisodes`, `TrackedSeasons`, `TrackedMovies`, `TrackedGames`, `CachedEpisodes`, `YunaCache`, `AnimeSeasonCache`. DAOs (`ShowsDao`, `MoviesDao`, `GamesDao`, `CacheDao`, `AnimeCacheDao`) are exposed as Riverpod providers from `lib/core/database/database_provider.dart`.
+`lib/core/database/app_database.dart` — single `AppDatabase` singleton (`AppDatabase.instance`), schema **v14**. Tables: `TrackedShows`, `TrackedEpisodes`, `TrackedSeasons`, `TrackedMovies`, `TrackedGames`, `CachedEpisodes`, `YunaCache`, `AnimeSeasonCache`. DAOs (`ShowsDao`, `MoviesDao`, `GamesDao`, `CacheDao`, `AnimeCacheDao`) are exposed as Riverpod providers from `lib/core/database/database_provider.dart`.
 
-To add a column or table: edit `tables/`, bump `schemaVersion`, add an `if (from < N)` step in `MigrationStrategy.onUpgrade`, regenerate. Existing migrations show the patterns for table rebuilds (v8) and backfills (v13).
+To add a column or table: edit `tables/`, bump `schemaVersion`, add an `if (from < N)` step in `MigrationStrategy.onUpgrade`, regenerate. Existing migrations show the patterns for table rebuilds (v8) and backfills (v13, v14).
 
 Two denormalisations matter:
 

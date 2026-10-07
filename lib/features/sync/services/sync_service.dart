@@ -183,7 +183,10 @@ class SyncService {
         
         final incomingData = entry.value;
         final incomingDate = DateTime.fromMillisecondsSinceEpoch(incomingData.updatedAt * 1000);
-        final incomingStatus = MediaStatus.values.firstWhere((e) => e.name == incomingData.status, orElse: () => MediaStatus.watching);
+        // I film non hanno lo stato "In visione": un dispositivo con una
+        // versione precedente può ancora inviarlo, lo trattiamo come "Da vedere".
+        var incomingStatus = MediaStatus.values.firstWhere((e) => e.name == incomingData.status, orElse: () => MediaStatus.planToWatch);
+        if (incomingStatus == MediaStatus.watching) incomingStatus = MediaStatus.planToWatch;
         
         final existingMovie = await _moviesDao.getByTmdbId(tmdbId);
         if (existingMovie == null) {

@@ -52,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,6 +136,11 @@ class AppDatabase extends _$AppDatabase {
             
             final nowUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
             await customStatement('UPDATE tracked_episodes SET updated_at = $nowUnix WHERE updated_at IS NULL');
+          }
+          if (from < 14) {
+            // I film non hanno più lo stato "In visione": tornano "Da vedere".
+            await customStatement(
+                "UPDATE tracked_movies SET status = 'planToWatch' WHERE status = 'watching'");
           }
         },
       );

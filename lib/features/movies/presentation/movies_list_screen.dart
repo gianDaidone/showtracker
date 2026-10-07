@@ -130,7 +130,6 @@ class _MoviesListScreenState extends ConsumerState<MoviesListScreen> {
                     ),
                     ...[
                       MediaStatus.planToWatch,
-                      MediaStatus.watching,
                       MediaStatus.completed,
                       MediaStatus.dropped,
                     ].map((status) => Padding(
