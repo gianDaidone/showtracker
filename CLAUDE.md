@@ -129,7 +129,9 @@ The app is distributed as an APK, not through a store. `lib/features/update/` ad
 
 To publish an update: bump **both** parts of `version:` in `pubspec.yaml` (the name is what the app compares; Android refuses an install whose `versionCode` isn't higher), sign with the same `key.properties` keystore (a different signature makes the install fail), and attach the APK to a non-draft, non-prerelease GitHub release tagged e.g. `v1.0.1`.
 
-`package_info_plus` is pinned to 9.x: 10.x needs `win32` 6, which conflicts with `network_info_plus` 5 (sync). 9.x needs AGP ≥ 8.12.1.
+### Android build
+
+Gradle 9.1, AGP 9 and **built-in Kotlin** (`android.builtInKotlin=true` in `android/gradle.properties`; the app applies no `kotlin-android` plugin — the `org.jetbrains.kotlin.android` entry in `settings.gradle.kts` only pins the Kotlin version). With built-in Kotlin, any plugin that still applies KGP unconditionally fails the build ("plugin is no longer required for Kotlin support since AGP 9.0"), so plugin upgrades must keep versions that support it — including transitive ones like `url_launcher_android` (≥ 6.3.33). `network_info_plus` resolves to 8.2.1: 8.2.2 pulls `dbus` 0.8, which conflicts with `flutter_local_notifications` 21. `home_widget` is a local copy in `third_party/home_widget` (via `dependency_overrides`): upstream 0.10.0 applies KGP only when built-in Kotlin is off, but writes it as `apply plugin: 'kotlin-android'`, which Flutter's regex check flags regardless of the surrounding `if`. The copy rewrites that one line as `pluginManager.apply(...)` — see `third_party/README.md`; drop the copy once upstream changes it. To upgrade `home_widget` meanwhile, re-copy the new version there and re-apply the edit.
 
 ## Conventions
 

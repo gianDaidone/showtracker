@@ -9,6 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Alcuni widget Cupertino del framework usano queste icone; senza il pacchetto
+  # il build avvisa che il font manca. Il tree-shaking tiene solo i glifi usati.
+  cupertino_icons: ^1.0.8
 
   # State Management
   flutter_riverpod: ^2.6.1
@@ -29,25 +32,25 @@ dependencies:
   # Notifications
   flutter_local_notifications: ^21.0.0
   timezone: ^0.11.0
-  flutter_timezone: ^5.0.0
+  flutter_timezone: ^5.1.1
 
   # Utils
   path_provider: ^2.1.4
   intl: ^0.19.0
   flutter_svg: ^2.0.10+1
-  home_widget: ^0.9.3
+  home_widget: ^0.10.0
   flutter_secure_storage: ^10.3.1
   url_launcher: ^6.3.2
   app_links: ^7.0.0
-  package_info_plus: ^9.0.1
+  package_info_plus: ^10.2.2
   ota_update: ^7.1.0
 
   # Sync & P2P
   qr_flutter: ^4.1.0
-  mobile_scanner: ^5.2.3
+  mobile_scanner: ^7.4.2
   shelf: ^1.4.1
   shelf_router: ^1.1.4
-  network_info_plus: ^5.0.3
+  network_info_plus: ^8.2.1
 
 dev_dependencies:
   flutter_test:
@@ -59,6 +62,12 @@ dev_dependencies:
   build_runner: ^2.4.13
   drift_dev: ^2.21.0
   riverpod_generator: ^2.4.3
+
+# Copia locale di home_widget 0.10.0 con una riga del build.gradle riscritta
+# per togliere un falso avviso KGP — vedi third_party/README.md.
+dependency_overrides:
+  home_widget:
+    path: third_party/home_widget
 
 flutter:
   uses-material-design: true
