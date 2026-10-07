@@ -272,7 +272,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
         }
         airedEpisodes = aired;
       } else {
-        airedEpisodes = seasonCounts.values.fold<int>(0, (a, b) => a + (b ?? 0));
+        airedEpisodes = seasonCounts.values.fold<int>(0, (a, b) => a + b);
       }
     } else {
       airedEpisodes = total;

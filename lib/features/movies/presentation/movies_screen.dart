@@ -657,39 +657,6 @@ class _PosterFallback extends StatelessWidget {
       );
 }
 
-class _StatusChip extends StatelessWidget {
-  final MediaStatus status;
-  const _StatusChip({required this.status});
-
-  static const _colors = {
-    MediaStatus.watching: Color(0xFFFF9C01),
-    MediaStatus.completed: Color(0xFF4CAF50),
-    MediaStatus.paused: Color(0xFFFFC107),
-    MediaStatus.dropped: Color(0xFFF44336),
-    MediaStatus.planToWatch: Color(0xFF2196F3),
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.divider.withAlpha(80),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        status.label,
-        style: const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
-}
-
 // ── Stato vuoto "Da Vedere" ───────────────────────────────────────────────────
 
 class _EmptyDaVedere extends StatelessWidget {

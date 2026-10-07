@@ -28,8 +28,6 @@ class AppInterceptor extends http.BaseClient {
         case Unauthenticated():
           queryParams['api_key'] = ApiKeys.tmdb; 
           break;
-        case null:
-          break;
       }
 
       return _sendReplaced(request, queryParams);
@@ -44,8 +42,6 @@ class AppInterceptor extends http.BaseClient {
           break;
         case RawgUnauthenticated():
           queryParams['key'] = ApiKeys.rawg;
-          break;
-        case null:
           break;
       }
 

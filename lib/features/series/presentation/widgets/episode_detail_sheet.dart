@@ -270,7 +270,7 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
                 color: AppColors.surface,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 10,
                     offset: const Offset(0, -4),
                   ),
@@ -283,7 +283,7 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
                   style: FilledButton.styleFrom(
                     backgroundColor: isWatched
                         ? AppColors.accent
-                        : Colors.white.withOpacity(0.08),
+                        : Colors.white.withValues(alpha: 0.08),
                     foregroundColor:
                         isWatched ? Colors.white : AppColors.textPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -292,7 +292,7 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
                       side: isWatched
                           ? BorderSide.none
                           : BorderSide(
-                              color: AppColors.textSecondary.withOpacity(0.3)),
+                              color: AppColors.textSecondary.withValues(alpha: 0.3)),
                     ),
                   ),
                   icon: Icon(

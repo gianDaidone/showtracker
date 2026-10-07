@@ -64,7 +64,7 @@ class ShowTrackerWidgetsManager {
 
   static String _formatMonth(int month) {
     const months = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
-    return '${months[month - 1]}';
+    return months[month - 1];
   }
 
   static String _formatEpisodeTitle(int season, int episode, String? seasonName) {
@@ -101,7 +101,7 @@ class ShowTrackerWidgetsManager {
          if (watchedCount >= total) continue;
          
          final watched = showData.watchedBySeason;
-         final seasonCounts = await c.read(seasonEpisodeCountsProvider(show.id).future) ?? {};
+         final seasonCounts = await c.read(seasonEpisodeCountsProvider(show.id).future);
          
          int s = 1;
          int e = 1;

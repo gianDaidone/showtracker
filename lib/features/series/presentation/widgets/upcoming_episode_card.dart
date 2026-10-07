@@ -140,7 +140,7 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
 
     final hasAdditional = widget.additionalEpisodes.isNotEmpty;
 
-    final topRadius = const Radius.circular(14);
+    const topRadius = Radius.circular(14);
     final bottomRadius = hasAdditional ? Radius.zero : const Radius.circular(14);
     final mainCardRadius = BorderRadius.vertical(top: topRadius, bottom: bottomRadius);
 

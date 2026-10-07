@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 import '../../../core/database/database_provider.dart';
@@ -247,7 +248,7 @@ class SyncService {
             ),
           );
         } catch (e) {
-          print('Errore idratazione serie ${show.id}: $e');
+          debugPrint('Errore idratazione serie ${show.id}: $e');
         }
       }
     } catch (_) {}

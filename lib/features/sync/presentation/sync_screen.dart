@@ -435,8 +435,8 @@ class _ScannerFramePainter extends CustomPainter {
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
 
-    final length = 40.0;
-    final r = 24.0;
+    const length = 40.0;
+    const r = 24.0;
 
     // Top-Left
     canvas.drawPath(

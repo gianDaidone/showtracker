@@ -57,7 +57,6 @@ class _MainShellState extends State<MainShell> {
             builder: (context, constraints) {
               final activeIndex =
                   isSearch ? _lastSectionIndex : currentIndex;
-              final tabWidth = constraints.maxWidth / _tabs.length;
 
               return Stack(
                 children: [

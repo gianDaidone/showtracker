@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
@@ -51,7 +52,7 @@ class LocalSyncServer {
       
       return 'http://$ip:${_server!.port}/sync?token=$_token';
     } catch (e) {
-      print('Failed to start local sync server: $e');
+      debugPrint('Failed to start local sync server: $e');
       return null;
     }
   }
