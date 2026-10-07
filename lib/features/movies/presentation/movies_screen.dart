@@ -382,16 +382,23 @@ class _WatchlistMovieCard extends ConsumerStatefulWidget {
 class _WatchlistMovieCardState extends ConsumerState<_WatchlistMovieCard> {
   _MarkState _markState = _MarkState.idle;
 
+  /// Stessa sequenza del pulsante episodio delle serie: prima l'animazione,
+  /// poi la scrittura. Il film diventa "Completato" ed esce dalla lista appena
+  /// il DB emette, quindi scrivere subito farebbe sparire la card prima della
+  /// spunta verde.
   Future<void> _markWatched() async {
     if (_markState != _MarkState.idle) return;
     setState(() => _markState = _MarkState.marking);
+
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (mounted) setState(() => _markState = _MarkState.success);
+
+    await Future.delayed(const Duration(milliseconds: 700));
+
     try {
       await ref
           .read(trackedMoviesNotifierProvider.notifier)
           .updateStatus(widget.movie.id, MediaStatus.completed);
-      if (!mounted) return;
-      setState(() => _markState = _MarkState.success);
-      await Future.delayed(const Duration(milliseconds: 700));
       if (mounted) setState(() => _markState = _MarkState.idle);
     } catch (_) {
       if (mounted) setState(() => _markState = _MarkState.idle);
@@ -569,7 +576,7 @@ class _CircularMarkButton extends StatelessWidget {
   Color get _bgColor => switch (state) {
         _MarkState.idle => Colors.transparent,
         _MarkState.marking => _green,
-        _MarkState.success => AppColors.accent,
+        _MarkState.success => _green,
       };
 
   Color get _iconColor =>
@@ -598,18 +605,11 @@ class _CircularMarkButton extends StatelessWidget {
           child: SizedBox(
             width: 18,
             height: 18,
-            child: state == _MarkState.marking
-                ? const CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Colors.white,
-                  )
-                : Icon(
-                    state == _MarkState.success
-                        ? Icons.check
-                        : Icons.check,
-                    size: 18,
-                    color: _iconColor,
-                  ),
+            child: Icon(
+              Icons.check,
+              size: 18,
+              color: _iconColor,
+            ),
           ),
         ),
       ),
