@@ -4,14 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/auth/auth_state.dart';
 import '../../../core/constants/api_keys.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/services/app_toast.dart';
+import 'widgets/settings_widgets.dart';
 
-class TmdbAccountSection extends ConsumerWidget {
-  const TmdbAccountSection({super.key});
+class TmdbAccountTile extends ConsumerWidget {
+  const TmdbAccountTile({super.key});
 
-  Future<void> _logout(WidgetRef ref, BuildContext context, AuthState state) async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    
+  Future<void> _logout(WidgetRef ref, AuthState state) async {
     if (state is AuthenticatedWithSession) {
       try {
         final url = Uri.parse('https://api.themoviedb.org/3/authentication/session?api_key=${ApiKeys.tmdb}');
@@ -24,147 +23,37 @@ class TmdbAccountSection extends ConsumerWidget {
         // Ignoriamo l'errore di rete se siamo offline, vogliamo comunque pulire lo storage locale.
       }
     }
-    
+
     await ref.read(authControllerProvider.notifier).logout();
-    scaffoldMessenger.showSnackBar(
-      const SnackBar(content: Text('Account disconnesso.')),
-    );
+    // Il toast vive nell'overlay del router: resta visibile anche dopo il
+    // redirect all'onboarding.
+    AppToast.show('Account disconnesso', type: ToastType.success);
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authStateAsync = ref.watch(authControllerProvider);
+    final state = authStateAsync.valueOrNull ?? const Unauthenticated();
 
-    return authStateAsync.when(
-      data: (state) {
-        String statusText = 'Non connesso';
-        String subtitle = '';
-        bool isConnected = false;
+    final statusText = authStateAsync.isLoading
+        ? 'Verifica in corso…'
+        : switch (state) {
+            Unauthenticated() => 'Non connesso',
+            AuthenticatedWithSession() => 'Connesso tramite account',
+            AuthenticatedWithManualKey() => 'Connesso con API Key',
+          };
 
-        switch (state) {
-          case Unauthenticated():
-            statusText = 'Non connesso';
-            isConnected = false;
-            break;
-          case AuthenticatedWithSession():
-            statusText = 'Connesso tramite account';
-            isConnected = true;
-            break;
-          case AuthenticatedWithManualKey():
-            statusText = 'Connesso (API Key manuale)';
-            isConnected = true;
-            break;
-        }
-
-        return Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: isConnected ? const Color(0xFF01B4E4) : AppColors.background,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isConnected ? const Color(0xFF01B4E4) : AppColors.textSecondary,
-                              width: 2,
-                            ),
-                          ),
-                          child: Text(
-                            'TMDB',
-                            style: TextStyle(
-                              color: isConnected ? Colors.white : AppColors.textSecondary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'TMDB',
-                                style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                statusText,
-                                style: TextStyle(
-                                  color: isConnected ? Colors.green : AppColors.textSecondary,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (isConnected) ...[
-                    const Divider(height: 1, color: AppColors.divider),
-                    InkWell(
-                      onTap: () {
-                         showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Disconnettere l\'account?'),
-                            content: const Text(
-                              'Disconnettendo l\'account non potrai più cercare nuovi titoli TMDB, ma il tuo database locale rimarrà intatto.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Annulla'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  _logout(ref, context, state);
-                                  Navigator.pop(context);
-                                },
-                                style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-                                child: const Text('Disconnetti'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Center(
-                          child: Text(
-                            'Disconnetti Account',
-                            style: TextStyle(
-                              color: Colors.redAccent,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => const SizedBox.shrink(),
+    return ServiceAccountTile(
+      name: 'TMDB',
+      brandColor: const Color(0xFF01B4E4),
+      isConnected: state is! Unauthenticated,
+      statusText: statusText,
+      description:
+          'Usato solo in lettura per copertine, trame e date di uscita di serie e film. '
+          'Nessun dato sulle tue visioni viene inviato ai server di TMDB.',
+      disconnectWarning:
+          'Disconnettendo l\'account non potrai più cercare nuovi titoli TMDB, ma il tuo database locale rimarrà intatto.',
+      onDisconnect: () => _logout(ref, state),
     );
   }
 }

@@ -1,16 +1,40 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'tmdb_account_section.dart';
-import 'rawg_account_section.dart';
-import '../../update/presentation/app_update_section.dart';
 
-class SettingsScreen extends StatelessWidget {
+import '../../../core/constants.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../games/providers/games_providers.dart';
+import '../../movies/providers/movies_providers.dart';
+import '../../series/providers/series_providers.dart';
+import '../../update/presentation/app_update_section.dart';
+import '../../update/providers/update_providers.dart';
+import 'rawg_account_section.dart';
+import 'tmdb_account_section.dart';
+import 'widgets/settings_widgets.dart';
+
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final showsCount =
+        ref.watch(trackedShowsNotifierProvider).valueOrNull?.length ?? 0;
+    final moviesCount =
+        ref.watch(trackedMoviesNotifierProvider).valueOrNull?.length ?? 0;
+    final gamesCount = kEnableGames
+        ? ref.watch(trackedGamesNotifierProvider).valueOrNull?.length ?? 0
+        : 0;
+
+    final summary = showsCount + moviesCount + gamesCount == 0
+        ? 'Nessun titolo nella libreria'
+        : [
+            '$showsCount serie',
+            '$moviesCount film',
+            if (kEnableGames)
+              '$gamesCount ${gamesCount == 1 ? 'gioco' : 'giochi'}',
+          ].join(' · ');
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -20,321 +44,60 @@ class SettingsScreen extends StatelessWidget {
             // ── Header ────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      border: Border.all(color: AppColors.divider, width: 1.5),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(
-                      Icons.person_rounded,
-                      color: AppColors.accent,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Profilo',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Gestisci connessioni e privacy',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              child: _ProfileHeader(summary: summary),
             ),
-            
+
             // ── Content ───────────────────────────────────────────────
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  const Text(
-                    'ACCOUNT',
-                    style: TextStyle(
-                      color: AppColors.accent,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const TmdbAccountSection(),
-                  const SizedBox(height: 16),
-                  const RawgAccountSection(),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'SINCRONIZZAZIONE DATI',
-                    style: TextStyle(
-                      color: AppColors.accent,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.divider),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(10),
+              child: CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        const SettingsSectionTitle('Account'),
+                        const SettingsGroup(
+                          children: [
+                            TmdbAccountTile(),
+                            if (kEnableGames) RawgAccountTile(),
+                          ],
                         ),
-                        child: const Icon(Icons.qr_code_scanner, color: AppColors.textPrimary, size: 24),
+                        const SizedBox(height: 28),
+                        const SettingsSectionTitle('App'),
+                        SettingsGroup(
+                          children: [
+                            SettingsTile(
+                              leading:
+                                  const SettingsIconBox(Icons.qr_code_scanner),
+                              title: 'Trasferimento / Sync',
+                              subtitle: 'Sincronizza lo storico via QR Code',
+                              onTap: () => context.push('/sync'),
+                            ),
+                            const AppUpdateTile(),
+                            SettingsTile(
+                              leading:
+                                  const SettingsIconBox(Icons.shield_outlined),
+                              title: 'Privacy e fonti dati',
+                              subtitle: kEnableGames
+                                  ? 'Come usiamo TMDB, AniList e RAWG'
+                                  : 'Come usiamo TMDB e AniList',
+                              onTap: () => context.push('/privacy'),
+                            ),
+                          ],
+                        ),
+                      ]),
+                    ),
+                  ),
+                  // Occupa lo spazio rimasto: il footer sta in fondo allo
+                  // schermo se il contenuto è corto, e scorre se è lungo.
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(16, 32, 16, 24),
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: _Footer(),
                       ),
-                      title: const Text(
-                        'Trasferimento / Sync',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: const Text(
-                        'Sincronizza lo storico via QR Code',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
-                      trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-                      onTap: () {
-                        context.push('/sync');
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'AGGIORNAMENTI',
-                    style: TextStyle(
-                      color: AppColors.accent,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const AppUpdateSection(),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'INFORMAZIONI SULL\'APP',
-                    style: TextStyle(
-                      color: AppColors.accent,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.divider),
-                    ),
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.shield_outlined, color: AppColors.textPrimary, size: 18),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'Cos\'è ShowTracker?',
-                              style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'ShowTracker è la tua app privata e offline-first per tracciare serie TV, film e videogiochi. '
-                          'I tuoi progressi e i tuoi dati sono salvati esclusivamente sul tuo dispositivo, garantendoti una privacy assoluta del 100%.',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Divider(height: 1, color: AppColors.divider),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.sync_lock, color: AppColors.textPrimary, size: 18),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'Perché TMDB?',
-                              style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Il login al tuo account TMDB serve esclusivamente come "ponte" per recuperare in sola lettura le copertine, '
-                          'le trame e le date di uscita. Nessun dato sulle tue visioni o attività viene inviato ai server di TMDB.',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Divider(height: 1, color: AppColors.divider),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'This product uses the TMDB API but is not endorsed or certified by TMDB.',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Divider(height: 1, color: AppColors.divider),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.hub_outlined, color: AppColors.textPrimary, size: 18),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'Ecosistema Dati',
-                              style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Per offrirti un catalogo ricco e globale, l\'app si appoggia a servizi pubblici di eccellenza. Usiamo TMDB per scovare film e serie occidentali. Per gli Anime, invece, attingiamo al database di AniList per avere date e orari di uscita precisissimi, sfruttando i collegamenti del progetto open-source Yuna per far parlare "magicamente" i due mondi.',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Divider(height: 1, color: AppColors.divider),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'A causa di questa unione di dati, la suddivisione e la nomenclatura delle stagioni e degli episodi potrebbero in alcuni casi non rispecchiare fedelmente le release ufficiali.',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Divider(height: 1, color: AppColors.divider),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.videogame_asset, color: AppColors.textPrimary, size: 18),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'Perché RAWG?',
-                              style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'L\'inserimento della chiave RAWG abilita la ricerca e il tracciamento dei videogiochi, scaricando in sola lettura copertine e dettagli. La tua libreria giochi rimane privata e salvata esclusivamente sul tuo dispositivo.',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Divider(height: 1, color: AppColors.divider),
-                        const SizedBox(height: 12),
-                        GestureDetector(
-                          onTap: () => launchUrl(Uri.parse('https://rawg.io/'), mode: LaunchMode.externalApplication),
-                          child: const Text(
-                            'Video game data and information are sourced from RAWG.',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
-                              fontStyle: FontStyle.italic,
-                              height: 1.5,
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                   ),
                 ],
@@ -342,6 +105,81 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+
+class _ProfileHeader extends StatelessWidget {
+  final String summary;
+  const _ProfileHeader({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            border: Border.all(color: AppColors.divider, width: 1.5),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Icon(
+            Icons.person_rounded,
+            color: AppColors.accent,
+            size: 24,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Profilo',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                summary,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
+
+class _Footer extends ConsumerWidget {
+  const _Footer();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final version = ref.watch(packageInfoProvider).whenOrNull(
+          data: (info) => info.version,
+        );
+
+    return Text(
+      version != null ? 'ShowTracker · v$version' : 'ShowTracker',
+      style: const TextStyle(
+        color: AppColors.textSecondary,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
       ),
     );
   }

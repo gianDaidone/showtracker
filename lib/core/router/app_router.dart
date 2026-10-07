@@ -19,6 +19,7 @@ import '../services/app_toast.dart';
 
 import '../../core/auth/auth_state.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
+import '../../features/settings/presentation/privacy_info_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/sync/presentation/sync_screen.dart';
 
@@ -164,6 +165,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/sync',
         builder: (context, state) => const SyncScreen(),
+      ),
+      GoRoute(
+        path: '/privacy',
+        builder: (context, state) => const PrivacyInfoScreen(),
       ),
     ],
   );

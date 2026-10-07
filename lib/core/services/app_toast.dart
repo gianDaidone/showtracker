@@ -8,7 +8,12 @@ class AppToast {
 
   static OverlayEntry? _current;
 
-  static void show(String message, {ToastType type = ToastType.error}) {
+  /// [duration]: quanto resta visibile; allungala per i messaggi lunghi.
+  static void show(
+    String message, {
+    ToastType type = ToastType.error,
+    Duration duration = const Duration(milliseconds: 1500),
+  }) {
     final overlay = navigatorKey.currentState?.overlay;
     if (overlay == null) return;
 
@@ -20,6 +25,7 @@ class AppToast {
       builder: (_) => _ToastBanner(
         message: message,
         type: type,
+        duration: duration,
         onDone: () {
           entry.remove();
           if (_current == entry) _current = null;
@@ -36,11 +42,13 @@ class AppToast {
 class _ToastBanner extends StatefulWidget {
   final String message;
   final ToastType type;
+  final Duration duration;
   final VoidCallback onDone;
 
   const _ToastBanner({
     required this.message,
     required this.type,
+    required this.duration,
     required this.onDone,
   });
 
@@ -69,7 +77,7 @@ class _ToastBannerState extends State<_ToastBanner>
 
     _ctrl.forward();
     // Nascondi dopo un po'
-    Future.delayed(const Duration(milliseconds: 1500), _dismiss);
+    Future.delayed(widget.duration, _dismiss);
   }
 
   @override

@@ -11,6 +11,41 @@ const installPermissionDeniedMessage =
     'Permesso di installazione negato. Abilita «Installa app sconosciute» per '
     'ShowTracker nelle impostazioni di Android e riprova.';
 
+// Stile dei dialog dell'app (vedi `_PreviousEpisodesDialog`): titolo bianco
+// in grassetto, testo grigio, azione secondaria grigia, primaria arancione.
+
+const _titleStyle = TextStyle(
+  color: AppColors.textPrimary,
+  fontWeight: FontWeight.bold,
+);
+
+const _bodyStyle = TextStyle(
+  color: AppColors.textSecondary,
+  fontSize: 14,
+  height: 1.5,
+);
+
+Widget _secondaryAction(String label, VoidCallback? onPressed) => TextButton(
+      onPressed: onPressed,
+      child: Text(
+        label,
+        style: TextStyle(
+          color: onPressed == null
+              ? AppColors.textSecondary.withAlpha(100)
+              : AppColors.textSecondary,
+        ),
+      ),
+    );
+
+Widget _primaryAction(String label, VoidCallback onPressed) => FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.accent,
+        foregroundColor: Colors.black,
+      ),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+    );
+
 /// "Aggiornamento disponibile": restituisce `true` se l'utente sceglie
 /// "Aggiorna".
 class UpdateAvailableDialog extends StatelessWidget {
@@ -28,7 +63,7 @@ class UpdateAvailableDialog extends StatelessWidget {
     final notes = release.notes;
     return AlertDialog(
       backgroundColor: AppColors.surface,
-      title: const Text('Aggiornamento disponibile'),
+      title: const Text('Aggiornamento disponibile', style: _titleStyle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,12 +84,11 @@ class UpdateAvailableDialog extends StatelessWidget {
           if (notes != null) ...[
             const SizedBox(height: 16),
             const Text(
-              'NOTE DI RILASCIO',
+              'Novità',
               style: TextStyle(
-                color: AppColors.accent,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
+                color: AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
@@ -62,14 +96,7 @@ class UpdateAvailableDialog extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 300),
                 child: SingleChildScrollView(
-                  child: Text(
-                    notes,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
-                      height: 1.5,
-                    ),
-                  ),
+                  child: Text(notes, style: _bodyStyle),
                 ),
               ),
             ),
@@ -77,18 +104,8 @@ class UpdateAvailableDialog extends StatelessWidget {
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Più tardi'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.accent,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Aggiorna'),
-        ),
+        _secondaryAction('Più tardi', () => Navigator.pop(context, false)),
+        _primaryAction('Aggiorna', () => Navigator.pop(context, true)),
       ],
     );
   }
@@ -103,25 +120,16 @@ class InstallPermissionDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: AppColors.surface,
-      title: const Text('Permesso necessario'),
+      title: const Text('Permesso necessario', style: _titleStyle),
       content: const Text(
         'Per installare l\'aggiornamento, Android richiede di consentire a '
         'ShowTracker di installare app sconosciute.\n\n'
         'Attiva l\'opzione nella schermata che si aprirà, poi torna qui.',
+        style: _bodyStyle,
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Annulla'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.accent,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Apri impostazioni'),
-        ),
+        _secondaryAction('Annulla', () => Navigator.pop(context, false)),
+        _primaryAction('Apri impostazioni', () => Navigator.pop(context, true)),
       ],
     );
   }
@@ -238,7 +246,7 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
       canPop: false,
       child: AlertDialog(
         backgroundColor: AppColors.surface,
-        title: Text('Download versione ${widget.release.version}'),
+        title: Text('Download versione ${widget.release.version}', style: _titleStyle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -260,15 +268,12 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
                       ? 'Download in corso…'
                       : '${(progress * 100).round()}%',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              style: _bodyStyle,
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: _cancelling ? null : _cancel,
-            child: const Text('Annulla'),
-          ),
+          _secondaryAction('Annulla', _cancelling ? null : _cancel),
         ],
       ),
     );
