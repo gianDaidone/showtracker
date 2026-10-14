@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 
+import '../../../core/paged_search.dart';
 import 'models/tmdb_show.dart';
 import 'models/tmdb_show_detail.dart';
 import 'models/tmdb_season.dart';
@@ -34,6 +36,9 @@ class TmdbService {
     }
     
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      // Il corpo spiega il motivo (`status_message`, es. chiave non valida o
+      // sessione scaduta) e non contiene credenziali: l'URL sì, quindi solo il path.
+      debugPrint('TMDB ${response.statusCode} su ${uri.path}: ${response.body}');
       throw TmdbException(
         'Errore TMDB ${response.statusCode}: ${response.reasonPhrase ?? ""}',
         statusCode: response.statusCode,
@@ -43,13 +48,27 @@ class TmdbService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  Future<List<TmdbShow>> searchShows(String query) async {
+  Future<SearchPage<TmdbShow>> searchShows(String query, {int page = 1}) async {
     final data = await _get(
-      _uri('/search/tv', {'query': query, 'language': 'it-IT'}),
+      _uri('/search/tv', {'query': query, 'language': 'it-IT', 'page': '$page'}),
     );
-    return ((data['results'] as List<dynamic>?) ?? [])
-        .map((e) => TmdbShow.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _searchPage(data, TmdbShow.fromJson);
+  }
+
+  /// TMDB pagina le ricerche a 20 risultati; `total_pages` dice se ce ne sono altri.
+  static SearchPage<T> _searchPage<T>(
+    Map<String, dynamic> data,
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
+    final page = data['page'] as int? ?? 1;
+    final totalPages = data['total_pages'] as int? ?? page;
+    return SearchPage(
+      items: ((data['results'] as List<dynamic>?) ?? [])
+          .map((e) => fromJson(e as Map<String, dynamic>))
+          .toList(),
+      hasMore: page < totalPages,
+      totalCount: data['total_results'] as int?,
+    );
   }
 
   Future<TmdbShowDetail> getShowDetails(int id) async {
@@ -288,17 +307,16 @@ class TmdbService {
 
   // ── Film ──────────────────────────────────────────────────────────────────
 
-  Future<List<TmdbMovie>> searchMovies(String query) async {
+  Future<SearchPage<TmdbMovie>> searchMovies(String query, {int page = 1}) async {
     final data = await _get(
       _uri('/search/movie', {
         'query': query,
         'language': 'it-IT',
         'include_adult': 'false',
+        'page': '$page',
       }),
     );
-    return ((data['results'] as List<dynamic>?) ?? [])
-        .map((e) => TmdbMovie.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _searchPage(data, TmdbMovie.fromJson);
   }
 
   Future<TmdbMovieDetail> getMovieDetails(int id) async {

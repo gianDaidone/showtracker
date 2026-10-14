@@ -10,6 +10,10 @@ class RawgGame {
   final List<String> platforms;
   final List<String> genres;
 
+  /// Utenti RAWG che hanno il gioco in libreria: è la misura di popolarità
+  /// usata per ordinare i risultati di ricerca (`ordering=-added`).
+  final int added;
+
   const RawgGame({
     required this.id,
     required this.slug,
@@ -20,6 +24,7 @@ class RawgGame {
     this.playtime,
     this.platforms = const [],
     this.genres = const [],
+    this.added = 0,
   });
 
   factory RawgGame.fromJson(Map<String, dynamic> json) {
@@ -40,6 +45,7 @@ class RawgGame {
       genres: ((json['genres'] as List<dynamic>?) ?? [])
           .map((g) => g['name'] as String)
           .toList(),
+      added: (json['added'] as num?)?.toInt() ?? 0,
     );
   }
 

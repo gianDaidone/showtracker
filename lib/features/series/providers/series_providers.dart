@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
-import 'package:flutter_riverpod/flutter_riverpod.dart' show FutureProvider;
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show AsyncNotifierProvider, FutureProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/network/tmdb_http_client.dart';
@@ -9,6 +10,7 @@ import '../../../core/auth/auth_state.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/paged_search.dart';
 import '../../../core/riverpod_utils.dart';
 import '../../../core/services/app_toast.dart';
 import '../../../core/services/notification_service.dart';
@@ -77,11 +79,18 @@ YunaService yunaService(Ref ref) => YunaService();
 
 // ── TMDB: ricerca ─────────────────────────────────────────────────────────────
 
-@riverpod
-Future<List<TmdbShow>> searchShows(Ref ref, String query) async {
-  if (query.length < 2) return [];
-  return ref.watch(tmdbServiceProvider).searchShows(query);
-}
+// Paginata, quindi scritta a mano: un notifier generico non si genera.
+final showSearchProvider = AsyncNotifierProvider.autoDispose
+    .family<PagedSearchNotifier<TmdbShow>, PagedResults<TmdbShow>, String>(
+  (query) => PagedSearchNotifier(
+    query,
+    (ref) {
+      final tmdb = ref.watch(tmdbServiceProvider);
+      return (q, page) => tmdb.searchShows(q, page: page);
+    },
+    (show) => show.id,
+  ),
+);
 
 // ── AniList data provider ─────────────────────────────────────────────────────
 

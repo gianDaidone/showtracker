@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/services/app_toast.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/paged_list_footer.dart';
 import '../data/models/rawg_game.dart';
 import '../providers/games_providers.dart';
 
@@ -157,7 +158,7 @@ class _Results extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final resultsAsync = ref.watch(searchGamesProvider(query));
+    final resultsAsync = ref.watch(gameSearchProvider(query));
     final trackedAsync = ref.watch(trackedGamesProvider);
     final trackedIds = trackedAsync.value
             ?.map((g) => g.rawgId)
@@ -185,7 +186,8 @@ class _Results extends ConsumerWidget {
           ),
         ),
       ),
-      data: (games) {
+      data: (results) {
+        final games = results.items;
         if (games.isEmpty) {
           return Center(
             child: Padding(
@@ -216,15 +218,22 @@ class _Results extends ConsumerWidget {
           );
         }
 
+        final hasFooter = results.hasMore || results.loadMoreFailed;
         return ListView.separated(
           padding: const EdgeInsets.only(bottom: 24),
-          itemCount: games.length,
+          itemCount: games.length + (hasFooter ? 1 : 0),
           separatorBuilder: (_, __) =>
               const Divider(height: 1, color: AppColors.divider),
-          itemBuilder: (_, i) => _GameTile(
-            game: games[i],
-            isTracked: trackedIds.contains(games[i].id),
-          ),
+          itemBuilder: (_, i) => i == games.length
+              ? PagedListFooter(
+                  results: results,
+                  onLoadMore: () =>
+                      ref.read(gameSearchProvider(query).notifier).loadMore(),
+                )
+              : _GameTile(
+                  game: games[i],
+                  isTracked: trackedIds.contains(games[i].id),
+                ),
         );
       },
     );

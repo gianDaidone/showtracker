@@ -1,8 +1,10 @@
 import 'package:drift/drift.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show AsyncNotifierProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/paged_search.dart';
 import '../../series/providers/series_providers.dart';
 import '../data/models/tmdb_movie.dart';
 import '../data/models/tmdb_movie_detail.dart';
@@ -11,11 +13,18 @@ part 'movies_providers.g.dart';
 
 // ── TMDB: ricerca e dettaglio film ────────────────────────────────────────────
 
-@riverpod
-Future<List<TmdbMovie>> searchMovies(Ref ref, String query) async {
-  if (query.length < 2) return [];
-  return ref.watch(tmdbServiceProvider).searchMovies(query);
-}
+// Paginata, quindi scritta a mano: un notifier generico non si genera.
+final movieSearchProvider = AsyncNotifierProvider.autoDispose
+    .family<PagedSearchNotifier<TmdbMovie>, PagedResults<TmdbMovie>, String>(
+  (query) => PagedSearchNotifier(
+    query,
+    (ref) {
+      final tmdb = ref.watch(tmdbServiceProvider);
+      return (q, page) => tmdb.searchMovies(q, page: page);
+    },
+    (movie) => movie.id,
+  ),
+);
 
 @riverpod
 Future<TmdbMovieDetail> movieDetail(Ref ref, int tmdbId) {

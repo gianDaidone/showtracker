@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/services/app_toast.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/paged_list_footer.dart';
 import '../data/models/tmdb_show.dart';
 import '../providers/series_providers.dart';
 
@@ -198,7 +199,7 @@ class _Results extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final resultsAsync = ref.watch(searchShowsProvider(query));
+    final resultsAsync = ref.watch(showSearchProvider(query));
     final tracked = ref.watch(trackedShowsProvider).value ?? [];
     final trackedIds = tracked.map((s) => s.tmdbId).toSet();
 
@@ -215,7 +216,8 @@ class _Results extends ConsumerWidget {
           ),
         ),
       ),
-      data: (shows) {
+      data: (results) {
+        final shows = results.items;
         if (shows.isEmpty) {
           return Center(
             child: Padding(
@@ -244,14 +246,17 @@ class _Results extends ConsumerWidget {
           );
         }
 
+        // Il totale dichiarato da TMDB, non solo quelli già caricati
+        final total = results.totalCount ?? shows.length;
+        final hasFooter = results.hasMore || results.loadMoreFailed;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: Text(
-                '${shows.length} '
-                '${shows.length == 1 ? 'risultato trovato' : 'risultati trovati'}',
+                '$total '
+                '${total == 1 ? 'risultato trovato' : 'risultati trovati'}',
                 style: const TextStyle(
                     color: AppColors.textSecondary, fontSize: 13),
               ),
@@ -259,13 +264,19 @@ class _Results extends ConsumerWidget {
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.only(bottom: 24),
-                itemCount: shows.length,
+                itemCount: shows.length + (hasFooter ? 1 : 0),
                 separatorBuilder: (_, __) =>
                     const Divider(height: 1, color: AppColors.divider),
-                itemBuilder: (_, i) => _ResultTile(
-                  show: shows[i],
-                  isTracked: trackedIds.contains(shows[i].id),
-                ),
+                itemBuilder: (_, i) => i == shows.length
+                    ? PagedListFooter(
+                        results: results,
+                        onLoadMore: () =>
+                            ref.read(showSearchProvider(query).notifier).loadMore(),
+                      )
+                    : _ResultTile(
+                        show: shows[i],
+                        isTracked: trackedIds.contains(shows[i].id),
+                      ),
               ),
             ),
           ],

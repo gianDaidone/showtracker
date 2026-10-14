@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/services/app_toast.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/paged_list_footer.dart';
 import '../data/models/tmdb_movie.dart';
 import '../providers/movies_providers.dart';
 
@@ -198,7 +199,7 @@ class _Results extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final resultsAsync = ref.watch(searchMoviesProvider(query));
+    final resultsAsync = ref.watch(movieSearchProvider(query));
     final tracked = ref.watch(trackedMoviesProvider).value ?? [];
     final trackedIds = tracked.map((m) => m.tmdbId).toSet();
 
@@ -215,7 +216,8 @@ class _Results extends ConsumerWidget {
           ),
         ),
       ),
-      data: (movies) {
+      data: (results) {
+        final movies = results.items;
         if (movies.isEmpty) {
           return Center(
             child: Padding(
@@ -244,14 +246,17 @@ class _Results extends ConsumerWidget {
           );
         }
 
+        // Il totale dichiarato da TMDB, non solo quelli già caricati
+        final total = results.totalCount ?? movies.length;
+        final hasFooter = results.hasMore || results.loadMoreFailed;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: Text(
-                '${movies.length} '
-                '${movies.length == 1 ? 'risultato trovato' : 'risultati trovati'}',
+                '$total '
+                '${total == 1 ? 'risultato trovato' : 'risultati trovati'}',
                 style: const TextStyle(
                     color: AppColors.textSecondary, fontSize: 13),
               ),
@@ -259,13 +264,19 @@ class _Results extends ConsumerWidget {
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.only(bottom: 24),
-                itemCount: movies.length,
+                itemCount: movies.length + (hasFooter ? 1 : 0),
                 separatorBuilder: (_, __) =>
                     const Divider(height: 1, color: AppColors.divider),
-                itemBuilder: (_, i) => _ResultTile(
-                  movie: movies[i],
-                  isTracked: trackedIds.contains(movies[i].id),
-                ),
+                itemBuilder: (_, i) => i == movies.length
+                    ? PagedListFooter(
+                        results: results,
+                        onLoadMore: () =>
+                            ref.read(movieSearchProvider(query).notifier).loadMore(),
+                      )
+                    : _ResultTile(
+                        movie: movies[i],
+                        isTracked: trackedIds.contains(movies[i].id),
+                      ),
               ),
             ),
           ],

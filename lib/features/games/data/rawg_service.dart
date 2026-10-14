@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../../../core/paged_search.dart';
+import 'game_search_ranking.dart';
 import 'models/game_trailer.dart';
 import 'models/rawg_game.dart';
 import 'models/rawg_game_detail.dart';
@@ -31,15 +33,48 @@ class RawgService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  Future<List<RawgGame>> searchGames(String query) async {
-    if (query.length < 2) return [];
-    final data = await _get(_uri('/games', {
-      'search': query,
-      'page_size': '20',
-    }));
-    return ((data['results'] as List<dynamic>?) ?? [])
-        .map((e) => RawgGame.fromJson(e as Map<String, dynamic>))
-        .toList();
+  static const _searchPageSize = 40;
+
+  /// Pagina [page] della ricerca, già riordinata con [rankGameSearch].
+  ///
+  /// La prima pagina unisce due richieste parallele — ordine di rilevanza e
+  /// `search_precise` + `-added` (popolarità) — perché nessuna delle due da
+  /// sola mette in testa il gioco giusto per ogni tipo di ricerca. Le
+  /// successive proseguono solo la lista di rilevanza: i doppioni con la
+  /// prima li scarta chi le accoda (`PagedSearchNotifier`).
+  Future<SearchPage<RawgGame>> searchGames(String query, {int page = 1}) async {
+    if (query.length < 2) return const SearchPage(items: [], hasMore: false);
+
+    Future<Map<String, dynamic>> fetch(Map<String, String> extra, int page) =>
+        _get(_uri('/games', {
+          'search': query,
+          'page': '$page',
+          'page_size': '$_searchPageSize',
+          ...extra,
+        }));
+    List<RawgGame> parse(Map<String, dynamic> data) =>
+        ((data['results'] as List<dynamic>?) ?? [])
+            .map((e) => RawgGame.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+    if (page > 1) {
+      final data = await fetch(const {}, page);
+      return SearchPage(
+        items: rankGameSearch(query, parse(data)),
+        hasMore: data['next'] != null,
+        totalCount: data['count'] as int?,
+      );
+    }
+
+    final [relevance, popular] = await Future.wait([
+      fetch(const {}, 1),
+      fetch(const {'search_precise': 'true', 'ordering': '-added'}, 1),
+    ]);
+    return SearchPage(
+      items: rankGameSearch(query, parse(relevance), parse(popular)),
+      hasMore: relevance['next'] != null,
+      totalCount: relevance['count'] as int?,
+    );
   }
 
   Future<RawgGameDetail> getGameDetails(int id) async {

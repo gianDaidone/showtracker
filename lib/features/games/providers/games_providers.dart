@@ -2,10 +2,12 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show AsyncNotifierProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/paged_search.dart';
 import '../data/models/game_trailer.dart';
 import '../data/models/rawg_game.dart';
 import '../data/models/rawg_game_detail.dart';
@@ -31,11 +33,18 @@ RawgService rawgService(Ref ref) {
 
 // ── Ricerca giochi ────────────────────────────────────────────────────────────
 
-@riverpod
-Future<List<RawgGame>> searchGames(Ref ref, String query) {
-  if (query.length < 2) return Future.value([]);
-  return ref.watch(rawgServiceProvider).searchGames(query);
-}
+// Paginata, quindi scritta a mano: un notifier generico non si genera.
+final gameSearchProvider = AsyncNotifierProvider.autoDispose
+    .family<PagedSearchNotifier<RawgGame>, PagedResults<RawgGame>, String>(
+  (query) => PagedSearchNotifier(
+    query,
+    (ref) {
+      final rawg = ref.watch(rawgServiceProvider);
+      return (q, page) => rawg.searchGames(q, page: page);
+    },
+    (game) => game.id,
+  ),
+);
 
 // ── Dettaglio gioco ───────────────────────────────────────────────────────────
 

@@ -7,7 +7,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants.dart';
+import '../../../core/paged_search.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/paged_list_footer.dart';
 import '../../games/providers/games_providers.dart';
 import '../../movies/providers/movies_providers.dart';
 import '../../series/providers/series_providers.dart';
@@ -16,6 +18,9 @@ import '../providers/search_providers.dart';
 // ── Filtro attivo ─────────────────────────────────────────────────────────────
 
 enum _SearchFilter { all, series, movie, game }
+
+/// Risultati per tipo mostrati con il filtro "Tutti" (una pagina TMDB).
+const _allFilterCap = 20;
 
 _SearchFilter _parseFilter(String? raw) => switch (raw) {
       'series' => _SearchFilter.series,
@@ -349,15 +354,13 @@ class _Results extends ConsumerWidget {
     final showGames =
         filter == _SearchFilter.all || filter == _SearchFilter.game;
 
-    final showsAsync = showShows
-        ? ref.watch(searchShowsProvider(query))
-        : const AsyncValue<List>.data([]);
-    final moviesAsync = showMovies
-        ? ref.watch(searchMoviesProvider(query))
-        : const AsyncValue<List>.data([]);
-    final gamesAsync = showGames
-        ? ref.watch(searchGamesProvider(query))
-        : const AsyncValue<List>.data([]);
+    const none = AsyncValue<PagedResults<Never>>.data(PagedResults.empty());
+    final showsAsync =
+        showShows ? ref.watch(showSearchProvider(query)) : none;
+    final moviesAsync =
+        showMovies ? ref.watch(movieSearchProvider(query)) : none;
+    final gamesAsync =
+        showGames ? ref.watch(gameSearchProvider(query)) : none;
 
     // Spinner a pagina intera solo mentre il provider attivo carica
     final isFullLoading = switch (filter) {
@@ -379,12 +382,35 @@ class _Results extends ConsumerWidget {
       _ => showsAsync.isLoading || moviesAsync.isLoading || gamesAsync.isLoading,
     };
 
-    final rawShows =
-        showShows ? (ref.watch(searchShowsProvider(query)).value ?? []) : [];
-    final rawMovies =
-        showMovies ? (ref.watch(searchMoviesProvider(query)).value ?? []) : [];
-    final rawGames =
-        showGames ? (ref.watch(searchGamesProvider(query)).value ?? []) : [];
+    // Con "Tutti" ogni tipo resta alla prima pagina (20 risultati), così uno
+    // non sommerge gli altri; con un filtro la lista scorre e carica le
+    // pagine successive.
+    final single = filter != _SearchFilter.all;
+    List<T> visible<T>(List<T> items) =>
+        single ? items : items.take(_allFilterCap).toList();
+    final rawShows = visible(showsAsync.value?.items ?? const []);
+    final rawMovies = visible(moviesAsync.value?.items ?? const []);
+    final rawGames = visible(gamesAsync.value?.items ?? const []);
+
+    // La lista paginata del filtro attivo (null con "Tutti")
+    final (PagedResults<Object?>? paged, VoidCallback? loadMore) =
+        switch (filter) {
+      _SearchFilter.series => (
+          showsAsync.value,
+          () => ref.read(showSearchProvider(query).notifier).loadMore(),
+        ),
+      _SearchFilter.movie => (
+          moviesAsync.value,
+          () => ref.read(movieSearchProvider(query).notifier).loadMore(),
+        ),
+      _SearchFilter.game => (
+          gamesAsync.value,
+          () => ref.read(gameSearchProvider(query).notifier).loadMore(),
+        ),
+      _ => (null, null),
+    };
+    final hasFooter =
+        paged != null && (paged.hasMore || paged.loadMoreFailed);
 
     final results = <SearchResult>[
       for (final s in rawShows)
@@ -417,32 +443,59 @@ class _Results extends ConsumerWidget {
     ];
 
     if (results.isEmpty && !anyLoading) {
+      // Una ricerca fallita non è "nessun risultato": prima il messaggio
+      // mostrava lo stesso testo e nascondeva l'errore.
+      final failed = [
+        if (showShows) showsAsync,
+        if (showMovies) moviesAsync,
+        if (showGames) gamesAsync,
+      ].where((a) => a.hasError);
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Nessun risultato',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              if (failed.isNotEmpty) ...[
+                const Text(
+                  'Ricerca non riuscita',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Nessun contenuto trovato per "$query"',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 14),
-              ),
+                const SizedBox(height: 8),
+                Text(
+                  '${failed.first.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+                ),
+              ] else ...[
+                const Text(
+                  'Nessun risultato',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Nessun contenuto trovato per "$query"',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 14),
+                ),
+              ],
             ],
           ),
         ),
       );
     }
+
+    // Con un filtro il totale dichiarato dall'API, non solo i caricati
+    final count = paged?.totalCount ?? results.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,8 +505,8 @@ class _Results extends ConsumerWidget {
           child: Row(
             children: [
               Text(
-                '${results.length} '
-                '${results.length == 1 ? 'risultato' : 'risultati'}',
+                '$count '
+                '${count == 1 ? 'risultato' : 'risultati'}',
                 style: const TextStyle(
                     color: AppColors.textSecondary, fontSize: 13),
               ),
@@ -472,8 +525,10 @@ class _Results extends ConsumerWidget {
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.only(bottom: 24),
-            itemCount: results.length,
-            itemBuilder: (_, i) => _ResultTile(result: results[i]),
+            itemCount: results.length + (hasFooter ? 1 : 0),
+            itemBuilder: (_, i) => i == results.length
+                ? PagedListFooter(results: paged!, onLoadMore: loadMore!)
+                : _ResultTile(result: results[i]),
           ),
         ),
       ],
