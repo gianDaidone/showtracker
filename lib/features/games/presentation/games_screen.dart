@@ -37,14 +37,14 @@ class GamesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rawgStateAsync = ref.watch(rawgAuthControllerProvider);
-    final isUnauthenticated = rawgStateAsync.valueOrNull is RawgUnauthenticated;
+    final isUnauthenticated = rawgStateAsync.value is RawgUnauthenticated;
 
     if (isUnauthenticated) {
       return const _RawgEmptyShell();
     }
 
-    final gamesAsync = ref.watch(trackedGamesNotifierProvider);
-    final totalCount = gamesAsync.valueOrNull?.length ?? 0;
+    final gamesAsync = ref.watch(trackedGamesProvider);
+    final totalCount = gamesAsync.value?.length ?? 0;
 
     return DefaultTabController(
       length: 3,
@@ -276,7 +276,7 @@ class _BacklogTabState extends ConsumerState<_BacklogTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final gamesAsync = ref.watch(trackedGamesNotifierProvider);
+    final gamesAsync = ref.watch(trackedGamesProvider);
 
     return gamesAsync.when(
       loading: () => const Center(
@@ -350,7 +350,7 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final gamesAsync = ref.watch(trackedGamesNotifierProvider);
+    final gamesAsync = ref.watch(trackedGamesProvider);
 
     return gamesAsync.when(
       loading: () => const Center(
@@ -476,7 +476,7 @@ class _GiocatiTabState extends ConsumerState<_GiocatiTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final gamesAsync = ref.watch(trackedGamesNotifierProvider);
+    final gamesAsync = ref.watch(trackedGamesProvider);
 
     return gamesAsync.when(
       loading: () => const Center(
@@ -587,7 +587,7 @@ class _GameCardState extends ConsumerState<_GameCard> {
       setState(() => _loading = true);
       try {
         await ref
-            .read(trackedGamesNotifierProvider.notifier)
+            .read(trackedGamesProvider.notifier)
             .resetToBacklog(game.id);
       } finally {
         if (mounted) setState(() => _loading = false);
@@ -611,7 +611,7 @@ class _GameCardState extends ConsumerState<_GameCard> {
           setState(() => _loading = true);
           try {
             await ref
-                .read(trackedGamesNotifierProvider.notifier)
+                .read(trackedGamesProvider.notifier)
                 .markPlayed(game.id, rating);
           } finally {
             if (mounted) setState(() => _loading = false);
@@ -622,7 +622,7 @@ class _GameCardState extends ConsumerState<_GameCard> {
           setState(() => _loading = true);
           try {
             await ref
-                .read(trackedGamesNotifierProvider.notifier)
+                .read(trackedGamesProvider.notifier)
                 .markFolded(game.id);
           } finally {
             if (mounted) setState(() => _loading = false);

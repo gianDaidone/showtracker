@@ -19,11 +19,11 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final showsCount =
-        ref.watch(trackedShowsNotifierProvider).valueOrNull?.length ?? 0;
+        ref.watch(trackedShowsProvider).value?.length ?? 0;
     final moviesCount =
-        ref.watch(trackedMoviesNotifierProvider).valueOrNull?.length ?? 0;
+        ref.watch(trackedMoviesProvider).value?.length ?? 0;
     final gamesCount = kEnableGames
-        ? ref.watch(trackedGamesNotifierProvider).valueOrNull?.length ?? 0
+        ? ref.watch(trackedGamesProvider).value?.length ?? 0
         : 0;
 
     final summary = showsCount + moviesCount + gamesCount == 0

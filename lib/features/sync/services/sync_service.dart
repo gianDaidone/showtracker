@@ -12,7 +12,7 @@ import '../../games/providers/games_providers.dart';
 import '../../series/data/tmdb_service.dart';
 import '../../games/data/rawg_service.dart';
 
-final syncServiceProvider = AutoDisposeProvider<SyncService>((ref) {
+final syncServiceProvider = Provider.autoDispose<SyncService>((ref) {
   return SyncService(
     ref.watch(databaseProvider),
     ref.watch(showsDaoProvider),

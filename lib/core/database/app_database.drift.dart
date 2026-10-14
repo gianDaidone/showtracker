@@ -1,8 +1,7 @@
-// GENERATED CODE - DO NOT MODIFY BY HAND
-
+// dart format width=80
+// ignore_for_file: type=lint
 part of 'app_database.dart';
 
-// ignore_for_file: type=lint
 class $TrackedShowsTable extends TrackedShows
     with TableInfo<$TrackedShowsTable, TrackedShow> {
   @override
@@ -4205,8 +4204,7 @@ final class $$TrackedShowsTableReferences
   static MultiTypedResultKey<$TrackedEpisodesTable, List<TrackedEpisode>>
       _trackedEpisodesRefsTable(_$AppDatabase db) =>
           MultiTypedResultKey.fromTable(db.trackedEpisodes,
-              aliasName: $_aliasNameGenerator(
-                  db.trackedShows.id, db.trackedEpisodes.showId));
+              aliasName: 'tracked_shows__id__tracked_episodes__show_id');
 
   $$TrackedEpisodesTableProcessedTableManager get trackedEpisodesRefs {
     final manager =
@@ -4222,8 +4220,7 @@ final class $$TrackedShowsTableReferences
   static MultiTypedResultKey<$TrackedSeasonsTable, List<TrackedSeason>>
       _trackedSeasonsRefsTable(_$AppDatabase db) =>
           MultiTypedResultKey.fromTable(db.trackedSeasons,
-              aliasName: $_aliasNameGenerator(
-                  db.trackedShows.id, db.trackedSeasons.showId));
+              aliasName: 'tracked_shows__id__tracked_seasons__show_id');
 
   $$TrackedSeasonsTableProcessedTableManager get trackedSeasonsRefs {
     final manager = $$TrackedSeasonsTableTableManager($_db, $_db.trackedSeasons)
@@ -4642,7 +4639,7 @@ class $$TrackedShowsTableTableManager extends RootTableManager<
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
-                    e.readTable(table),
+                    e.readTable<$TrackedShowsTable, TrackedShow>(table),
                     $$TrackedShowsTableReferences(db, table, e)
                   ))
               .toList(),
@@ -4727,9 +4724,8 @@ final class $$TrackedEpisodesTableReferences extends BaseReferences<
   $$TrackedEpisodesTableReferences(
       super.$_db, super.$_table, super.$_typedResult);
 
-  static $TrackedShowsTable _showIdTable(_$AppDatabase db) =>
-      db.trackedShows.createAlias(
-          $_aliasNameGenerator(db.trackedEpisodes.showId, db.trackedShows.id));
+  static $TrackedShowsTable _showIdTable(_$AppDatabase db) => db.trackedShows
+      .createAlias('tracked_episodes__show_id__tracked_shows__id');
 
   $$TrackedShowsTableProcessedTableManager get showId {
     final $_column = $_itemColumn<int>('show_id')!;
@@ -4937,7 +4933,7 @@ class $$TrackedEpisodesTableTableManager extends RootTableManager<
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
-                    e.readTable(table),
+                    e.readTable<$TrackedEpisodesTable, TrackedEpisode>(table),
                     $$TrackedEpisodesTableReferences(db, table, e)
                   ))
               .toList(),
@@ -5011,9 +5007,8 @@ final class $$TrackedSeasonsTableReferences
   $$TrackedSeasonsTableReferences(
       super.$_db, super.$_table, super.$_typedResult);
 
-  static $TrackedShowsTable _showIdTable(_$AppDatabase db) =>
-      db.trackedShows.createAlias(
-          $_aliasNameGenerator(db.trackedSeasons.showId, db.trackedShows.id));
+  static $TrackedShowsTable _showIdTable(_$AppDatabase db) => db.trackedShows
+      .createAlias('tracked_seasons__show_id__tracked_shows__id');
 
   $$TrackedShowsTableProcessedTableManager get showId {
     final $_column = $_itemColumn<int>('show_id')!;
@@ -5195,7 +5190,7 @@ class $$TrackedSeasonsTableTableManager extends RootTableManager<
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
-                    e.readTable(table),
+                    e.readTable<$TrackedSeasonsTable, TrackedSeason>(table),
                     $$TrackedSeasonsTableReferences(db, table, e)
                   ))
               .toList(),
@@ -5505,7 +5500,11 @@ class $$CachedEpisodesTableTableManager extends RootTableManager<
             cachedAt: cachedAt,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$CachedEpisodesTable, CachedEpisode>(table),
+                    BaseReferences<_$AppDatabase, $CachedEpisodesTable,
+                        CachedEpisode>(db, table, e)
+                  ))
               .toList(),
           prefetchHooksCallback: null,
         ));
@@ -5779,7 +5778,11 @@ class $$TrackedMoviesTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$TrackedMoviesTable, TrackedMovy>(table),
+                    BaseReferences<_$AppDatabase, $TrackedMoviesTable,
+                        TrackedMovy>(db, table, e)
+                  ))
               .toList(),
           prefetchHooksCallback: null,
         ));
@@ -6068,7 +6071,11 @@ class $$TrackedGamesTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$TrackedGamesTable, TrackedGame>(table),
+                    BaseReferences<_$AppDatabase, $TrackedGamesTable,
+                        TrackedGame>(db, table, e)
+                  ))
               .toList(),
           prefetchHooksCallback: null,
         ));
@@ -6205,7 +6212,11 @@ class $$YunaCacheTableTableManager extends RootTableManager<
             cachedAt: cachedAt,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$YunaCacheTable, YunaCacheData>(table),
+                    BaseReferences<_$AppDatabase, $YunaCacheTable,
+                        YunaCacheData>(db, table, e)
+                  ))
               .toList(),
           prefetchHooksCallback: null,
         ));
@@ -6438,7 +6449,12 @@ class $$AnimeSeasonCacheTableTableManager extends RootTableManager<
             validUntil: validUntil,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$AnimeSeasonCacheTable, AnimeSeasonCacheData>(
+                        table),
+                    BaseReferences<_$AppDatabase, $AnimeSeasonCacheTable,
+                        AnimeSeasonCacheData>(db, table, e)
+                  ))
               .toList(),
           prefetchHooksCallback: null,
         ));

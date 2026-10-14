@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 import '../app_database.dart';
 
-part 'cache_dao.g.dart';
+part 'cache_dao.drift.dart';
 
 @DriftAccessor(tables: [CachedEpisodes])
 class CacheDao extends DatabaseAccessor<AppDatabase> with _$CacheDaoMixin {

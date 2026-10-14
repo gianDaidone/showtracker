@@ -10,7 +10,7 @@ class RawgAccountTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rawgStateAsync = ref.watch(rawgAuthControllerProvider);
-    final isAuthed = rawgStateAsync.valueOrNull is RawgAuthenticated;
+    final isAuthed = rawgStateAsync.value is RawgAuthenticated;
 
     return ServiceAccountTile(
       name: 'RAWG',

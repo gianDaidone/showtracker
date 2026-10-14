@@ -25,7 +25,10 @@ class AuthenticatedWithManualKey extends AuthState {
   const AuthenticatedWithManualKey(this.apiKey);
 }
 
-@riverpod
+// keepAlive: stato globale dell'app. Con Riverpod 3 un notifier autoDispose
+// eliminato durante un await fa fallire il resto del metodo (ref/state dopo
+// il dispose lanciano UnmountedRefException).
+@Riverpod(keepAlive: true)
 class AuthController extends _$AuthController {
   @override
   Future<AuthState> build() async {

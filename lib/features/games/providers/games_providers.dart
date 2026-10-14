@@ -21,9 +21,9 @@ part 'games_providers.g.dart';
 // ── RAWG Service ──────────────────────────────────────────────────────────────
 
 @riverpod
-RawgService rawgService(RawgServiceRef ref) {
+RawgService rawgService(Ref ref) {
   final authStateAsync = ref.watch(rawgAuthControllerProvider);
-  final authState = authStateAsync.valueOrNull ?? const RawgUnauthenticated();
+  final authState = authStateAsync.value ?? const RawgUnauthenticated();
   final client = AppInterceptor(http.Client(), rawgAuthState: authState);
   ref.onDispose(client.close);
   return RawgService(client);
@@ -32,7 +32,7 @@ RawgService rawgService(RawgServiceRef ref) {
 // ── Ricerca giochi ────────────────────────────────────────────────────────────
 
 @riverpod
-Future<List<RawgGame>> searchGames(SearchGamesRef ref, String query) {
+Future<List<RawgGame>> searchGames(Ref ref, String query) {
   if (query.length < 2) return Future.value([]);
   return ref.watch(rawgServiceProvider).searchGames(query);
 }
@@ -40,35 +40,32 @@ Future<List<RawgGame>> searchGames(SearchGamesRef ref, String query) {
 // ── Dettaglio gioco ───────────────────────────────────────────────────────────
 
 @riverpod
-Future<RawgGameDetail> gameDetail(GameDetailRef ref, int rawgId) {
+Future<RawgGameDetail> gameDetail(Ref ref, int rawgId) {
   return ref.watch(rawgServiceProvider).getGameDetails(rawgId);
 }
 
 // ── Screenshot gioco ──────────────────────────────────────────────────────────
 
 @riverpod
-Future<List<String>> gameScreenshots(GameScreenshotsRef ref, int rawgId) {
+Future<List<String>> gameScreenshots(Ref ref, int rawgId) {
   return ref.watch(rawgServiceProvider).getScreenshots(rawgId);
 }
 
 // ── Trailer gioco ─────────────────────────────────────────────────────────────
 
-// Questi due provider sono scritti a mano invece che con @riverpod: con
-// Dart 3.13 l'analyzer bloccato nel lock (7.6) manda in crash
-// riverpod_generator. Da convertire quando il codegen torna a funzionare.
-
-final steamServiceProvider = Provider<SteamService>((ref) {
+@Riverpod(keepAlive: true)
+SteamService steamService(Ref ref) {
   final client = http.Client();
   ref.onDispose(client.close);
   return SteamService(client);
-});
+}
 
 /// Trailer da Steam, ricavando l'app ID dai negozi RAWG; RAWG `/movies` solo
 /// come riserva, perché per molti giochi è vuoto. Un gioco senza trailer
 /// restituisce una lista vuota, mai un errore: la sezione semplicemente non
 /// compare.
-final gameTrailersProvider = FutureProvider.autoDispose
-    .family<List<GameTrailer>, int>((ref, rawgId) async {
+@riverpod
+Future<List<GameTrailer>> gameTrailers(Ref ref, int rawgId) async {
   final rawg = ref.watch(rawgServiceProvider);
   final steam = ref.watch(steamServiceProvider);
 
@@ -88,11 +85,14 @@ final gameTrailersProvider = FutureProvider.autoDispose
     debugPrint('Trailer RAWG non disponibili per il gioco $rawgId: $e');
     return [];
   }
-});
+}
 
 // ── DB: giochi tracciati (stream reattivo) ────────────────────────────────────
 
-@riverpod
+// keepAlive: stato globale dell'app. Con Riverpod 3 un notifier autoDispose
+// eliminato durante un await fa fallire il resto del metodo (ref/state dopo
+// il dispose lanciano UnmountedRefException).
+@Riverpod(keepAlive: true)
 class TrackedGamesNotifier extends _$TrackedGamesNotifier {
   @override
   Stream<List<TrackedGame>> build() {

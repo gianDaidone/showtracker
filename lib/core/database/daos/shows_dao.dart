@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 import '../app_database.dart';
 
-part 'shows_dao.g.dart';
+part 'shows_dao.drift.dart';
 
 class ShowWithWatchedEpisodes {
   final TrackedShow show;

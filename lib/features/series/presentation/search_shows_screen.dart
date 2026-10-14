@@ -199,7 +199,7 @@ class _Results extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final resultsAsync = ref.watch(searchShowsProvider(query));
-    final tracked = ref.watch(trackedShowsNotifierProvider).valueOrNull ?? [];
+    final tracked = ref.watch(trackedShowsProvider).value ?? [];
     final trackedIds = tracked.map((s) => s.tmdbId).toSet();
 
     return resultsAsync.when(
@@ -330,7 +330,7 @@ class _ResultTile extends ConsumerWidget {
   Future<void> _quickAdd(BuildContext context, WidgetRef ref) async {
     try {
       final detail = await ref.read(showDetailProvider(show.id).future);
-      await ref.read(trackedShowsNotifierProvider.notifier).addShow(detail);
+      await ref.read(trackedShowsProvider.notifier).addShow(detail);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

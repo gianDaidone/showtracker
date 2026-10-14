@@ -36,7 +36,7 @@ class _MoviesListScreenState extends ConsumerState<MoviesListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final moviesAsync = ref.watch(trackedMoviesNotifierProvider);
+    final moviesAsync = ref.watch(trackedMoviesProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,

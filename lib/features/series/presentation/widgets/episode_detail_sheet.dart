@@ -200,7 +200,7 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
     final watchedMap = widget.trackedShow != null
         ? ref
                 .watch(watchedEpisodesBySeasonProvider(widget.trackedShow!.id))
-                .valueOrNull ??
+                .value ??
             {}
         : <int, Set<int>>{};
 

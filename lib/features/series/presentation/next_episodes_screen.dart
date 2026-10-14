@@ -56,8 +56,8 @@ class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
 
   @override
   Widget build(BuildContext context) {
-    final allShowsAsync = ref.watch(trackedShowsNotifierProvider);
-    final totalCount = allShowsAsync.valueOrNull?.length ?? 0;
+    final allShowsAsync = ref.watch(trackedShowsProvider);
+    final totalCount = allShowsAsync.value?.length ?? 0;
     final isLoading = allShowsAsync.isLoading && !allShowsAsync.hasValue;
 
     return Scaffold(
@@ -159,8 +159,8 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
   Widget build(BuildContext context) {
     super.build(context);
     final visibleAsync = ref.watch(visibleWatchingShowsProvider);
-    final allShowsAsync = ref.watch(trackedShowsNotifierProvider);
-    final totalCount = allShowsAsync.valueOrNull?.length ?? 0;
+    final allShowsAsync = ref.watch(trackedShowsProvider);
+    final totalCount = allShowsAsync.value?.length ?? 0;
 
     return visibleAsync.when(
       skipLoadingOnReload: true,
@@ -180,7 +180,7 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
       ),
       data: (shows) {
         // We still need to know if they have ANY shows tracked to show the right empty state
-        final watchingRaw = ref.read(watchingShowsWithEpisodesProvider).valueOrNull ?? [];
+        final watchingRaw = ref.read(watchingShowsWithEpisodesProvider).value ?? [];
         if (watchingRaw.isEmpty && shows.isEmpty) {
           return _EmptyWatching(totalCount: totalCount);
         }

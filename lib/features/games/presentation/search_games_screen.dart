@@ -158,8 +158,8 @@ class _Results extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final resultsAsync = ref.watch(searchGamesProvider(query));
-    final trackedAsync = ref.watch(trackedGamesNotifierProvider);
-    final trackedIds = trackedAsync.valueOrNull
+    final trackedAsync = ref.watch(trackedGamesProvider);
+    final trackedIds = trackedAsync.value
             ?.map((g) => g.rawgId)
             .toSet() ??
         {};
@@ -253,7 +253,7 @@ class _GameTileState extends ConsumerState<_GameTile> {
       final detail = await ref
           .read(rawgServiceProvider)
           .getGameDetails(widget.game.id);
-      await ref.read(trackedGamesNotifierProvider.notifier).addGame(detail);
+      await ref.read(trackedGamesProvider.notifier).addGame(detail);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

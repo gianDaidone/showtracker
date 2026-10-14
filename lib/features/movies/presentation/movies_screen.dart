@@ -18,8 +18,8 @@ class MoviesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final moviesAsync = ref.watch(trackedMoviesNotifierProvider);
-    final totalCount = moviesAsync.valueOrNull?.length ?? 0;
+    final moviesAsync = ref.watch(trackedMoviesProvider);
+    final totalCount = moviesAsync.value?.length ?? 0;
 
     return DefaultTabController(
       length: 2,
@@ -157,7 +157,7 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final moviesAsync = ref.watch(trackedMoviesNotifierProvider);
+    final moviesAsync = ref.watch(trackedMoviesProvider);
 
     return moviesAsync.when(
       loading: () => const Center(
@@ -372,7 +372,7 @@ class _WatchlistMovieCardState extends ConsumerState<_WatchlistMovieCard> {
 
     try {
       await ref
-          .read(trackedMoviesNotifierProvider.notifier)
+          .read(trackedMoviesProvider.notifier)
           .updateStatus(widget.movie.id, MediaStatus.completed);
       if (mounted) setState(() => _markState = _MarkState.idle);
     } catch (_) {

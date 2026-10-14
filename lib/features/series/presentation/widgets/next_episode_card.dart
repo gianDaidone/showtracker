@@ -71,7 +71,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     await Future.delayed(const Duration(milliseconds: 700));
 
     final dao = ref.read(showsDaoProvider);
-    final notifier = ref.read(trackedShowsNotifierProvider.notifier);
+    final notifier = ref.read(trackedShowsProvider.notifier);
     final tmdbId = widget.showData.show.tmdbId;
     final showId = widget.showData.show.id;
 
@@ -102,7 +102,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
 
   Future<void> _markCompleted() async {
     await ref
-        .read(trackedShowsNotifierProvider.notifier)
+        .read(trackedShowsProvider.notifier)
         .updateStatus(widget.showData.show.id, MediaStatus.completed);
   }
 
@@ -119,10 +119,10 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     // seasonCounts viene dal DB locale: nessuna chiamata API per
     // determinare il numero di stagione/episodio corretto.
     final dbSeasonCounts =
-        ref.watch(seasonEpisodeCountsProvider(show.id)).valueOrNull ?? {};
+        ref.watch(seasonEpisodeCountsProvider(show.id)).value ?? {};
 
     final detailAsync = ref.watch(showDetailProvider(show.tmdbId));
-    final detail = detailAsync.valueOrNull;
+    final detail = detailAsync.value;
 
     // Per un anime senza dati AniList `detail.seasons` è la suddivisione TMDB
     // grezza, che raggruppa più cours: numeri di stagione e totali incompatibili
@@ -154,7 +154,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       return const NextEpisodeSkeletonCard();
     }
 
-    var loadedEpisodes = seasonAsync.valueOrNull?.episodes;
+    var loadedEpisodes = seasonAsync.value?.episodes;
     var nextEpisode = loadedEpisodes
         ?.where((e) => e.episodeNumber == nextEp)
         .firstOrNull;
@@ -191,7 +191,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
         if (!corrSeasonAsync.hasValue && !corrSeasonAsync.hasError) {
           return const NextEpisodeSkeletonCard();
         }
-        loadedEpisodes = corrSeasonAsync.valueOrNull?.episodes;
+        loadedEpisodes = corrSeasonAsync.value?.episodes;
         nextEpisode = loadedEpisodes
             ?.where((e) => e.episodeNumber == nextEp)
             .firstOrNull;
@@ -295,7 +295,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       child: InkWell(
         onTap: () {
           if (nextEpisode != null) {
-            final detail = ref.read(showDetailProvider(show.tmdbId)).valueOrNull;
+            final detail = ref.read(showDetailProvider(show.tmdbId)).value;
             String? sName;
             if (detail != null && detail.isAnime) {
               final sSeason = detail.seasons.where((s) => s.seasonNumber == nextSeason).firstOrNull;
@@ -380,7 +380,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
                     const SizedBox(height: 6),
                     Consumer(
                       builder: (context, ref, _) {
-                        final detail = ref.watch(showDetailProvider(show.tmdbId)).valueOrNull;
+                        final detail = ref.watch(showDetailProvider(show.tmdbId)).value;
                         String? seasonName;
                         if (detail != null && detail.isAnime) {
                           final sSeason = detail.seasons.where((s) => s.seasonNumber == nextSeason).firstOrNull;

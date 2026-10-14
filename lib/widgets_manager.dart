@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 import 'core/database/database_provider.dart';
+import 'core/riverpod_utils.dart';
 import 'core/database/daos/shows_dao.dart';
 import 'features/series/providers/series_providers.dart';
 
@@ -22,7 +23,7 @@ Future<void> backgroundCallback(Uri? uri) async {
       final e = int.tryParse(episodeStr);
       
       if (showId != null && s != null && e != null) {
-        final container = ProviderContainer();
+        final container = ProviderContainer(retry: noProviderRetry);
         try {
           final db = container.read(databaseProvider);
           await db.showsDao.markEpisodeWatched(showId, s, e, watched: true);
@@ -85,11 +86,11 @@ class ShowTrackerWidgetsManager {
   static Future<void> updateWidgets({ProviderContainer? container, List<ShowWithWatchedEpisodes>? watchingList}) async {
     final currentUpdate = ++_updateCounter;
     final shouldDispose = container == null;
-    final c = container ?? ProviderContainer();
+    final c = container ?? ProviderContainer(retry: noProviderRetry);
 
     try {
       // ---- WIDGET 2: MARATONA ----
-      final List<ShowWithWatchedEpisodes> watching = watchingList ?? await c.read(watchingShowsWithEpisodesProvider.future);
+      final List<ShowWithWatchedEpisodes> watching = watchingList ?? await c.readFuture(watchingShowsWithEpisodesProvider.future);
       bool foundMaratona = false;
       
       for (final showData in watching) {
@@ -101,7 +102,7 @@ class ShowTrackerWidgetsManager {
          if (watchedCount >= total) continue;
          
          final watched = showData.watchedBySeason;
-         final seasonCounts = await c.read(seasonEpisodeCountsProvider(show.id).future);
+         final seasonCounts = await c.readFuture(seasonEpisodeCountsProvider(show.id).future);
          
          int s = 1;
          int e = 1;
@@ -175,7 +176,7 @@ class ShowTrackerWidgetsManager {
          
          String label;
          try {
-           final detail = await c.read(showDetailProvider(show.tmdbId).future);
+           final detail = await c.readFuture(showDetailProvider(show.tmdbId).future);
            final tmdbSeason = detail.seasons.where((season) => season.seasonNumber == s).firstOrNull;
            label = _formatEpisodeTitle(s, e, tmdbSeason?.name);
          } catch (_) {
@@ -203,7 +204,7 @@ class ShowTrackerWidgetsManager {
       }
 
       // ---- WIDGET 1: PROSSIMAMENTE ----
-      final upcoming = await c.read(upcomingEpisodesProvider.future);
+      final upcoming = await c.readFuture(upcomingEpisodesProvider.future);
       
       if (upcoming.isNotEmpty) {
          final up1 = upcoming[0];

@@ -12,7 +12,7 @@ part 'update_providers.g.dart';
 // autoDispose verrebbe distrutto subito dopo la lettura e `client.close`
 // interromperebbe la richiesta appena partita ("Connection attempt cancelled").
 @Riverpod(keepAlive: true)
-GithubReleaseService githubReleaseService(GithubReleaseServiceRef ref) {
+GithubReleaseService githubReleaseService(Ref ref) {
   final client = http.Client();
   ref.onDispose(client.close);
   return GithubReleaseService(client);
@@ -21,4 +21,4 @@ GithubReleaseService githubReleaseService(GithubReleaseServiceRef ref) {
 // ── Versione installata ───────────────────────────────────────────────────────
 
 @riverpod
-Future<PackageInfo> packageInfo(PackageInfoRef ref) => PackageInfo.fromPlatform();
+Future<PackageInfo> packageInfo(Ref ref) => PackageInfo.fromPlatform();

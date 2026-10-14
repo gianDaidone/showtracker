@@ -36,7 +36,7 @@ class _SeriesListScreenState extends ConsumerState<SeriesListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final showsAsync = ref.watch(trackedShowsNotifierProvider);
+    final showsAsync = ref.watch(trackedShowsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,

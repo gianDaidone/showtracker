@@ -40,7 +40,7 @@ class _DetailBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final trackedList =
-        ref.watch(trackedMoviesNotifierProvider).valueOrNull ?? [];
+        ref.watch(trackedMoviesProvider).value ?? [];
     final TrackedMovy? trackedMovie =
         trackedList.where((m) => m.tmdbId == detail.id).firstOrNull;
 
@@ -398,7 +398,7 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
     setState(() => _loading = true);
     try {
       await ref
-          .read(trackedMoviesNotifierProvider.notifier)
+          .read(trackedMoviesProvider.notifier)
           .addMovie(widget.detail);
     } catch (_) {
       AppToast.show('Impossibile aggiungere "${widget.detail.title}"');
@@ -467,7 +467,7 @@ class _RemoveMovieButtonState extends ConsumerState<_RemoveMovieButton> {
     setState(() => _loading = true);
     try {
       await ref
-          .read(trackedMoviesNotifierProvider.notifier)
+          .read(trackedMoviesProvider.notifier)
           .removeMovie(widget.trackedMovie.id);
     } catch (_) {
       AppToast.show('Impossibile rimuovere "${widget.detail.title}"');
@@ -499,7 +499,7 @@ class _StatusSelector extends ConsumerWidget {
           final selected = trackedMovie.status == s;
           return GestureDetector(
             onTap: () => ref
-                .read(trackedMoviesNotifierProvider.notifier)
+                .read(trackedMoviesProvider.notifier)
                 .updateStatus(trackedMovie.id, s),
             child: Container(
               margin: const EdgeInsets.only(right: 8),

@@ -22,7 +22,7 @@ class _ShowTrackerAppState extends ConsumerState<ShowTrackerApp> {
     // here ensures stale state is corrected the next time the app opens.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
-          .read(trackedShowsNotifierProvider.notifier)
+          .read(trackedShowsProvider.notifier)
           .rescheduleAllNotifications();
     });
   }

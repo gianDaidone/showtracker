@@ -34,7 +34,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       final isGoingToOnboarding = state.matchedLocation == '/onboarding';
       
-      final authState = authStateAsync.valueOrNull;
+      final authState = authStateAsync.value;
       final isAuthenticated = authState != null && authState is! Unauthenticated;
 
       if (!isAuthenticated && !isGoingToOnboarding) {

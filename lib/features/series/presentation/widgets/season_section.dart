@@ -33,7 +33,7 @@ class _SeasonSectionState extends ConsumerState<SeasonSection> {
     if (widget.trackedShow == null) return 0;
     final map = ref
             .watch(watchedEpisodesBySeasonProvider(widget.trackedShow!.id))
-            .valueOrNull ??
+            .value ??
         {};
     return map[widget.season.seasonNumber]?.length ?? 0;
   }
@@ -128,7 +128,7 @@ class _SeasonEpisodes extends ConsumerWidget {
     final watchedMap = trackedShow != null
         ? ref
                 .watch(watchedEpisodesBySeasonProvider(trackedShow!.id))
-                .valueOrNull ??
+                .value ??
             {}
         : <int, Set<int>>{};
     final watchedInSeason = watchedMap[season.seasonNumber] ?? {};

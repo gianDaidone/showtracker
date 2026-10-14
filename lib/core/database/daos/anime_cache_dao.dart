@@ -5,7 +5,7 @@ import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../../../features/series/data/models/normalized_anime_season.dart';
 
-part 'anime_cache_dao.g.dart';
+part 'anime_cache_dao.drift.dart';
 
 @DriftAccessor(tables: [YunaCache, AnimeSeasonCache])
 class AnimeCacheDao extends DatabaseAccessor<AppDatabase>

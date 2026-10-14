@@ -124,7 +124,7 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
       showId: widget.show.tmdbId,
       seasonNumber: widget.episode.seasonNumber,
     ));
-    final loadedEpisodes = seasonAsync.valueOrNull?.episodes;
+    final loadedEpisodes = seasonAsync.value?.episodes;
     final fullEpisode = loadedEpisodes
         ?.where((e) => e.episodeNumber == widget.episode.episodeNumber)
         .firstOrNull;
@@ -392,7 +392,7 @@ class _SubEpisodeCard extends ConsumerWidget {
       showId: show.tmdbId,
       seasonNumber: seasonNumber,
     ));
-    final loadedEpisodes = seasonAsync.valueOrNull?.episodes;
+    final loadedEpisodes = seasonAsync.value?.episodes;
     final fullEpisode = loadedEpisodes
         ?.where((e) => e.episodeNumber == episode.episodeNumber)
         .firstOrNull;

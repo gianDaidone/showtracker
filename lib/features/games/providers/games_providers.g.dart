@@ -6,452 +6,455 @@ part of 'games_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$rawgServiceHash() => r'4559da3709537bb9f5b648aee0a9390688c83082';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [rawgService].
 @ProviderFor(rawgService)
-final rawgServiceProvider = AutoDisposeProvider<RawgService>.internal(
-  rawgService,
-  name: r'rawgServiceProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$rawgServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final rawgServiceProvider = RawgServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef RawgServiceRef = AutoDisposeProviderRef<RawgService>;
-String _$searchGamesHash() => r'e19ac6dbe58a41aac8ebeb2dacadde53b4dfa01b';
+final class RawgServiceProvider
+    extends $FunctionalProvider<RawgService, RawgService, RawgService>
+    with $Provider<RawgService> {
+  RawgServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'rawgServiceProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
+  @override
+  String debugGetCreateSourceHash() => _$rawgServiceHash();
 
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
+  @$internal
+  @override
+  $ProviderElement<RawgService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  RawgService create(Ref ref) {
+    return rawgService(ref);
   }
 
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(RawgService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<RawgService>(value),
+    );
   }
 }
 
-/// See also [searchGames].
+String _$rawgServiceHash() => r'8c4574e2544702cba3a70c65335652255d601b3d';
+
 @ProviderFor(searchGames)
-const searchGamesProvider = SearchGamesFamily();
+final searchGamesProvider = SearchGamesFamily._();
 
-/// See also [searchGames].
-class SearchGamesFamily extends Family<AsyncValue<List<RawgGame>>> {
-  /// See also [searchGames].
-  const SearchGamesFamily();
+final class SearchGamesProvider extends $FunctionalProvider<
+        AsyncValue<List<RawgGame>>, List<RawgGame>, FutureOr<List<RawgGame>>>
+    with $FutureModifier<List<RawgGame>>, $FutureProvider<List<RawgGame>> {
+  SearchGamesProvider._(
+      {required SearchGamesFamily super.from, required String super.argument})
+      : super(
+          retry: null,
+          name: r'searchGamesProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
-  /// See also [searchGames].
+  @override
+  String debugGetCreateSourceHash() => _$searchGamesHash();
+
+  @override
+  String toString() {
+    return r'searchGamesProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<RawgGame>> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<RawgGame>> create(Ref ref) {
+    final argument = this.argument as String;
+    return searchGames(
+      ref,
+      argument,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is SearchGamesProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$searchGamesHash() => r'43eb32c905b9f292fd21f42530849e962b78304f';
+
+final class SearchGamesFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<RawgGame>>, String> {
+  SearchGamesFamily._()
+      : super(
+          retry: null,
+          name: r'searchGamesProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
+
   SearchGamesProvider call(
     String query,
-  ) {
-    return SearchGamesProvider(
-      query,
-    );
-  }
+  ) =>
+      SearchGamesProvider._(argument: query, from: this);
 
   @override
-  SearchGamesProvider getProviderOverride(
-    covariant SearchGamesProvider provider,
-  ) {
-    return call(
-      provider.query,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'searchGamesProvider';
+  String toString() => r'searchGamesProvider';
 }
 
-/// See also [searchGames].
-class SearchGamesProvider extends AutoDisposeFutureProvider<List<RawgGame>> {
-  /// See also [searchGames].
-  SearchGamesProvider(
-    String query,
-  ) : this._internal(
-          (ref) => searchGames(
-            ref as SearchGamesRef,
-            query,
-          ),
-          from: searchGamesProvider,
-          name: r'searchGamesProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$searchGamesHash,
-          dependencies: SearchGamesFamily._dependencies,
-          allTransitiveDependencies:
-              SearchGamesFamily._allTransitiveDependencies,
-          query: query,
+@ProviderFor(gameDetail)
+final gameDetailProvider = GameDetailFamily._();
+
+final class GameDetailProvider extends $FunctionalProvider<
+        AsyncValue<RawgGameDetail>, RawgGameDetail, FutureOr<RawgGameDetail>>
+    with $FutureModifier<RawgGameDetail>, $FutureProvider<RawgGameDetail> {
+  GameDetailProvider._(
+      {required GameDetailFamily super.from, required int super.argument})
+      : super(
+          retry: null,
+          name: r'gameDetailProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
         );
 
-  SearchGamesProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.query,
-  }) : super.internal();
-
-  final String query;
+  @override
+  String debugGetCreateSourceHash() => _$gameDetailHash();
 
   @override
-  Override overrideWith(
-    FutureOr<List<RawgGame>> Function(SearchGamesRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: SearchGamesProvider._internal(
-        (ref) => create(ref as SearchGamesRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        query: query,
-      ),
-    );
+  String toString() {
+    return r'gameDetailProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  AutoDisposeFutureProviderElement<List<RawgGame>> createElement() {
-    return _SearchGamesProviderElement(this);
+  $FutureProviderElement<RawgGameDetail> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<RawgGameDetail> create(Ref ref) {
+    final argument = this.argument as int;
+    return gameDetail(
+      ref,
+      argument,
+    );
   }
 
   @override
   bool operator ==(Object other) {
-    return other is SearchGamesProvider && other.query == query;
+    return other is GameDetailProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, query.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin SearchGamesRef on AutoDisposeFutureProviderRef<List<RawgGame>> {
-  /// The parameter `query` of this provider.
-  String get query;
-}
+String _$gameDetailHash() => r'29cbaa877c1ef79426d904157aedff9d95be6602';
 
-class _SearchGamesProviderElement
-    extends AutoDisposeFutureProviderElement<List<RawgGame>>
-    with SearchGamesRef {
-  _SearchGamesProviderElement(super.provider);
+final class GameDetailFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<RawgGameDetail>, int> {
+  GameDetailFamily._()
+      : super(
+          retry: null,
+          name: r'gameDetailProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
 
-  @override
-  String get query => (origin as SearchGamesProvider).query;
-}
-
-String _$gameDetailHash() => r'43a11d9a4595b2e31bb11896806ae340c8656549';
-
-/// See also [gameDetail].
-@ProviderFor(gameDetail)
-const gameDetailProvider = GameDetailFamily();
-
-/// See also [gameDetail].
-class GameDetailFamily extends Family<AsyncValue<RawgGameDetail>> {
-  /// See also [gameDetail].
-  const GameDetailFamily();
-
-  /// See also [gameDetail].
   GameDetailProvider call(
     int rawgId,
-  ) {
-    return GameDetailProvider(
-      rawgId,
-    );
-  }
+  ) =>
+      GameDetailProvider._(argument: rawgId, from: this);
 
   @override
-  GameDetailProvider getProviderOverride(
-    covariant GameDetailProvider provider,
-  ) {
-    return call(
-      provider.rawgId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'gameDetailProvider';
+  String toString() => r'gameDetailProvider';
 }
 
-/// See also [gameDetail].
-class GameDetailProvider extends AutoDisposeFutureProvider<RawgGameDetail> {
-  /// See also [gameDetail].
-  GameDetailProvider(
-    int rawgId,
-  ) : this._internal(
-          (ref) => gameDetail(
-            ref as GameDetailRef,
-            rawgId,
-          ),
-          from: gameDetailProvider,
-          name: r'gameDetailProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$gameDetailHash,
-          dependencies: GameDetailFamily._dependencies,
-          allTransitiveDependencies:
-              GameDetailFamily._allTransitiveDependencies,
-          rawgId: rawgId,
+@ProviderFor(gameScreenshots)
+final gameScreenshotsProvider = GameScreenshotsFamily._();
+
+final class GameScreenshotsProvider extends $FunctionalProvider<
+        AsyncValue<List<String>>, List<String>, FutureOr<List<String>>>
+    with $FutureModifier<List<String>>, $FutureProvider<List<String>> {
+  GameScreenshotsProvider._(
+      {required GameScreenshotsFamily super.from, required int super.argument})
+      : super(
+          retry: null,
+          name: r'gameScreenshotsProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
         );
 
-  GameDetailProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.rawgId,
-  }) : super.internal();
-
-  final int rawgId;
+  @override
+  String debugGetCreateSourceHash() => _$gameScreenshotsHash();
 
   @override
-  Override overrideWith(
-    FutureOr<RawgGameDetail> Function(GameDetailRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: GameDetailProvider._internal(
-        (ref) => create(ref as GameDetailRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        rawgId: rawgId,
-      ),
-    );
+  String toString() {
+    return r'gameScreenshotsProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  AutoDisposeFutureProviderElement<RawgGameDetail> createElement() {
-    return _GameDetailProviderElement(this);
+  $FutureProviderElement<List<String>> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<String>> create(Ref ref) {
+    final argument = this.argument as int;
+    return gameScreenshots(
+      ref,
+      argument,
+    );
   }
 
   @override
   bool operator ==(Object other) {
-    return other is GameDetailProvider && other.rawgId == rawgId;
+    return other is GameScreenshotsProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, rawgId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin GameDetailRef on AutoDisposeFutureProviderRef<RawgGameDetail> {
-  /// The parameter `rawgId` of this provider.
-  int get rawgId;
-}
+String _$gameScreenshotsHash() => r'd92c71e551b15de2cbd7f1adb0ce927f80b838f5';
 
-class _GameDetailProviderElement
-    extends AutoDisposeFutureProviderElement<RawgGameDetail>
-    with GameDetailRef {
-  _GameDetailProviderElement(super.provider);
+final class GameScreenshotsFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<String>>, int> {
+  GameScreenshotsFamily._()
+      : super(
+          retry: null,
+          name: r'gameScreenshotsProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
 
-  @override
-  int get rawgId => (origin as GameDetailProvider).rawgId;
-}
-
-String _$gameScreenshotsHash() => r'716e2dda248ce7099a9982f692947b054ef22a12';
-
-/// See also [gameScreenshots].
-@ProviderFor(gameScreenshots)
-const gameScreenshotsProvider = GameScreenshotsFamily();
-
-/// See also [gameScreenshots].
-class GameScreenshotsFamily extends Family<AsyncValue<List<String>>> {
-  /// See also [gameScreenshots].
-  const GameScreenshotsFamily();
-
-  /// See also [gameScreenshots].
   GameScreenshotsProvider call(
     int rawgId,
-  ) {
-    return GameScreenshotsProvider(
-      rawgId,
-    );
-  }
+  ) =>
+      GameScreenshotsProvider._(argument: rawgId, from: this);
 
   @override
-  GameScreenshotsProvider getProviderOverride(
-    covariant GameScreenshotsProvider provider,
-  ) {
-    return call(
-      provider.rawgId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'gameScreenshotsProvider';
+  String toString() => r'gameScreenshotsProvider';
 }
 
-/// See also [gameScreenshots].
-class GameScreenshotsProvider extends AutoDisposeFutureProvider<List<String>> {
-  /// See also [gameScreenshots].
-  GameScreenshotsProvider(
-    int rawgId,
-  ) : this._internal(
-          (ref) => gameScreenshots(
-            ref as GameScreenshotsRef,
-            rawgId,
-          ),
-          from: gameScreenshotsProvider,
-          name: r'gameScreenshotsProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$gameScreenshotsHash,
-          dependencies: GameScreenshotsFamily._dependencies,
-          allTransitiveDependencies:
-              GameScreenshotsFamily._allTransitiveDependencies,
-          rawgId: rawgId,
+@ProviderFor(steamService)
+final steamServiceProvider = SteamServiceProvider._();
+
+final class SteamServiceProvider
+    extends $FunctionalProvider<SteamService, SteamService, SteamService>
+    with $Provider<SteamService> {
+  SteamServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'steamServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
         );
 
-  GameScreenshotsProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.rawgId,
-  }) : super.internal();
+  @override
+  String debugGetCreateSourceHash() => _$steamServiceHash();
 
-  final int rawgId;
+  @$internal
+  @override
+  $ProviderElement<SteamService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
 
   @override
-  Override overrideWith(
-    FutureOr<List<String>> Function(GameScreenshotsRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: GameScreenshotsProvider._internal(
-        (ref) => create(ref as GameScreenshotsRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        rawgId: rawgId,
-      ),
-    );
+  SteamService create(Ref ref) {
+    return steamService(ref);
   }
 
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SteamService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SteamService>(value),
+    );
+  }
+}
+
+String _$steamServiceHash() => r'1c54f2f15efe29809dbf4bd09041cff7351a57e1';
+
+/// Trailer da Steam, ricavando l'app ID dai negozi RAWG; RAWG `/movies` solo
+/// come riserva, perché per molti giochi è vuoto. Un gioco senza trailer
+/// restituisce una lista vuota, mai un errore: la sezione semplicemente non
+/// compare.
+
+@ProviderFor(gameTrailers)
+final gameTrailersProvider = GameTrailersFamily._();
+
+/// Trailer da Steam, ricavando l'app ID dai negozi RAWG; RAWG `/movies` solo
+/// come riserva, perché per molti giochi è vuoto. Un gioco senza trailer
+/// restituisce una lista vuota, mai un errore: la sezione semplicemente non
+/// compare.
+
+final class GameTrailersProvider extends $FunctionalProvider<
+        AsyncValue<List<GameTrailer>>,
+        List<GameTrailer>,
+        FutureOr<List<GameTrailer>>>
+    with
+        $FutureModifier<List<GameTrailer>>,
+        $FutureProvider<List<GameTrailer>> {
+  /// Trailer da Steam, ricavando l'app ID dai negozi RAWG; RAWG `/movies` solo
+  /// come riserva, perché per molti giochi è vuoto. Un gioco senza trailer
+  /// restituisce una lista vuota, mai un errore: la sezione semplicemente non
+  /// compare.
+  GameTrailersProvider._(
+      {required GameTrailersFamily super.from, required int super.argument})
+      : super(
+          retry: null,
+          name: r'gameTrailersProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
   @override
-  AutoDisposeFutureProviderElement<List<String>> createElement() {
-    return _GameScreenshotsProviderElement(this);
+  String debugGetCreateSourceHash() => _$gameTrailersHash();
+
+  @override
+  String toString() {
+    return r'gameTrailersProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<GameTrailer>> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<GameTrailer>> create(Ref ref) {
+    final argument = this.argument as int;
+    return gameTrailers(
+      ref,
+      argument,
+    );
   }
 
   @override
   bool operator ==(Object other) {
-    return other is GameScreenshotsProvider && other.rawgId == rawgId;
+    return other is GameTrailersProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, rawgId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin GameScreenshotsRef on AutoDisposeFutureProviderRef<List<String>> {
-  /// The parameter `rawgId` of this provider.
-  int get rawgId;
-}
+String _$gameTrailersHash() => r'2baddf9494bdd8135550d27a2758a081ade80cd5';
 
-class _GameScreenshotsProviderElement
-    extends AutoDisposeFutureProviderElement<List<String>>
-    with GameScreenshotsRef {
-  _GameScreenshotsProviderElement(super.provider);
+/// Trailer da Steam, ricavando l'app ID dai negozi RAWG; RAWG `/movies` solo
+/// come riserva, perché per molti giochi è vuoto. Un gioco senza trailer
+/// restituisce una lista vuota, mai un errore: la sezione semplicemente non
+/// compare.
+
+final class GameTrailersFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<GameTrailer>>, int> {
+  GameTrailersFamily._()
+      : super(
+          retry: null,
+          name: r'gameTrailersProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
+
+  /// Trailer da Steam, ricavando l'app ID dai negozi RAWG; RAWG `/movies` solo
+  /// come riserva, perché per molti giochi è vuoto. Un gioco senza trailer
+  /// restituisce una lista vuota, mai un errore: la sezione semplicemente non
+  /// compare.
+
+  GameTrailersProvider call(
+    int rawgId,
+  ) =>
+      GameTrailersProvider._(argument: rawgId, from: this);
 
   @override
-  int get rawgId => (origin as GameScreenshotsProvider).rawgId;
+  String toString() => r'gameTrailersProvider';
+}
+
+@ProviderFor(TrackedGamesNotifier)
+final trackedGamesProvider = TrackedGamesNotifierProvider._();
+
+final class TrackedGamesNotifierProvider
+    extends $StreamNotifierProvider<TrackedGamesNotifier, List<TrackedGame>> {
+  TrackedGamesNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'trackedGamesProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$trackedGamesNotifierHash();
+
+  @$internal
+  @override
+  TrackedGamesNotifier create() => TrackedGamesNotifier();
 }
 
 String _$trackedGamesNotifierHash() =>
-    r'10d95cd99fb30e326fba1a11cb70e33db0e91fbd';
+    r'21db1fbc29354e6bf918c1444f5a40c24db8608b';
 
-/// See also [TrackedGamesNotifier].
-@ProviderFor(TrackedGamesNotifier)
-final trackedGamesNotifierProvider = AutoDisposeStreamNotifierProvider<
-    TrackedGamesNotifier, List<TrackedGame>>.internal(
-  TrackedGamesNotifier.new,
-  name: r'trackedGamesNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$trackedGamesNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$TrackedGamesNotifier = AutoDisposeStreamNotifier<List<TrackedGame>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+abstract class _$TrackedGamesNotifier
+    extends $StreamNotifier<List<TrackedGame>> {
+  Stream<List<TrackedGame>> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref =
+        this.ref as $Ref<AsyncValue<List<TrackedGame>>, List<TrackedGame>>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<AsyncValue<List<TrackedGame>>, List<TrackedGame>>,
+        AsyncValue<List<TrackedGame>>,
+        Object?,
+        Object?>;
+    return element.handleCreate(ref, build);
+  }
+}

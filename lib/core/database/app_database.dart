@@ -31,7 +31,7 @@ export 'daos/games_dao.dart';
 export 'daos/cache_dao.dart';
 export 'daos/anime_cache_dao.dart';
 
-part 'app_database.g.dart';
+part 'app_database.drift.dart';
 
 @DriftDatabase(
   tables: [

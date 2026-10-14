@@ -27,8 +27,8 @@ class GameDetailScreen extends ConsumerWidget {
     final screenshotsAsync = ref.watch(gameScreenshotsProvider(rawgId));
     final trailersAsync = ref.watch(gameTrailersProvider(rawgId));
     final trackedGame = ref
-        .watch(trackedGamesNotifierProvider)
-        .valueOrNull
+        .watch(trackedGamesProvider)
+        .value
         ?.where((g) => g.rawgId == rawgId)
         .firstOrNull;
 
@@ -42,7 +42,7 @@ class GameDetailScreen extends ConsumerWidget {
         data: (detail) {
           // Costruisce l'array di frame: coverUrl come primo + screenshot aggiuntivi,
           // deduplicati (stessa logica della vecchia app)
-          final shots = screenshotsAsync.valueOrNull ?? [];
+          final shots = screenshotsAsync.value ?? [];
           final seen = <String>{};
           final frames = <String>[
             if (detail.coverUrl != null) detail.coverUrl!,
@@ -52,7 +52,7 @@ class GameDetailScreen extends ConsumerWidget {
           return _DetailBody(
             detail: detail,
             frames: frames,
-            trailers: trailersAsync.valueOrNull ?? [],
+            trailers: trailersAsync.value ?? [],
             trackedGame: trackedGame,
           );
         },
@@ -1029,7 +1029,7 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
   Future<void> _toggle() async {
     setState(() => _loading = true);
     try {
-      final notifier = ref.read(trackedGamesNotifierProvider.notifier);
+      final notifier = ref.read(trackedGamesProvider.notifier);
       if (widget.trackedGame != null) {
         await notifier.removeGame(widget.trackedGame!.id);
       } else {

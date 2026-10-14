@@ -14,13 +14,12 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # State Management
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.3.5
+  flutter_riverpod: ^3.4.3
+  riverpod_annotation: ^4.0.7
 
   # Local Database (Drift + SQLite)
-  drift: ^2.21.0
-  drift_flutter: ^0.2.4
-  sqlite3_flutter_libs: ^0.5.24
+  drift: ^2.35.0
+  drift_flutter: ^0.3.1
 
   # HTTP & API
   http: ^1.2.2
@@ -60,9 +59,9 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
   # Code generation
-  build_runner: ^2.4.13
-  drift_dev: ^2.21.0
-  riverpod_generator: ^2.4.3
+  build_runner: ^2.16.2
+  drift_dev: ^2.35.1
+  riverpod_generator: ^4.0.9
 
 # Copia locale di home_widget 0.10.0 con una riga del build.gradle riscritta
 # per togliere un falso avviso KGP — vedi third_party/README.md.

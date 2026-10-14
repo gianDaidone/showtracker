@@ -7,6 +7,7 @@ import 'core/services/notification_service.dart';
 import 'widgets_manager.dart';
 import 'features/series/providers/series_providers.dart';
 import 'core/constants/api_keys.dart';
+import 'core/riverpod_utils.dart';
 
 void main() async {
   runZoned(() async {
@@ -30,7 +31,7 @@ void main() async {
     await NotificationService.init();
 
     // Crea un container globale per poterlo passare ai widget
-    final container = ProviderContainer();
+    final container = ProviderContainer(retry: noProviderRetry);
 
     // Inizializza i widget nativi e le callback di background
     await ShowTrackerWidgetsManager.setup();
@@ -58,7 +59,7 @@ void main() async {
       },
     );
     // Avvia la sincronizzazione in background in modo silente (Offline-First sync)
-    unawaited(container.read(trackedShowsNotifierProvider.notifier).rescheduleAllNotifications());
+    unawaited(container.read(trackedShowsProvider.notifier).rescheduleAllNotifications());
 
     runApp(
       UncontrolledProviderScope(

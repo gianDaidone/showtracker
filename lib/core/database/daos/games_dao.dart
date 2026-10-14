@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 import '../app_database.dart';
 
-part 'games_dao.g.dart';
+part 'games_dao.drift.dart';
 
 @DriftAccessor(tables: [TrackedGames])
 class GamesDao extends DatabaseAccessor<AppDatabase> with _$GamesDaoMixin {

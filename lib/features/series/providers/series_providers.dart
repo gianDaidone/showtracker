@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter_riverpod/flutter_riverpod.dart' show FutureProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/network/tmdb_http_client.dart';
@@ -8,6 +9,7 @@ import '../../../core/auth/auth_state.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/riverpod_utils.dart';
 import '../../../core/services/app_toast.dart';
 import '../../../core/services/notification_service.dart';
 import '../data/anilist_service.dart';
@@ -55,28 +57,28 @@ class UpcomingEpisodeInfo {
 // ── Singleton services ────────────────────────────────────────────────────────
 
 @riverpod
-TmdbService tmdbService(TmdbServiceRef ref) {
+TmdbService tmdbService(Ref ref) {
   final authStateAsync = ref.watch(authControllerProvider);
-  final authState = authStateAsync.valueOrNull ?? const Unauthenticated();
+  final authState = authStateAsync.value ?? const Unauthenticated();
   final client = AppInterceptor(http.Client(), tmdbAuthState: authState);
   ref.onDispose(client.close);
   return TmdbService(client);
 }
 
 @Riverpod(keepAlive: true)
-AniListService anilistService(AnilistServiceRef ref) {
+AniListService anilistService(Ref ref) {
   final service = AniListService();
   ref.onDispose(service.dispose);
   return service;
 }
 
 @riverpod
-YunaService yunaService(YunaServiceRef ref) => YunaService();
+YunaService yunaService(Ref ref) => YunaService();
 
 // ── TMDB: ricerca ─────────────────────────────────────────────────────────────
 
 @riverpod
-Future<List<TmdbShow>> searchShows(SearchShowsRef ref, String query) async {
+Future<List<TmdbShow>> searchShows(Ref ref, String query) async {
   if (query.length < 2) return [];
   return ref.watch(tmdbServiceProvider).searchShows(query);
 }
@@ -85,7 +87,7 @@ Future<List<TmdbShow>> searchShows(SearchShowsRef ref, String query) async {
 
 @riverpod
 Future<List<NormalizedAnimeSeason>?> animeData(
-  AnimeDataRef ref,
+  Ref ref,
   int tmdbId,
 ) async {
   final animeCacheDao = ref.read(animeCacheDaoProvider);
@@ -127,7 +129,7 @@ Future<List<NormalizedAnimeSeason>?> animeData(
 /// originale in caso di errore di rete, così il chiamante può distinguere
 /// "nessun dato" da "richiesta fallita".
 Future<List<NormalizedAnimeSeason>?> _fetchAnimeSeasons(
-  AnimeDataRef ref,
+  Ref ref,
   int tmdbId,
 ) async {
   final animeCacheDao = ref.read(animeCacheDaoProvider);
@@ -374,7 +376,7 @@ class _NextEpisodeInfo {
 // ── Show detail (enriched with AniList for anime) ─────────────────────────────
 
 @riverpod
-Future<TmdbShowDetail> showDetail(ShowDetailRef ref, int tmdbId) async {
+Future<TmdbShowDetail> showDetail(Ref ref, int tmdbId) async {
   final link = ref.keepAlive();
   final timer = Timer(const Duration(seconds: 30), () {
     link.close();
@@ -462,7 +464,7 @@ Duration _seasonCacheTtl(
 
 @riverpod
 Future<TmdbSeason> seasonDetail(
-  SeasonDetailRef ref, {
+  Ref ref, {
   required int showId,
   required int seasonNumber,
 }) async {
@@ -652,7 +654,10 @@ Future<TmdbSeason> seasonDetail(
 
 // ── DB: serie tracciate (stream reattivo) ─────────────────────────────────────
 
-@riverpod
+// keepAlive: stato globale dell'app. Con Riverpod 3 un notifier autoDispose
+// eliminato durante un await fa fallire il resto del metodo (ref/state dopo
+// il dispose lanciano UnmountedRefException).
+@Riverpod(keepAlive: true)
 class TrackedShowsNotifier extends _$TrackedShowsNotifier {
   @override
   Stream<List<TrackedShow>> build() {
@@ -674,7 +679,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
     // (TMDB raggruppa più cours in meno stagioni).
     if (detail.isAnime && detail.animeSeasonsData == null) {
       try {
-        final anilistSeasons = await ref.read(animeDataProvider(detail.id).future);
+        final anilistSeasons = await ref.readFuture(animeDataProvider(detail.id).future);
         if (anilistSeasons != null && anilistSeasons.isNotEmpty) {
           // Ricarica il detail arricchito con i dati AniList appena ottenuti
           effectiveDetail = await ref.read(showDetailProvider(detail.id).future);
@@ -973,7 +978,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
 
 @riverpod
 Stream<Map<int, Set<int>>> watchedEpisodesBySeason(
-  WatchedEpisodesBySeasonRef ref,
+  Ref ref,
   int dbShowId,
 ) {
   return ref
@@ -989,7 +994,7 @@ Stream<Map<int, Set<int>>> watchedEpisodesBySeason(
 }
 
 @riverpod
-Stream<int> watchedCount(WatchedCountRef ref, int dbShowId) {
+Stream<int> watchedCount(Ref ref, int dbShowId) {
   return ref
       .watch(showsDaoProvider)
       .watchEpisodesByShow(dbShowId)
@@ -998,7 +1003,7 @@ Stream<int> watchedCount(WatchedCountRef ref, int dbShowId) {
 
 @riverpod
 Future<Map<int, int>> seasonEpisodeCounts(
-  SeasonEpisodeCountsRef ref,
+  Ref ref,
   int dbShowId,
 ) {
   return ref.watch(showsDaoProvider).getSeasonCounts(dbShowId);
@@ -1006,7 +1011,7 @@ Future<Map<int, int>> seasonEpisodeCounts(
 
 @riverpod
 Stream<List<ShowWithWatchedEpisodes>> watchingShowsWithEpisodes(
-    WatchingShowsWithEpisodesRef ref) {
+    Ref ref) {
   return ref.watch(showsDaoProvider).watchWatchingShowsWithEpisodes();
 }
 
@@ -1098,8 +1103,8 @@ final visibleWatchingShowsProvider =
 
 @riverpod
 Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
-    UpcomingEpisodesRef ref) async {
-  final shows = await ref.watch(trackedShowsNotifierProvider.future);
+    Ref ref) async {
+  final shows = await ref.watch(trackedShowsProvider.future);
 
   final today = DateTime.now();
   final todayMidnight = DateTime(today.year, today.month, today.day);

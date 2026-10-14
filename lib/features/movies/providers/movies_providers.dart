@@ -12,19 +12,22 @@ part 'movies_providers.g.dart';
 // ── TMDB: ricerca e dettaglio film ────────────────────────────────────────────
 
 @riverpod
-Future<List<TmdbMovie>> searchMovies(SearchMoviesRef ref, String query) async {
+Future<List<TmdbMovie>> searchMovies(Ref ref, String query) async {
   if (query.length < 2) return [];
   return ref.watch(tmdbServiceProvider).searchMovies(query);
 }
 
 @riverpod
-Future<TmdbMovieDetail> movieDetail(MovieDetailRef ref, int tmdbId) {
+Future<TmdbMovieDetail> movieDetail(Ref ref, int tmdbId) {
   return ref.watch(tmdbServiceProvider).getMovieDetails(tmdbId);
 }
 
 // ── DB: film tracciati (stream reattivo) ──────────────────────────────────────
 
-@riverpod
+// keepAlive: stato globale dell'app. Con Riverpod 3 un notifier autoDispose
+// eliminato durante un await fa fallire il resto del metodo (ref/state dopo
+// il dispose lanciano UnmountedRefException).
+@Riverpod(keepAlive: true)
 class TrackedMoviesNotifier extends _$TrackedMoviesNotifier {
   @override
   Stream<List<TrackedMovy>> build() {
@@ -60,6 +63,6 @@ class TrackedMoviesNotifier extends _$TrackedMoviesNotifier {
 // ── Film in uscita (stream reattivo) ──────────────────────────────────────────
 
 @riverpod
-Stream<List<TrackedMovy>> upcomingMovies(UpcomingMoviesRef ref) {
+Stream<List<TrackedMovy>> upcomingMovies(Ref ref) {
   return ref.watch(moviesDaoProvider).watchUpcoming();
 }

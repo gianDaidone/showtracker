@@ -6,39 +6,83 @@ part of 'update_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$githubReleaseServiceHash() =>
-    r'eb90767f410100d6e795e9e90753856eaee20c0b';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [githubReleaseService].
 @ProviderFor(githubReleaseService)
-final githubReleaseServiceProvider = Provider<GithubReleaseService>.internal(
-  githubReleaseService,
-  name: r'githubReleaseServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$githubReleaseServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final githubReleaseServiceProvider = GithubReleaseServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef GithubReleaseServiceRef = ProviderRef<GithubReleaseService>;
-String _$packageInfoHash() => r'b888fbcb24b819c8f738c65829167982ceb7b68e';
+final class GithubReleaseServiceProvider extends $FunctionalProvider<
+    GithubReleaseService,
+    GithubReleaseService,
+    GithubReleaseService> with $Provider<GithubReleaseService> {
+  GithubReleaseServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'githubReleaseServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
-/// See also [packageInfo].
+  @override
+  String debugGetCreateSourceHash() => _$githubReleaseServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<GithubReleaseService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  GithubReleaseService create(Ref ref) {
+    return githubReleaseService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(GithubReleaseService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<GithubReleaseService>(value),
+    );
+  }
+}
+
+String _$githubReleaseServiceHash() =>
+    r'8a190ac71cde4c89a332c1f061cb2491d6e87c42';
+
 @ProviderFor(packageInfo)
-final packageInfoProvider = AutoDisposeFutureProvider<PackageInfo>.internal(
-  packageInfo,
-  name: r'packageInfoProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$packageInfoHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final packageInfoProvider = PackageInfoProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef PackageInfoRef = AutoDisposeFutureProviderRef<PackageInfo>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class PackageInfoProvider extends $FunctionalProvider<
+        AsyncValue<PackageInfo>, PackageInfo, FutureOr<PackageInfo>>
+    with $FutureModifier<PackageInfo>, $FutureProvider<PackageInfo> {
+  PackageInfoProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'packageInfoProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$packageInfoHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<PackageInfo> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<PackageInfo> create(Ref ref) {
+    return packageInfo(ref);
+  }
+}
+
+String _$packageInfoHash() => r'f1c17d5174896e536210506ee5ade32f9766a6b9';

@@ -19,7 +19,10 @@ class RawgAuthenticated extends RawgAuthState {
   const RawgAuthenticated(this.apiKey);
 }
 
-@riverpod
+// keepAlive: stato globale dell'app. Con Riverpod 3 un notifier autoDispose
+// eliminato durante un await fa fallire il resto del metodo (ref/state dopo
+// il dispose lanciano UnmountedRefException).
+@Riverpod(keepAlive: true)
 class RawgAuthController extends _$RawgAuthController {
   @override
   Future<RawgAuthState> build() async {

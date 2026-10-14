@@ -33,7 +33,7 @@ class TmdbAccountTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authStateAsync = ref.watch(authControllerProvider);
-    final state = authStateAsync.valueOrNull ?? const Unauthenticated();
+    final state = authStateAsync.value ?? const Unauthenticated();
 
     final statusText = authStateAsync.isLoading
         ? 'Verifica in corso…'

@@ -380,11 +380,11 @@ class _Results extends ConsumerWidget {
     };
 
     final rawShows =
-        showShows ? (ref.watch(searchShowsProvider(query)).valueOrNull ?? []) : [];
+        showShows ? (ref.watch(searchShowsProvider(query)).value ?? []) : [];
     final rawMovies =
-        showMovies ? (ref.watch(searchMoviesProvider(query)).valueOrNull ?? []) : [];
+        showMovies ? (ref.watch(searchMoviesProvider(query)).value ?? []) : [];
     final rawGames =
-        showGames ? (ref.watch(searchGamesProvider(query)).valueOrNull ?? []) : [];
+        showGames ? (ref.watch(searchGamesProvider(query)).value ?? []) : [];
 
     final results = <SearchResult>[
       for (final s in rawShows)

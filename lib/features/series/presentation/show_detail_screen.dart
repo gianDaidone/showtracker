@@ -34,7 +34,7 @@ class ShowDetailScreen extends ConsumerWidget {
     // Mantieni i dati precedenti durante un refresh (es. quando l'utente
     // tocca l'icona "Aggiorna dati anime"): la pagina resta visibile e
     // l'icona stessa mostra lo spinner finché non arrivano i dati nuovi.
-    final detail = detailAsync.valueOrNull;
+    final detail = detailAsync.value;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: detail != null
@@ -66,17 +66,17 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      final trackedList = ref.read(trackedShowsNotifierProvider).valueOrNull ?? [];
+      final trackedList = ref.read(trackedShowsProvider).value ?? [];
       final trackedShow = trackedList.where((s) => s.tmdbId == widget.detail.id).firstOrNull;
       if (trackedShow != null) {
         // Reschedule anime notification once when the detail page opens so that
         // stale cached nextAiringEpisode data doesn't block scheduling.
         if (widget.detail.isAnime && widget.detail.animeSeasonsData != null) {
           ref
-              .read(trackedShowsNotifierProvider.notifier)
+              .read(trackedShowsProvider.notifier)
               .rescheduleNotification(widget.detail);
         }
-        await ref.read(trackedShowsNotifierProvider.notifier).syncMetadata(widget.detail, trackedShow.id);
+        await ref.read(trackedShowsProvider.notifier).syncMetadata(widget.detail, trackedShow.id);
       }
     });
   }
@@ -91,7 +91,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     if (shouldReschedule || oldWidget.detail != widget.detail) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
-        final trackedList = ref.read(trackedShowsNotifierProvider).valueOrNull ?? [];
+        final trackedList = ref.read(trackedShowsProvider).value ?? [];
         final trackedShow = trackedList.where((s) => s.tmdbId == widget.detail.id).firstOrNull;
         if (trackedShow != null) {
           if (shouldReschedule) {
@@ -99,11 +99,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             // (animeSeasonsData passa da null a popolato), riprogramma la notifica
             // con l'orario preciso AniList: initState non si rinnova sui rebuild.
             ref
-                .read(trackedShowsNotifierProvider.notifier)
+                .read(trackedShowsProvider.notifier)
                 .rescheduleNotification(widget.detail);
           }
           if (oldWidget.detail != widget.detail) {
-            await ref.read(trackedShowsNotifierProvider.notifier).syncMetadata(widget.detail, trackedShow.id);
+            await ref.read(trackedShowsProvider.notifier).syncMetadata(widget.detail, trackedShow.id);
           }
         }
       });
@@ -114,7 +114,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   Widget build(BuildContext context) {
     final detail = widget.detail;
     final trackedList =
-        ref.watch(trackedShowsNotifierProvider).valueOrNull ?? [];
+        ref.watch(trackedShowsProvider).value ?? [];
     final TrackedShow? trackedShow =
         trackedList.where((s) => s.tmdbId == detail.id).firstOrNull;
 
@@ -591,7 +591,7 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
     setState(() => _loading = true);
     try {
       await ref
-          .read(trackedShowsNotifierProvider.notifier)
+          .read(trackedShowsProvider.notifier)
           .addShow(widget.detail);
     } catch (e) {
       AppToast.show('Impossibile aggiungere "${widget.detail.name}"');
@@ -667,7 +667,7 @@ class _RemoveShowButtonState extends ConsumerState<_RemoveShowButton> {
     setState(() => _loading = true);
     try {
       await ref
-          .read(trackedShowsNotifierProvider.notifier)
+          .read(trackedShowsProvider.notifier)
           .removeShow(widget.trackedShow.id);
       widget.onRemoved?.call();
     } catch (_) {
@@ -693,7 +693,7 @@ class _StatusSelector extends ConsumerWidget {
           final selected = trackedShow.status == s;
           return GestureDetector(
             onTap: () => ref
-                .read(trackedShowsNotifierProvider.notifier)
+                .read(trackedShowsProvider.notifier)
                 .updateStatus(trackedShow.id, s),
             child: Container(
               margin: const EdgeInsets.only(right: 8),
@@ -733,7 +733,7 @@ class _ErrorBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final trackedList =
-        ref.watch(trackedShowsNotifierProvider).valueOrNull ?? [];
+        ref.watch(trackedShowsProvider).value ?? [];
     final TrackedShow? trackedShow =
         trackedList.where((s) => s.tmdbId == tmdbId).firstOrNull;
     final error = this.error;

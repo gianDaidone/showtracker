@@ -47,7 +47,7 @@ class _GamesListScreenState extends ConsumerState<GamesListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final gamesAsync = ref.watch(trackedGamesNotifierProvider);
+    final gamesAsync = ref.watch(trackedGamesProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
