@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:drift_flutter/drift_flutter.dart';
 
 import 'tables/enums.dart';
@@ -48,6 +49,10 @@ part 'app_database.drift.dart';
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase._() : super(_openConnection());
+
+  /// Per i test: es. `AppDatabase.forTesting(NativeDatabase.memory())`.
+  @visibleForTesting
+  AppDatabase.forTesting(super.executor);
 
   static final AppDatabase instance = AppDatabase._();
 

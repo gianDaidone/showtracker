@@ -148,15 +148,27 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
 
   /// Salva o aggiorna il numero di episodi per ogni stagione di una serie.
   Future<void> insertSeasons(int showId, Map<int, int> counts) async {
-    for (final entry in counts.entries) {
-      await into(trackedSeasons).insertOnConflictUpdate(
-        TrackedSeasonsCompanion(
+    await transaction(() async {
+      for (final entry in counts.entries) {
+        final row = TrackedSeasonsCompanion(
           showId: Value(showId),
           seasonNumber: Value(entry.key),
           episodeCount: Value(entry.value),
-        ),
-      );
-    }
+        );
+        // Conflitto sulla chiave unica (serie, stagione), non sull'`id`
+        // autoincrementale che `insertOnConflictUpdate` userebbe: su una
+        // stagione già salvata fallirebbe con UNIQUE constraint failed e il
+        // conteggio episodi resterebbe quello vecchio (stesso errore già
+        // corretto in `AnimeCacheDao.saveAnimeSeasons`).
+        await into(trackedSeasons).insert(
+          row,
+          onConflict: DoUpdate(
+            (_) => row,
+            target: [trackedSeasons.showId, trackedSeasons.seasonNumber],
+          ),
+        );
+      }
+    });
   }
 
   /// Restituisce la mappa stagione→episodeCount per una serie.
