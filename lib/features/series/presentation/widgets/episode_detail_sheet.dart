@@ -214,6 +214,12 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
 
     final isWatched = _isWatched(watchedMap);
 
+    // Un episodio non ancora uscito non si segna (dal tab "In Uscita" il sheet
+    // si apre proprio su quelli): stessa regola della checkbox di EpisodeTile.
+    // Se però risulta già visto il pulsante resta, per poterlo togliere.
+    final canMark = widget.trackedShow != null &&
+        (widget.episode.hasAired || isWatched);
+
     return Container(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.87,
@@ -238,7 +244,7 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
                 left: 20,
                 right: 20,
                 top: 16,
-                bottom: widget.trackedShow != null ? 16 : MediaQuery.of(context).padding.bottom + 24,
+                bottom: canMark ? 16 : MediaQuery.of(context).padding.bottom + 24,
               ),
               child: _ContentArea(
                 showTitle: widget.showTitle,
@@ -256,7 +262,7 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
           ),
 
           // ── Action Button (Segna/Visto) a fine modale ────────────────────
-          if (widget.trackedShow != null)
+          if (canMark)
             Container(
               padding: EdgeInsets.only(
                 left: 20,
