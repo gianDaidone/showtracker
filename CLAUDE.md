@@ -21,12 +21,17 @@ flutter test test/widget_test.dart --plain-name 'App smoke test'   # single test
 flutter analyze
 
 # Regenerate code (Riverpod + Drift) — required after changing annotated
-# providers or DB tables
-flutter pub run build_runner build --delete-conflicting-outputs
-flutter pub run build_runner watch --delete-conflicting-outputs
+# providers or DB tables. build_runner 2.16 removed --delete-conflicting-outputs
+# (it's ignored with a warning); conflicting outputs are handled on its own.
+dart run build_runner build
+dart run build_runner watch
 ```
 
-Generated files end in `.g.dart` — never edit them directly.
+Generated files end in `.g.dart` (Riverpod) or `.drift.dart` (Drift) — never edit them directly.
+
+Codegen needs an `analyzer` that knows the SDK's language version: when Flutter moves to a newer Dart than the analyzer supports, `riverpod_generator` crashes on the Flutter sources (`Missing implementation of visit…`) and build_runner then hangs at 0% CPU instead of exiting. The fix is upgrading `riverpod_generator`/`drift_dev`/`build_runner` together until pub resolves a newer `analyzer` (14.5 covers Dart up to 3.14).
+
+`build.yaml` runs Drift in its own `drift` target with the `not_shared` builder, before everything else: providers use Drift data classes (`TrackedShow`, `TrackedGame`, …) as types, and `riverpod_generator` 3+ must resolve them — with Drift's default shared builder they'd only exist in a `.g.dart` assembled after it ran (`InvalidTypeException: The type is invalid`). So Drift files use `part 'x.drift.dart';`.
 
 ## Architecture
 
@@ -41,6 +46,13 @@ Code lives in `lib/features/` with three content domains — **series**, **movie
 ### State management — Riverpod
 
 All shared state is Riverpod; no `setState` beyond local widget state. Services are exposed via `@riverpod` generators (e.g. `tmdbServiceProvider`). Async reads use `FutureProvider`/`StreamProvider`; mutable tracked content uses notifier subclasses that write through to the Drift DAO, and the notifier's `build()` returns the DAO's `watch*` stream — so UI updates flow back from the database rather than from in-memory mutation.
+
+Riverpod **3** (`flutter_riverpod` 3, `riverpod_generator` 4). Differences from 2.x that bite here:
+
+- **Automatic retry is off.** Every `ProviderContainer`/`ProviderScope` gets `retry: noProviderRetry` (`lib/core/riverpod_utils.dart`) — retries would bypass `AniListQueue` and delay the errors the anime fallbacks rely on. Pass it to any new container too.
+- **`ref`/`state` after the provider is disposed throws** `UnmountedRefException`. The global notifiers (`TrackedShows/Movies/GamesNotifier`, `AuthController`, `RawgAuthController`) are `@Riverpod(keepAlive: true)` for that reason. Reading an autoDispose provider with `read(p.future)` without listening to it no longer keeps it alive across its `await`s — use `readFuture` from `riverpod_utils.dart` (on `Ref` and `ProviderContainer`), as `addShow` and `widgets_manager.dart` do.
+- Generated providers drop the `Notifier` suffix: `TrackedShowsNotifier` → `trackedShowsProvider`. `.valueOrNull` is gone (`.value` has the same meaning), `StateProvider` comes from `package:flutter_riverpod/legacy.dart`, `ProviderListenable` from `package:flutter_riverpod/misc.dart`, and `riverpod_annotation` no longer re-exports `FutureProvider`.
+- Listeners in widgets that aren't visible (e.g. other `IndexedStack` tabs) are paused until shown again.
 
 `lib/features/series/providers/series_providers.dart` (~880 lines) is the centre of gravity: it owns `TrackedShowsNotifier` (add/remove/status/`syncMetadata` + notification scheduling) plus the cached `showDetail`/`seasonDetail`/`animeData` chain. Read it before changing series behaviour.
 
@@ -132,6 +144,8 @@ To publish an update: bump **both** parts of `version:` in `pubspec.yaml` (the n
 ### Android build
 
 Gradle 9.1, AGP 9 and **built-in Kotlin** (`android.builtInKotlin=true` in `android/gradle.properties`; the app applies no `kotlin-android` plugin — the `org.jetbrains.kotlin.android` entry in `settings.gradle.kts` only pins the Kotlin version). With built-in Kotlin, any plugin that still applies KGP unconditionally fails the build ("plugin is no longer required for Kotlin support since AGP 9.0"), so plugin upgrades must keep versions that support it — including transitive ones like `url_launcher_android` (≥ 6.3.33). `network_info_plus` resolves to 8.2.1: 8.2.2 pulls `dbus` 0.8, which conflicts with `flutter_local_notifications` 21. `home_widget` is a local copy in `third_party/home_widget` (via `dependency_overrides`): upstream 0.10.0 applies KGP only when built-in Kotlin is off, but writes it as `apply plugin: 'kotlin-android'`, which Flutter's regex check flags regardless of the surrounding `if`. The copy rewrites that one line as `pluginManager.apply(...)` — see `third_party/README.md`; drop the copy once upstream changes it. To upgrade `home_widget` meanwhile, re-copy the new version there and re-apply the edit.
+
+SQLite comes from `sqlite3` 3.x (pulled in by `drift_flutter` 0.3), which bundles `libsqlite3.so` through Dart build hooks: a prebuilt binary downloaded from the package's GitHub releases, so a clean build needs network access. `sqlite3_flutter_libs` is obsolete with 3.x — it's only a transitive `0.6.0+eol` stub now; don't add it back.
 
 ## Conventions
 
