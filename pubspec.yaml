@@ -51,6 +51,7 @@ dependencies:
   shelf: ^1.4.1
   shelf_router: ^1.1.4
   network_info_plus: ^8.2.1
+  video_player: ^2.14.1
 
 dev_dependencies:
   flutter_test:

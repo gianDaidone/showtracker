@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import 'models/game_trailer.dart';
 import 'models/rawg_game.dart';
 import 'models/rawg_game_detail.dart';
 
@@ -57,6 +58,29 @@ class RawgService {
       return [];
     }
   }
+
+  /// Per molti giochi è vuoto: RAWG non aggiorna più i trailer da Steam.
+  Future<List<GameTrailer>> getTrailers(int id) async {
+    final data = await _get(_uri('/games/$id/movies'));
+    return ((data['results'] as List<dynamic>?) ?? [])
+        .map((m) => GameTrailer.tryParseRawg(m as Map<String, dynamic>))
+        .whereType<GameTrailer>()
+        .toList();
+  }
+
+  /// App ID Steam del gioco, ricavato dal link allo store; `null` se il gioco
+  /// non è su Steam.
+  Future<int?> getSteamAppId(int id) async {
+    final data = await _get(_uri('/games/$id/stores'));
+    for (final s in (data['results'] as List<dynamic>?) ?? []) {
+      final match = _steamAppUrl.firstMatch(s['url'] as String? ?? '');
+      if (match != null) return int.parse(match.group(1)!);
+    }
+    return null;
+  }
+
+  static final _steamAppUrl =
+      RegExp(r'store\.steampowered\.com/app/(\d+)');
 }
 
 class RawgException implements Exception {

@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/services/app_toast.dart';
 import '../../../core/widgets/animated_refresh_button.dart';
 import '../../../core/theme/app_theme.dart';
+import '../data/models/game_trailer.dart';
 import '../data/models/rawg_game_detail.dart';
 import '../providers/games_providers.dart';
 
@@ -21,6 +25,7 @@ class GameDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(gameDetailProvider(rawgId));
     final screenshotsAsync = ref.watch(gameScreenshotsProvider(rawgId));
+    final trailersAsync = ref.watch(gameTrailersProvider(rawgId));
     final trackedGame = ref
         .watch(trackedGamesNotifierProvider)
         .valueOrNull
@@ -47,6 +52,7 @@ class GameDetailScreen extends ConsumerWidget {
           return _DetailBody(
             detail: detail,
             frames: frames,
+            trailers: trailersAsync.valueOrNull ?? [],
             trackedGame: trackedGame,
           );
         },
@@ -60,11 +66,13 @@ class GameDetailScreen extends ConsumerWidget {
 class _DetailBody extends ConsumerWidget {
   final RawgGameDetail detail;
   final List<String> frames;
+  final List<GameTrailer> trailers;
   final TrackedGame? trackedGame;
 
   const _DetailBody({
     required this.detail,
     required this.frames,
+    required this.trailers,
     required this.trackedGame,
   });
 
@@ -135,6 +143,15 @@ class _DetailBody extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   _ExpandableText(text: detail.overview!),
+                ],
+
+                // Trailer
+                if (trailers.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  _Section(
+                    title: 'Trailer',
+                    child: _TrailerList(trailers: trailers),
+                  ),
                 ],
 
                 // Tag
@@ -583,6 +600,365 @@ class _ZoomableImageState extends State<_ZoomableImage> {
   }
 }
 
+// ── Trailer ───────────────────────────────────────────────────────────────────
+
+class _TrailerList extends StatelessWidget {
+  final List<GameTrailer> trailers;
+  const _TrailerList({required this.trailers});
+
+  void _open(BuildContext context, GameTrailer trailer) {
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => _TrailerPlayer(trailer: trailer),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Un solo trailer occupa tutta la larghezza; con più trailer si scorre e
+    // la card successiva resta intravista a destra.
+    final available = MediaQuery.sizeOf(context).width - 32;
+    final cardWidth = trailers.length == 1 ? available : available * 0.8;
+    final imageHeight = cardWidth * 9 / 16;
+
+    return SizedBox(
+      height: imageHeight + 26,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics:
+            trailers.length == 1 ? const NeverScrollableScrollPhysics() : null,
+        itemCount: trailers.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, i) {
+          final trailer = trailers[i];
+          return SizedBox(
+            width: cardWidth,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: () => _open(context, trailer),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      width: cardWidth,
+                      height: imageHeight,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          const ColoredBox(color: AppColors.surface),
+                          if (trailer.previewUrl != null)
+                            CachedNetworkImage(
+                              imageUrl: trailer.previewUrl!,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => const SizedBox.shrink(),
+                              errorWidget: (_, __, ___) =>
+                                  const SizedBox.shrink(),
+                            ),
+                          ColoredBox(color: Colors.black.withAlpha(70)),
+                          Center(
+                            child: Container(
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withAlpha(140),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: Colors.white.withAlpha(200),
+                                    width: 1.5),
+                              ),
+                              child: const Icon(Icons.play_arrow_rounded,
+                                  color: Colors.white, size: 34),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  trailer.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TrailerPlayer extends StatefulWidget {
+  final GameTrailer trailer;
+  const _TrailerPlayer({required this.trailer});
+
+  @override
+  State<_TrailerPlayer> createState() => _TrailerPlayerState();
+}
+
+class _TrailerPlayerState extends State<_TrailerPlayer> {
+  late final VideoPlayerController _controller =
+      VideoPlayerController.networkUrl(
+    Uri.parse(widget.trailer.videoUrl),
+    formatHint: widget.trailer.isHls ? VideoFormat.hls : null,
+  );
+  bool _failed = false;
+  bool _controlsVisible = true;
+  Timer? _hideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_onTick);
+    _controller.initialize().then((_) {
+      if (!mounted) return;
+      _controller.play();
+      _scheduleHide();
+    }).catchError((Object e) {
+      debugPrint('Trailer non riproducibile: $e');
+      if (mounted) setState(() => _failed = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    _controller.removeListener(_onTick);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTick() {
+    if (!mounted) return;
+    if (_controller.value.hasError && !_failed) {
+      setState(() => _failed = true);
+      return;
+    }
+    // A fine video i controlli restano visibili per il "riguarda"
+    if (_isFinished && !_controlsVisible) _controlsVisible = true;
+    setState(() {});
+  }
+
+  // Non `position >= duration`: con gli stream HLS la posizione finale può
+  // fermarsi poco prima della durata dichiarata
+  bool get _isFinished => _controller.value.isCompleted;
+
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _controller.value.isPlaying) {
+        setState(() => _controlsVisible = false);
+      }
+    });
+  }
+
+  void _toggleControls() {
+    setState(() => _controlsVisible = !_controlsVisible);
+    if (_controlsVisible) _scheduleHide();
+  }
+
+  void _togglePlay() {
+    if (_isFinished) {
+      _controller.seekTo(Duration.zero);
+      _controller.play();
+    } else if (_controller.value.isPlaying) {
+      _controller.pause();
+    } else {
+      _controller.play();
+    }
+    _scheduleHide();
+  }
+
+  static String _format(Duration d) {
+    final m = d.inMinutes;
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = _controller.value;
+    // Finché il video non parte (o se fallisce) serve comunque poter chiudere
+    final showTopBar = _controlsVisible || _failed || !value.isInitialized;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // ── Video ─────────────────────────────────────────────────────
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _failed ? null : _toggleControls,
+              child: Center(
+                child: _failed
+                    ? const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'Impossibile riprodurre il trailer',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      )
+                    : value.isInitialized
+                        ? AspectRatio(
+                            aspectRatio: value.aspectRatio,
+                            child: VideoPlayer(_controller),
+                          )
+                        : const CircularProgressIndicator(
+                            color: AppColors.accent),
+              ),
+            ),
+          ),
+
+          // ── Controlli ─────────────────────────────────────────────────
+          if (value.isInitialized && !_failed)
+            Positioned.fill(
+              child: IgnorePointer(
+                ignoring: !_controlsVisible,
+                child: AnimatedOpacity(
+                  opacity: _controlsVisible ? 1 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _toggleControls,
+                    child: ColoredBox(
+                      color: Colors.black.withAlpha(90),
+                      child: Stack(
+                        children: [
+                          Center(
+                            child: IconButton(
+                              iconSize: 64,
+                              onPressed: _togglePlay,
+                              icon: Icon(
+                                _isFinished
+                                    ? Icons.replay_rounded
+                                    : value.isPlaying
+                                        ? Icons.pause_rounded
+                                        : Icons.play_arrow_rounded,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: SafeArea(
+                              top: false,
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      _format(value.position),
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 12),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: VideoProgressIndicator(
+                                        _controller,
+                                        allowScrubbing: true,
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 12),
+                                        colors: VideoProgressColors(
+                                          playedColor: AppColors.accent,
+                                          bufferedColor:
+                                              Colors.white.withAlpha(90),
+                                          backgroundColor:
+                                              Colors.white.withAlpha(40),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      _format(value.duration),
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Chiudi + titolo ───────────────────────────────────────────
+          // Posizionato: lo Stack riceve vincoli laschi dallo Scaffold e,
+          // con un figlio non posizionato, si restringerebbe alla sua
+          // altezza schiacciando video e controlli in cima allo schermo.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              ignoring: !showTopBar,
+              child: AnimatedOpacity(
+                opacity: showTopBar ? 1 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withAlpha(140),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.close,
+                                color: Colors.white, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            widget.trailer.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Refresh button ────────────────────────────────────────────────────────────
 
 class _RefreshButton extends ConsumerStatefulWidget {
@@ -605,6 +981,7 @@ class _RefreshButtonState extends ConsumerState<_RefreshButton> {
         Future(() async {
           ref.invalidate(gameDetailProvider(widget.rawgId));
           ref.invalidate(gameScreenshotsProvider(widget.rawgId));
+          ref.invalidate(gameTrailersProvider(widget.rawgId));
         }),
         Future.delayed(const Duration(milliseconds: 1500)),
       ]);

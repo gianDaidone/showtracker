@@ -1,13 +1,16 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import '../data/models/game_trailer.dart';
 import '../data/models/rawg_game.dart';
 import '../data/models/rawg_game_detail.dart';
 import '../data/rawg_service.dart';
+import '../data/steam_service.dart';
 
 import 'package:http/http.dart' as http;
 import '../../../core/network/tmdb_http_client.dart';
@@ -47,6 +50,45 @@ Future<RawgGameDetail> gameDetail(GameDetailRef ref, int rawgId) {
 Future<List<String>> gameScreenshots(GameScreenshotsRef ref, int rawgId) {
   return ref.watch(rawgServiceProvider).getScreenshots(rawgId);
 }
+
+// ── Trailer gioco ─────────────────────────────────────────────────────────────
+
+// Questi due provider sono scritti a mano invece che con @riverpod: con
+// Dart 3.13 l'analyzer bloccato nel lock (7.6) manda in crash
+// riverpod_generator. Da convertire quando il codegen torna a funzionare.
+
+final steamServiceProvider = Provider<SteamService>((ref) {
+  final client = http.Client();
+  ref.onDispose(client.close);
+  return SteamService(client);
+});
+
+/// Trailer da Steam, ricavando l'app ID dai negozi RAWG; RAWG `/movies` solo
+/// come riserva, perché per molti giochi è vuoto. Un gioco senza trailer
+/// restituisce una lista vuota, mai un errore: la sezione semplicemente non
+/// compare.
+final gameTrailersProvider = FutureProvider.autoDispose
+    .family<List<GameTrailer>, int>((ref, rawgId) async {
+  final rawg = ref.watch(rawgServiceProvider);
+  final steam = ref.watch(steamServiceProvider);
+
+  try {
+    final appId = await rawg.getSteamAppId(rawgId);
+    if (appId != null) {
+      final trailers = await steam.getTrailers(appId);
+      if (trailers.isNotEmpty) return trailers;
+    }
+  } catch (e) {
+    debugPrint('Trailer Steam non disponibili per il gioco $rawgId: $e');
+  }
+
+  try {
+    return await rawg.getTrailers(rawgId);
+  } catch (e) {
+    debugPrint('Trailer RAWG non disponibili per il gioco $rawgId: $e');
+    return [];
+  }
+});
 
 // ── DB: giochi tracciati (stream reattivo) ────────────────────────────────────
 
