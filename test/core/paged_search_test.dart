@@ -105,4 +105,28 @@ void main() {
     expect(state.items, isEmpty);
     expect(_fake.requested, isEmpty);
   });
+
+  test('PagedListNotifier: lista senza query, anche di una pagina sola',
+      () async {
+    _fake = _FakeSearch([
+      [7, 8],
+    ]);
+    final listProvider = AsyncNotifierProvider.autoDispose<
+        PagedListNotifier<int>, PagedResults<int>>(
+      () => PagedListNotifier(
+        (_) => (page) => _fake.fetch('', page),
+        (i) => i,
+        cacheFor: const Duration(minutes: 30),
+      ),
+    );
+    container = ProviderContainer(retry: noProviderRetry);
+    container.listen(listProvider, (_, __) {});
+
+    final state = await container.read(listProvider.future);
+    expect(state.items, [7, 8]);
+    expect(state.hasMore, isFalse);
+
+    await container.read(listProvider.notifier).loadMore();
+    expect(_fake.requested, [1]);
+  });
 }
