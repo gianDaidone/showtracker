@@ -10,6 +10,9 @@ class RawgGame {
   final List<String> platforms;
   final List<String> genres;
 
+  /// Id RAWG dei generi: il filtro `genres` di `/games` vuole id o slug.
+  final List<int> genreIds;
+
   /// Utenti RAWG che hanno il gioco in libreria: è la misura di popolarità
   /// usata per ordinare i risultati di ricerca (`ordering=-added`).
   final int added;
@@ -24,6 +27,7 @@ class RawgGame {
     this.playtime,
     this.platforms = const [],
     this.genres = const [],
+    this.genreIds = const [],
     this.added = 0,
   });
 
@@ -44,6 +48,10 @@ class RawgGame {
           .toList(),
       genres: ((json['genres'] as List<dynamic>?) ?? [])
           .map((g) => g['name'] as String)
+          .toList(),
+      genreIds: ((json['genres'] as List<dynamic>?) ?? [])
+          .map((g) => g['id'])
+          .whereType<int>()
           .toList(),
       added: (json['added'] as num?)?.toInt() ?? 0,
     );

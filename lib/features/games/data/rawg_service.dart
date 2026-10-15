@@ -77,6 +77,34 @@ class RawgService {
     );
   }
 
+  /// Le liste "da scoprire" si fermano qui (10 × 40 giochi): RAWG ha una
+  /// quota mensile per chiave, e oltre i primi 400 nessuno scorre davvero.
+  static const discoverMaxPages = 10;
+
+  /// Pagina [page] di `/games` ordinata per [ordering] (es. `-added`), con
+  /// filtri facoltativi su date di uscita (`AAAA-MM-GG,AAAA-MM-GG`) e generi.
+  Future<SearchPage<RawgGame>> discoverGames({
+    required String ordering,
+    String? dates,
+    List<int> genreIds = const [],
+    int page = 1,
+  }) async {
+    final data = await _get(_uri('/games', {
+      'ordering': ordering,
+      if (dates != null) 'dates': dates,
+      if (genreIds.isNotEmpty) 'genres': genreIds.join(','),
+      'page': '$page',
+      'page_size': '$_searchPageSize',
+    }));
+    return SearchPage(
+      items: ((data['results'] as List<dynamic>?) ?? [])
+          .map((e) => RawgGame.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      hasMore: data['next'] != null && page < discoverMaxPages,
+      totalCount: data['count'] as int?,
+    );
+  }
+
   Future<RawgGameDetail> getGameDetails(int id) async {
     final data = await _get(_uri('/games/$id'));
     return RawgGameDetail.fromJson(data);

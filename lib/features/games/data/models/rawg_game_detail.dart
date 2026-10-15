@@ -17,6 +17,7 @@ class RawgGameDetail extends RawgGame {
     super.playtime,
     super.platforms,
     super.genres,
+    super.genreIds,
     this.overview,
     this.developers = const [],
     this.publishers = const [],
@@ -35,6 +36,7 @@ class RawgGameDetail extends RawgGame {
       playtime: base.playtime,
       platforms: base.platforms,
       genres: base.genres,
+      genreIds: base.genreIds,
       overview: (json['description_raw'] as String?)?.isNotEmpty == true
           ? json['description_raw'] as String
           : null,

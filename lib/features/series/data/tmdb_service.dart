@@ -55,6 +55,30 @@ class TmdbService {
     return _searchPage(data, TmdbShow.fromJson);
   }
 
+  // ── Da scoprire (schermata Cerca vuota) ─────────────────────────────────
+
+  Future<SearchPage<TmdbShow>> trendingShows({int page = 1}) async {
+    final data = await _get(
+      _uri('/trending/tv/week', {'language': 'it-IT', 'page': '$page'}),
+    );
+    return _searchPage(data, TmdbShow.fromJson);
+  }
+
+  Future<SearchPage<TmdbShow>> topRatedShows({int page = 1}) async {
+    final data = await _get(
+      _uri('/tv/top_rated', {'language': 'it-IT', 'page': '$page'}),
+    );
+    return _searchPage(data, TmdbShow.fromJson);
+  }
+
+  /// Solo la prima pagina: basta per unire i consigli di più serie.
+  Future<List<TmdbShow>> showRecommendations(int id) async {
+    final data = await _get(
+      _uri('/tv/$id/recommendations', {'language': 'it-IT'}),
+    );
+    return _searchPage(data, TmdbShow.fromJson).items;
+  }
+
   /// TMDB pagina le ricerche a 20 risultati; `total_pages` dice se ce ne sono altri.
   static SearchPage<T> _searchPage<T>(
     Map<String, dynamic> data,
@@ -317,6 +341,28 @@ class TmdbService {
       }),
     );
     return _searchPage(data, TmdbMovie.fromJson);
+  }
+
+  Future<SearchPage<TmdbMovie>> trendingMovies({int page = 1}) async {
+    final data = await _get(
+      _uri('/trending/movie/week', {'language': 'it-IT', 'page': '$page'}),
+    );
+    return _searchPage(data, TmdbMovie.fromJson);
+  }
+
+  Future<SearchPage<TmdbMovie>> topRatedMovies({int page = 1}) async {
+    final data = await _get(
+      _uri('/movie/top_rated', {'language': 'it-IT', 'page': '$page'}),
+    );
+    return _searchPage(data, TmdbMovie.fromJson);
+  }
+
+  /// Solo la prima pagina, come [showRecommendations].
+  Future<List<TmdbMovie>> movieRecommendations(int id) async {
+    final data = await _get(
+      _uri('/movie/$id/recommendations', {'language': 'it-IT'}),
+    );
+    return _searchPage(data, TmdbMovie.fromJson).items;
   }
 
   Future<TmdbMovieDetail> getMovieDetails(int id) async {

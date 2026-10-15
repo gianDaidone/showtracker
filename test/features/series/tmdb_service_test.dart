@@ -62,4 +62,40 @@ void main() {
 
     expect(svc.getSeasonDetails(73223, 2), throwsA(isA<TmdbException>()));
   });
+
+  group('liste da scoprire', () {
+    final requests = <Uri>[];
+    final svc = TmdbService(MockClient((req) async {
+      requests.add(req.url);
+      return http.Response(
+        jsonEncode({
+          'page': int.parse(req.url.queryParameters['page'] ?? '1'),
+          'total_pages': 3,
+          'total_results': 60,
+          'results': [
+            {'id': 1, 'name': 'Serie', 'title': 'Film'},
+          ],
+        }),
+        200,
+      );
+    }));
+    setUp(requests.clear);
+
+    test('di tendenza: settimana, in italiano, con la pagina', () async {
+      final page = await svc.trendingShows(page: 2);
+
+      expect(requests.single.path, '/3/trending/tv/week');
+      expect(requests.single.queryParameters,
+          {'language': 'it-IT', 'page': '2'});
+      expect(page.items.single.name, 'Serie');
+      expect(page.hasMore, isTrue);
+    });
+
+    test('consigli di un film', () async {
+      final items = await svc.movieRecommendations(42);
+
+      expect(requests.single.path, '/3/movie/42/recommendations');
+      expect(items.single.title, 'Film');
+    });
+  });
 }
