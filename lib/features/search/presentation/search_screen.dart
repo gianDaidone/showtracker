@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,14 +9,38 @@ import '../../../core/constants.dart';
 import '../../../core/paged_search.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/paged_list_footer.dart';
+import '../../games/data/models/rawg_game.dart';
 import '../../games/providers/games_providers.dart';
+import '../../movies/data/models/tmdb_movie.dart';
 import '../../movies/providers/movies_providers.dart';
+import '../../series/data/models/tmdb_show.dart';
 import '../../series/providers/series_providers.dart';
 import '../providers/search_providers.dart';
+import 'discover_view.dart';
+import 'widgets/search_result_tile.dart';
 
 // ── Filtro attivo ─────────────────────────────────────────────────────────────
 
-enum _SearchFilter { all, series, movie, game }
+enum _SearchFilter {
+  all,
+  series,
+  movie,
+  game;
+
+  /// Il tipo mostrato da questo filtro; null per "Tutti".
+  SearchResultType? get resultType => switch (this) {
+        all => null,
+        series => SearchResultType.series,
+        movie => SearchResultType.movie,
+        game => SearchResultType.game,
+      };
+
+  static _SearchFilter of(SearchResultType type) => switch (type) {
+        SearchResultType.series => series,
+        SearchResultType.movie => movie,
+        SearchResultType.game => game,
+      };
+}
 
 /// Risultati per tipo mostrati con il filtro "Tutti" (una pagina TMDB).
 const _allFilterCap = 20;
@@ -158,7 +181,11 @@ class _SearchScreenState extends State<SearchScreen> {
             // ── Contenuto ────────────────────────────────────────────────
             Expanded(
               child: _query.isEmpty
-                  ? const _EmptyHint()
+                  ? DiscoverView(
+                      type: _filter.resultType,
+                      onSeeAll: (type) => setState(
+                          () => _filter = _SearchFilter.of(type)),
+                    )
                   : _Results(query: _query, filter: _filter),
             ),
           ],
@@ -304,40 +331,6 @@ class _FilterBadge extends StatelessWidget {
   }
 }
 
-// ── Hint iniziale ─────────────────────────────────────────────────────────────
-
-class _EmptyHint extends StatelessWidget {
-  const _EmptyHint();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Inizia la tua ricerca',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Cerca serie TV, film e giochi\nDigita almeno 2 caratteri',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ── Risultati ─────────────────────────────────────────────────────────────────
 
 class _Results extends ConsumerWidget {
@@ -355,11 +348,11 @@ class _Results extends ConsumerWidget {
         filter == _SearchFilter.all || filter == _SearchFilter.game;
 
     const none = AsyncValue<PagedResults<Never>>.data(PagedResults.empty());
-    final showsAsync =
+    final AsyncValue<PagedResults<TmdbShow>> showsAsync =
         showShows ? ref.watch(showSearchProvider(query)) : none;
-    final moviesAsync =
+    final AsyncValue<PagedResults<TmdbMovie>> moviesAsync =
         showMovies ? ref.watch(movieSearchProvider(query)) : none;
-    final gamesAsync =
+    final AsyncValue<PagedResults<RawgGame>> gamesAsync =
         showGames ? ref.watch(gameSearchProvider(query)) : none;
 
     // Spinner a pagina intera solo mentre il provider attivo carica
@@ -388,9 +381,9 @@ class _Results extends ConsumerWidget {
     final single = filter != _SearchFilter.all;
     List<T> visible<T>(List<T> items) =>
         single ? items : items.take(_allFilterCap).toList();
-    final rawShows = visible(showsAsync.value?.items ?? const []);
-    final rawMovies = visible(moviesAsync.value?.items ?? const []);
-    final rawGames = visible(gamesAsync.value?.items ?? const []);
+    final rawShows = visible(showsAsync.value?.items ?? const <TmdbShow>[]);
+    final rawMovies = visible(moviesAsync.value?.items ?? const <TmdbMovie>[]);
+    final rawGames = visible(gamesAsync.value?.items ?? const <RawgGame>[]);
 
     // La lista paginata del filtro attivo (null con "Tutti")
     final (PagedResults<Object?>? paged, VoidCallback? loadMore) =
@@ -412,34 +405,10 @@ class _Results extends ConsumerWidget {
     final hasFooter =
         paged != null && (paged.hasMore || paged.loadMoreFailed);
 
-    final results = <SearchResult>[
-      for (final s in rawShows)
-        SearchResult(
-          type: SearchResultType.series,
-          title: s.name,
-          subtitle: s.year?.toString(),
-          imageUrl: s.posterUrl,
-          mediaId: s.id,
-          sortYear: s.year,
-        ),
-      for (final m in rawMovies)
-        SearchResult(
-          type: SearchResultType.movie,
-          title: m.title,
-          subtitle: m.year?.toString(),
-          imageUrl: m.posterUrl,
-          mediaId: m.id,
-          sortYear: m.year,
-        ),
-      for (final g in rawGames)
-        SearchResult(
-          type: SearchResultType.game,
-          title: g.name,
-          subtitle: g.year?.toString(),
-          imageUrl: g.coverUrl,
-          mediaId: g.id,
-          sortYear: g.year,
-        ),
+    final results = [
+      ...rawShows.map(SearchResult.fromShow),
+      ...rawMovies.map(SearchResult.fromMovie),
+      ...rawGames.map(SearchResult.fromGame),
     ];
 
     if (results.isEmpty && !anyLoading) {
@@ -528,176 +497,10 @@ class _Results extends ConsumerWidget {
             itemCount: results.length + (hasFooter ? 1 : 0),
             itemBuilder: (_, i) => i == results.length
                 ? PagedListFooter(results: paged!, onLoadMore: loadMore!)
-                : _ResultTile(result: results[i]),
+                : SearchResultTile(result: results[i]),
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── Tile singolo risultato ────────────────────────────────────────────────────
-
-class _ResultTile extends StatelessWidget {
-  final SearchResult result;
-  const _ResultTile({required this.result});
-
-  void _onTap(BuildContext context) {
-    switch (result.type) {
-      case SearchResultType.series:
-        context.push('/series/detail/${result.mediaId}');
-      case SearchResultType.movie:
-        context.push('/movies/detail/${result.mediaId}');
-      case SearchResultType.game:
-        context.push('/games/detail/${result.mediaId}');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: InkWell(
-        onTap: () => _onTap(context),
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _Thumbnail(url: result.imageUrl, type: result.type),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      result.title,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    if (result.subtitle?.isNotEmpty == true) ...[
-                      Text(
-                        result.subtitle!,
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    _TypeBadge(type: result.type),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Badge tipo ────────────────────────────────────────────────────────────────
-
-class _TypeBadge extends StatelessWidget {
-  final SearchResultType type;
-  const _TypeBadge({required this.type});
-
-  String get _label => switch (type) {
-        SearchResultType.series => 'Serie TV',
-        SearchResultType.movie => 'Film',
-        SearchResultType.game => 'Gioco',
-      };
-
-  Color get _color => switch (type) {
-        SearchResultType.series => AppColors.accent,
-        SearchResultType.movie => const Color(0xFF4FC3F7),
-        SearchResultType.game => const Color(0xFF81C784),
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: _color.withAlpha(30),
-        border: Border.all(color: _color.withAlpha(120)),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        _label,
-        style: TextStyle(
-          color: _color,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
-}
-
-// ── Thumbnail ─────────────────────────────────────────────────────────────────
-
-class _Thumbnail extends StatelessWidget {
-  final String? url;
-  final SearchResultType type;
-  const _Thumbnail({required this.url, required this.type});
-
-  IconData get _fallbackIcon => switch (type) {
-        SearchResultType.series => Icons.tv,
-        SearchResultType.movie => Icons.movie,
-        SearchResultType.game => Icons.videogame_asset,
-      };
-
-  // RAWG restituisce URL diretti; TMDB usa path → aggiungiamo il base URL solo per serie/film
-  String? get _resolvedUrl {
-    if (url == null) return null;
-    if (type == SearchResultType.game) return url; // già URL completo
-    return url; // il posterUrl di TmdbShow/TmdbMovie già include il base
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final resolved = _resolvedUrl;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: 64,
-        height: 96,
-        child: resolved != null
-            ? CachedNetworkImage(
-                imageUrl: resolved,
-                fit: BoxFit.cover,
-                placeholder: (_, __) =>
-                    const ColoredBox(color: AppColors.divider),
-                errorWidget: (_, __, ___) => ColoredBox(
-                  color: AppColors.divider,
-                  child: Center(
-                    child: Icon(_fallbackIcon,
-                        color: AppColors.textSecondary, size: 20),
-                  ),
-                ),
-              )
-            : ColoredBox(
-                color: AppColors.divider,
-                child: Center(
-                  child: Icon(_fallbackIcon,
-                      color: AppColors.textSecondary, size: 20),
-                ),
-              ),
-      ),
     );
   }
 }

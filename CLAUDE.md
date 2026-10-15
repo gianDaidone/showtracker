@@ -129,6 +129,16 @@ That fallback only works while the cache still holds something, so **the anime c
 
 `lib/widgets_manager.dart` drives two Android widgets (`MaratonaWidgetProvider`, `ProssimamenteWidgetProvider` in `android/app/src/main/java/com/example/showtracker/`) through `home_widget`. `main.dart` creates a **global `ProviderContainer`** (handed to `UncontrolledProviderScope`) and listens to `watchingShowsWithEpisodesProvider` / `upcomingEpisodesProvider` to push updates — that container must stay alive, so don't dispose it or the database closes under the widgets. The `@pragma('vm:entry-point') backgroundCallback` handles widget taps (e.g. `mark_watched`) in a separate isolate with its own short-lived container.
 
+### Search: discovery lists
+
+With an empty query, `SearchScreen` shows `DiscoverView` (`lib/features/search/presentation/discover_view.dart`) instead of a hint. Under "Tutti" it shows one horizontal row each for Serie/Film/Giochi, capped at one page. Under a single filter it shows chips (Per te / Di tendenza / Più votati) above a vertical, paginated list.
+
+The data comes from `show/movie/gameDiscoverProvider(DiscoverList)` in `lib/features/search/providers/discover_providers.dart`. The rows and the lists read the same providers, built on `PagedListNotifier` (`lib/core/paged_search.dart`) with `cacheFor: 30 min`, so reopening Search makes no new calls.
+
+- **"Per te"** merges TMDB `/recommendations` for up to 5 tracked seeds (`pickSeeds`/`mergeRecommendations` in `lib/features/search/data/discover_rules.dart`). For games it filters RAWG by the top genres of 3 seeds.
+- **RAWG lists stop at `RawgService.discoverMaxPages`**, because of RAWG's monthly per-key quota.
+- **Already-tracked titles are filtered out in the UI**, not in the providers, so adding one hides it without refetching.
+
 ### P2P sync
 
 `lib/features/sync/` exchanges tracked state between two devices on the same LAN, with no server. `SyncService.exportData()` builds a `SyncPayload` in which watched episodes are compacted to range strings (`RangeUtils`, `"1-3,5"`), `SyncCompressor` zlib+base64-encodes it, and `LocalSyncServer` (shelf, port 8080, random token) serves it at `/sync?token=…`. The receiving device scans a QR of that URL (`mobile_scanner`). Import runs in one transaction and resolves conflicts per item by `updatedAt` (last write wins).
