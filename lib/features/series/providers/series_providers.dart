@@ -834,13 +834,37 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
   Future<void> rescheduleNotification(TmdbShowDetail detail) =>
       _scheduleNotification(detail);
 
-  /// Fetches the show detail and re-schedules the notification.
-  /// Errors are swallowed — notification scheduling is best-effort.
+  /// Aggiorna il prossimo episodio locale e riprogramma la notifica dopo il
+  /// "visto". Il salvataggio dei progressi non deve dipendere dalla rete.
   Future<void> rescheduleNotificationById(int tmdbId) async {
     try {
-      final detail = await ref.read(showDetailProvider(tmdbId).future);
+      final show = await ref.read(showsDaoProvider).getByTmdbId(tmdbId);
+      if (show == null) return;
+
+      final animeCacheDao = ref.read(animeCacheDaoProvider);
+      if (show.isAnime &&
+          await animeCacheDao.getFreshAnimeSeasons(tmdbId) == null) {
+        // Un provider già completato può essere ancora fermo all'episodio
+        // appena uscito: rivaluta la TTL senza cancellare il fallback offline.
+        ref.invalidate(animeDataProvider(tmdbId));
+        ref.invalidate(showDetailProvider(tmdbId));
+      }
+
+      final detail = await ref.readFuture(showDetailProvider(tmdbId).future);
+      if (detail.isAnime &&
+          (detail.animeSeasonsData == null ||
+              await animeCacheDao.getFreshAnimeSeasons(tmdbId) == null)) {
+        // Il fetch può aver restituito la copia scaduta senza sollevare errori.
+        // Non azzerare un prossimo episodio noto con un calendario vecchio.
+        return;
+      }
+
+      // "In Uscita" legge nextEpisode* dal DB, non dal dettaglio in memoria.
+      await syncMetadata(detail, show.id);
       await _scheduleNotification(detail);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('rescheduleNotificationById($tmdbId): aggiornamento fallito: $e');
+    }
   }
 
   /// Reschedules notifications for every actively-tracked show. Acts as a
