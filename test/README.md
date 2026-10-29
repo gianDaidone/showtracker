@@ -13,12 +13,11 @@ flutter test --no-pub --coverage --test-randomize-ordering-seed=20261029
 # Un file o un singolo caso
 flutter test --no-pub test/widget_test.dart
 flutter test --no-pub test/widget_test.dart --plain-name 'App smoke test'
-
-# Solo Android: scegliere un device da flutter devices
-flutter test integration_test/app_smoke_test.dart -d emulator-5554 --no-pub
 ```
 
-`flutter test` esegue `test/`, non lo smoke in `integration_test/`.
+`flutter test` esegue la suite in `test/` sul computer, senza installare o
+disinstallare l'app su emulatori/dispositivi. Non sono previsti test automatici
+su Android.
 Il report `coverage/lcov.info` è generato e ignorato da Git. La CI lo conserva come
 artefatto; non impone una soglia percentuale arbitraria. Considerare i file
 applicativi, escludendo `*.g.dart`/`*.drift.dart`, quando si cercano buchi utili:
@@ -48,7 +47,6 @@ la libreria SQLite del runner può restare bloccata da un altro processo.
 | Ricerca | `core/paged_search_test.dart`, `features/search/`, `features/games/game_search_ranking_test.dart` | Debounce, paginazione concorrente/errori/retry/dispose/cache, semi/dedup/errori parziali, discovery vuota, titolo tracciato nascosto senza refetch |
 | Update | `features/update/` | Versioni, release/asset/APK, risposte anomale, timeout/rate limit, canale permessi e lifecycle; nessun download o installazione |
 | Interazioni | `features/*/presentation/` | Episodi futuri/read-only/toggle, dialog episodi precedenti (solo questo/tutti/annulla), card e conteggio Da Vedere dopo il visto, film visto/doppio tap, conferma/annulla rimozione film, filtro locale giochi |
-| Android | `../integration_test/app_smoke_test.dart` | Montaggio UI/router su dispositivo con DB in memoria, schermata serie vuota, film inserito e visibile nel tab Film |
 
 Le fixture delle migrazioni sono ricavate dai DDL storici, non da un database
 corrente etichettato come vecchio. **La migrazione v7→14 non è coperta**: la storia
@@ -87,11 +85,15 @@ v8). Non inventare una fixture per far risultare verde quel percorso.
 
 ## Confini e checklist nativa
 
-Lo smoke Android monta `ShowTrackerApp` con container e DB temporanei; **non
-chiama `main()`** e non convalida inizializzazione completa, secure storage reale,
-bootstrap timezone o widget in background. I mock dei MethodChannel verificano
-le chiamate e gli errori gestiti dall'app, non la realizzazione nativa del plugin.
-La CI Linux esegue soltanto la suite host, non lo smoke Android.
+La suite e la CI verificano la logica e l'interfaccia sul computer. I mock dei
+MethodChannel verificano le chiamate e gli errori gestiti dall'app, non la
+realizzazione nativa del plugin: inizializzazione completa, secure storage reale,
+bootstrap timezone e widget in background restano da verificare sul dispositivo.
+
+Il test automatico Android è stato rimosso: usava lo stesso applicationId dell'app
+personale e la disinstallazione automatica del runner Flutter ne ha cancellato i
+dati sull'emulatore. Un DB in memoria non isola il ciclo di installazione Android.
+Non reintrodurre test su dispositivo con l'identità dell'app personale.
 
 Prima di una release restano prove manuali su un dispositivo di test:
 

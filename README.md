@@ -67,21 +67,16 @@ dart run build_runner build
 
 ### Test
 
-I test usano database SQLite in memoria, credenziali fittizie e HTTP simulato:
-non servono API key e non toccano la libreria personale. La CI esegue analisi e
-suite con ordine casuale a ogni push/PR, salvando la coverage come artefatto.
+I test unitari, provider e widget girano sul computer, senza installare o
+disinstallare l'app su emulatori/dispositivi. Usano database SQLite in memoria,
+credenziali fittizie e HTTP simulato: non servono API key e non toccano la libreria
+personale. La CI esegue analisi e suite con ordine casuale a ogni push/PR,
+salvando la coverage come artefatto.
 
-Lo smoke Android è separato dalla suite host e richiede un emulatore/dispositivo:
-
-```bash
-flutter devices
-flutter test integration_test/app_smoke_test.dart -d emulator-5554 --no-pub
-```
-
-Verifica l'interfaccia reale su Android con un archivio temporaneo, non il bootstrap
-completo di `main()` né il funzionamento nativo di notifiche, fotocamera o installer.
-Comandi mirati, aree coperte, convenzioni per le fixture e checklist manuale sono in
-[test/README.md](test/README.md).
+Non sono previsti test automatici su Android. Prima delle release, le funzioni
+native (notifiche, widget home, login nel browser, sync e installer) si verificano
+manualmente su un dispositivo di test. Comandi mirati, aree coperte, convenzioni
+per le fixture e checklist manuale sono in [test/README.md](test/README.md).
 
 ### Struttura
 
