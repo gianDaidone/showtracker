@@ -10,7 +10,9 @@ class AniListService {
   static const int _maxRetries = 2;
 
   final AniListQueue _queue = AniListQueue();
-  final http.Client _client = http.Client();
+  final http.Client _client;
+
+  AniListService({http.Client? client}) : _client = client ?? http.Client();
 
   // ── Queries ───────────────────────────────────────────────────────────────
 
@@ -98,7 +100,10 @@ query($search: String) {
     try {
       response = await _client.post(
         Uri.parse(_endpoint),
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: body,
       );
     } catch (_) {

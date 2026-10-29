@@ -34,7 +34,7 @@ aggiornamenti**.
 
 ## Sviluppo
 
-Requisiti: Flutter 3.41+ (Dart 3.10+), Android SDK 36, Java 17.
+SDK verificato e usato in CI: Flutter 3.47.6 (Dart 3.13.5). Servono inoltre Android SDK 36 e Java 17.
 
 ```bash
 flutter pub get
@@ -58,10 +58,30 @@ agli utenti.
 ### Comandi utili
 
 ```bash
-flutter analyze                                                  # analisi statica
-flutter test                                                     # test
-flutter pub run build_runner build --delete-conflicting-outputs  # rigenera Riverpod/Drift (*.g.dart)
+flutter analyze --no-pub                 # analisi statica
+flutter test --no-pub                    # test unitari, provider e widget
+flutter test --no-pub --coverage         # report coverage/lcov.info
+# Rigenera Riverpod (*.g.dart) e Drift (*.drift.dart)
+dart run build_runner build
 ```
+
+### Test
+
+I test usano database SQLite in memoria, credenziali fittizie e HTTP simulato:
+non servono API key e non toccano la libreria personale. La CI esegue analisi e
+suite con ordine casuale a ogni push/PR, salvando la coverage come artefatto.
+
+Lo smoke Android è separato dalla suite host e richiede un emulatore/dispositivo:
+
+```bash
+flutter devices
+flutter test integration_test/app_smoke_test.dart -d emulator-5554 --no-pub
+```
+
+Verifica l'interfaccia reale su Android con un archivio temporaneo, non il bootstrap
+completo di `main()` né il funzionamento nativo di notifiche, fotocamera o installer.
+Comandi mirati, aree coperte, convenzioni per le fixture e checklist manuale sono in
+[test/README.md](test/README.md).
 
 ### Struttura
 

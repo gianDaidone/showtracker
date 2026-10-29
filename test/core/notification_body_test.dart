@@ -39,6 +39,23 @@ void main() {
     );
   });
 
+  test('normalizza spazi senza cancellare titoli che contengono Episode', () {
+    expect(
+        NotificationService.episodeBody(
+            seasonNumber: 2,
+            episodeNumber: 4,
+            episodeName: '  Episode 4: Il ritorno  ',
+            seasonName: '  Arco finale  '),
+        'Arco finale, episodio 4: «Episode 4: Il ritorno» è disponibile oggi!');
+    expect(
+        NotificationService.episodeBody(
+            seasonNumber: 2,
+            episodeNumber: 4,
+            episodeName: '  ePiSoDiO 4  ',
+            seasonName: '  '),
+        'Stagione 2, episodio 4 è disponibile oggi!');
+  });
+
   test('nomi di stagione propri e parti degli anime restano invariati', () {
     expect(
       NotificationService.episodeBody(

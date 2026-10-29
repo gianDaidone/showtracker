@@ -1,14 +1,22 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:showtracker/features/series/presentation/next_episodes_screen.dart';
 
-import 'package:showtracker/app.dart';
-import 'package:showtracker/core/riverpod_utils.dart';
+import 'support/app_test_harness.dart';
 
 void main() {
-  testWidgets('App smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(retry: noProviderRetry, child: ShowTrackerApp()),
+  testWidgets('App smoke test: avvio autenticato con database vuoto',
+      (tester) async {
+    final app = await tester.runAsync(
+      () => AppTestHarness.create(rescheduleAtStartup: true),
     );
-    expect(find.byType(ProviderScope), findsOneWidget);
+    addTearDown(() => app!.dispose(tester));
+
+    await app!.pump(tester);
+
+    expect(find.byType(NextEpisodesScreen), findsOneWidget);
+    expect(find.text('Da Vedere'), findsOneWidget);
+    expect(find.text('In Uscita'), findsOneWidget);
+    expect(find.text('Nessuna serie in visione'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

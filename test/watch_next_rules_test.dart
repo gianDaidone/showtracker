@@ -24,7 +24,8 @@ TrackedShow _show({
       nextEpisodeAirDate: nextEpisodeAirDate,
     );
 
-CachedEpisode _cached(int season, int episode, String? airDate) => CachedEpisode(
+CachedEpisode _cached(int season, int episode, String? airDate) =>
+    CachedEpisode(
       id: season * 1000 + episode,
       tmdbShowId: 100,
       seasonNumber: season,
@@ -47,19 +48,36 @@ void main() {
     });
 
     test('avanza nella stessa stagione', () {
-      expect(computeNextToWatch({1: {1, 2, 3}}, {1: 10}), (1, 4));
+      expect(
+          computeNextToWatch({
+            1: {1, 2, 3}
+          }, {
+            1: 10
+          }),
+          (1, 4));
     });
 
     test('passa alla stagione successiva a fine stagione', () {
       expect(
-        computeNextToWatch({1: {1, 2}}, {1: 2, 2: 12}),
+        computeNextToWatch({
+          1: {1, 2}
+        }, {
+          1: 2,
+          2: 12
+        }),
         (2, 1),
       );
     });
 
     test('non salta la stagione quando il totale è ignoto (anime in onda)', () {
       // episodeCount 0 = "non lo sappiamo", non "stagione vuota".
-      expect(computeNextToWatch({1: {1, 2}}, {1: 0}), (1, 3));
+      expect(
+          computeNextToWatch({
+            1: {1, 2}
+          }, {
+            1: 0
+          }),
+          (1, 3));
     });
   });
 
@@ -94,7 +112,8 @@ void main() {
           dbSeasonCounts: {1: 10},
           season: 1,
           episode: 6,
-          airedPerTmdb: airedPerCachedEpisodes([_cached(1, 6, d(yesterday))], 6),
+          airedPerTmdb:
+              airedPerCachedEpisodes([_cached(1, 6, d(yesterday))], 6),
         ),
         isTrue,
       );
@@ -172,6 +191,80 @@ void main() {
         isFalse,
       );
     });
+  });
+
+  test('cour successivo con totale ignoto resta raggiungibile', () {
+    const upcoming = NormalizedAnimeSeason(
+      seasonNumber: 2,
+      tmdbSeasonNumber: 1,
+      anilistId: 2,
+      episodeCount: 0,
+      status: 'RELEASING',
+      streamingEpisodes: [],
+    );
+    expect(
+        computeNextToWatch({
+          1: {1, 2}
+        }, {
+          1: 2,
+          2: 0
+        }, animeSeasonsData: [
+          upcoming
+        ]),
+        (2, 1));
+  });
+
+  test(
+      'cours conclusi limitano gli episodi disponibili, dati ignoti si astengono',
+      () {
+    const finished = NormalizedAnimeSeason(
+      seasonNumber: 1,
+      tmdbSeasonNumber: 1,
+      anilistId: 1,
+      episodeCount: 2,
+      status: 'FINISHED',
+      streamingEpisodes: [],
+    );
+    expect(anilistHasAired([finished], 1, 2), isTrue);
+    expect(anilistHasAired([finished], 1, 3), isFalse);
+    expect(anilistHasAired([finished], 2, 1), isNull);
+  });
+
+  test('puntatore già andato in onda non nasconde episodio offline', () {
+    expect(
+        resolveHasAired(
+            show: _show(
+                nextEpisodeSeason: 1,
+                nextEpisodeNumber: 6,
+                nextEpisodeAirDate: yesterday),
+            dbSeasonCounts: {1: 10},
+            season: 1,
+            episode: 6),
+        isTrue);
+    expect(
+        resolveHasAired(
+            show: _show(nextEpisodeSeason: 1, nextEpisodeNumber: 6),
+            dbSeasonCounts: {1: 10},
+            season: 1,
+            episode: 6),
+        isFalse); // Un puntatore senza data non prova la messa in onda.
+  });
+
+  test('cache senza episodio/data valida si astiene, airingAt preciso prevale',
+      () {
+    expect(airedPerCachedEpisodes([], 1), isNull);
+    expect(airedPerCachedEpisodes([_cached(1, 1, 'invalid')], 1), isNull);
+    expect(airedPerCachedEpisodes([_cached(1, 1, null)], 1), isNull);
+    final episode = CachedEpisode(
+        id: 1,
+        tmdbShowId: 100,
+        seasonNumber: 1,
+        episodeNumber: 1,
+        name: 'Ep',
+        cachedAt: now,
+        airDate: d(yesterday),
+        airingAt: nextWeek);
+    expect(airedPerCachedEpisodes([episode], 1), isFalse);
   });
 
   test('hasLaterUpcomingAnimeSeason', () {

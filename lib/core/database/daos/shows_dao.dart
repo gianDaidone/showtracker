@@ -47,8 +47,13 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
       (update(trackedShows)..where((t) => t.id.equals(id)))
           .write(TrackedShowsCompanion(userRating: Value(rating), updatedAt: Value(DateTime.now())));
 
-  Future<int> deleteShow(int id) =>
-      (delete(trackedShows)..where((t) => t.id.equals(id))).go();
+  Future<int> deleteShow(int id) => transaction(() async {
+        // La rimozione elimina anche i progressi, senza affidarsi a cascade
+        // (le foreign key esistenti non lo prevedono).
+        await (delete(trackedEpisodes)..where((t) => t.showId.equals(id))).go();
+        await (delete(trackedSeasons)..where((t) => t.showId.equals(id))).go();
+        return (delete(trackedShows)..where((t) => t.id.equals(id))).go();
+      });
 
   // ── Shows: stream (reactive) ─────────────────────────────────────────────
 

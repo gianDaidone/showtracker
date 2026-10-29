@@ -45,8 +45,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     setState(() => _isLoading = true);
     try {
       final requestToken = await _createRequestToken();
-      final authUrl = Uri.parse('https://www.themoviedb.org/authenticate/$requestToken?redirect_to=showtracker://auth');
-      
+      final authUrl = Uri.parse(
+          'https://www.themoviedb.org/authenticate/$requestToken?redirect_to=showtracker://auth');
+
       if (!await launchUrl(authUrl, mode: LaunchMode.externalApplication)) {
         throw Exception('Could not launch browser');
       }
@@ -62,14 +63,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<String> _createRequestToken() async {
-    final url = Uri.parse('https://api.themoviedb.org/3/authentication/token/new?api_key=${ApiKeys.tmdb}');
+    final url = Uri.parse(
+        'https://api.themoviedb.org/3/authentication/token/new?api_key=${ApiKeys.tmdb}');
     final response = await http.get(url);
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return data['request_token'];
     } else {
       if (response.statusCode == 401) {
-        throw Exception('Chiave TMDB mancante o non valida. Compila con --dart-define=TMDB_KEY=la_tua_chiave');
+        throw Exception(
+            'Chiave TMDB mancante o non valida. Compila con --dart-define=TMDB_KEY=la_tua_chiave');
       }
       throw Exception('Failed to create request token: ${response.statusCode}');
     }
@@ -83,7 +86,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       if (approved == 'true' && requestToken != null) {
         setState(() => _isLoading = true);
         try {
-          final sessionUrl = Uri.parse('https://api.themoviedb.org/3/authentication/session/new?api_key=${ApiKeys.tmdb}');
+          final sessionUrl = Uri.parse(
+              'https://api.themoviedb.org/3/authentication/session/new?api_key=${ApiKeys.tmdb}');
           final response = await http.post(
             sessionUrl,
             headers: {'Content-Type': 'application/json'},
@@ -93,7 +97,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body);
             final sessionId = data['session_id'];
-            await ref.read(authControllerProvider.notifier).loginWithSession(sessionId);
+            await ref
+                .read(authControllerProvider.notifier)
+                .loginWithSession(sessionId);
           } else {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -134,7 +140,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               onPressed: () {
                 final key = controller.text.trim();
                 if (key.isNotEmpty) {
-                  ref.read(authControllerProvider.notifier).loginWithManualKey(key);
+                  ref
+                      .read(authControllerProvider.notifier)
+                      .loginWithManualKey(key);
                   Navigator.pop(context);
                 }
               },
@@ -174,7 +182,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
-                  onPressed: () => launchUrl(Uri.parse('https://rawg.io/apidocs'), mode: LaunchMode.externalApplication),
+                  onPressed: () => launchUrl(
+                      Uri.parse('https://rawg.io/apidocs'),
+                      mode: LaunchMode.externalApplication),
                   icon: const Icon(Icons.open_in_new, size: 16),
                   label: const Text('Richiedi chiave gratis'),
                 ),
@@ -190,7 +200,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               onPressed: () {
                 final key = controller.text.trim();
                 if (key.isNotEmpty) {
-                  ref.read(rawgAuthControllerProvider.notifier).loginWithKey(key);
+                  ref
+                      .read(rawgAuthControllerProvider.notifier)
+                      .loginWithKey(key);
                   Navigator.pop(context);
                 }
               },
@@ -213,107 +225,123 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 48.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(48),
-                  child: Image.asset(
-                    'assets/images/logo.webp',
-                    width: 240,
-                    height: 240,
-                    fit: BoxFit.cover,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 32.0, vertical: 48.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Spacer(),
+                      Center(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(48),
+                          child: Image.asset(
+                            'assets/images/logo.webp',
+                            width: 240,
+                            height: 240,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      const Text(
+                        'ShowTracker',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'La tua libreria offline, senza limiti.\nI tuoi progressi restano solo sul tuo dispositivo.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 15,
+                          height: 1.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const Spacer(),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.accent.withAlpha(40),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: FilledButton.icon(
+                          onPressed: _startLoginFlow,
+                          icon: const Icon(Icons.login),
+                          label: const Text(
+                            'Connetti account TMDB',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: _showCustomKeyDialog,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: const Text('Opzioni avanzate (API Key manuale)'),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(color: AppColors.divider),
+                      const SizedBox(height: 16),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border:
+                              Border.all(color: AppColors.divider, width: 1.5),
+                        ),
+                        child: OutlinedButton.icon(
+                          onPressed: _showRawgKeyDialog,
+                          icon: const Icon(Icons.videogame_asset,
+                              color: AppColors.textPrimary),
+                          label: const Text(
+                            'Attiva Modulo Videogiochi',
+                            style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-              const Text(
-                'ShowTracker',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'La tua libreria offline, senza limiti.\nI tuoi progressi restano solo sul tuo dispositivo.',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 15,
-                  height: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const Spacer(),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.accent.withAlpha(40),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: FilledButton.icon(
-                  onPressed: _startLoginFlow,
-                  icon: const Icon(Icons.login),
-                  label: const Text(
-                    'Connetti account TMDB',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: _showCustomKeyDialog,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('Opzioni avanzate (API Key manuale)'),
-              ),
-              const SizedBox(height: 16),
-              const Divider(color: AppColors.divider),
-              const SizedBox(height: 16),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.divider, width: 1.5),
-                ),
-                child: OutlinedButton.icon(
-                  onPressed: _showRawgKeyDialog,
-                  icon: const Icon(Icons.videogame_asset, color: AppColors.textPrimary),
-                  label: const Text(
-                    'Attiva Modulo Videogiochi',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

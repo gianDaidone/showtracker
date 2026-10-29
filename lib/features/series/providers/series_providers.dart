@@ -798,6 +798,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
         show.tmdbStatus != detail.status ||
         show.nextEpisodeNumber != next.episode ||
         show.nextEpisodeSeason != next.season ||
+        show.nextEpisodeName != next.name ||
         show.nextEpisodeAirDate != next.airDate) {
       await ref.read(showsDaoProvider).updateShowMetadata(
         dbId,

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:showtracker/core/paged_search.dart';
@@ -43,6 +46,166 @@ void main() {
   }
 
   tearDown(() => container.dispose());
+
+  AsyncNotifierProvider<PagedListNotifier<int>, PagedResults<int>> listProvider(
+          ListPageFetcher<int> fetch,
+          {Duration? cacheFor}) =>
+      AsyncNotifierProvider.autoDispose<PagedListNotifier<int>,
+          PagedResults<int>>(
+        () => PagedListNotifier((_) => fetch, (i) => i, cacheFor: cacheFor),
+      );
+
+  test(
+      'loadMore concorrenti condividono una sola richiesta e una pagina vuota chiude',
+      () async {
+    final pending = Completer<SearchPage<int>>();
+    final requested = <int>[];
+    final p = listProvider((page) async {
+      requested.add(page);
+      if (page == 1) return const SearchPage(items: [1], hasMore: true);
+      return pending.future;
+    });
+    container = ProviderContainer(retry: noProviderRetry);
+    container.listen(p, (_, __) {});
+    await container.read(p.future);
+    final notifier = container.read(p.notifier);
+    final first = notifier.loadMore();
+    final second = notifier.loadMore();
+    expect(container.read(p).requireValue.isLoadingMore, isTrue);
+    expect(requested, [1, 2]);
+    pending.complete(const SearchPage(items: [], hasMore: true));
+    await Future.wait([first, second]);
+    expect(container.read(p).requireValue.items, [1]);
+    expect(container.read(p).requireValue.hasMore, isFalse);
+    expect(container.read(p).requireValue.isLoadingMore, isFalse);
+    await notifier.loadMore();
+    expect(requested, [1, 2]);
+  });
+
+  test('loadMore prima della prima pagina non avvia richieste aggiuntive',
+      () async {
+    final pending = Completer<SearchPage<int>>();
+    final requested = <int>[];
+    final p = listProvider((page) {
+      requested.add(page);
+      return pending.future;
+    });
+    container = ProviderContainer(retry: noProviderRetry);
+    container.listen(p, (_, __) {});
+    await container.read(p.notifier).loadMore();
+    expect(requested, [1]);
+    pending.complete(const SearchPage(items: [1], hasMore: false));
+    expect((await container.read(p.future)).items, [1]);
+  });
+
+  test('prima pagina fallita espone errore e riparte dopo invalidazione',
+      () async {
+    var calls = 0;
+    final p = listProvider((page) async {
+      if (++calls == 1) throw StateError('prima pagina offline');
+      return const SearchPage(items: [7], hasMore: false);
+    });
+    container = ProviderContainer(retry: noProviderRetry);
+    container.listen(p, (_, __) {});
+    await expectLater(container.read(p.future), throwsStateError);
+    expect(container.read(p).hasError, isTrue);
+    expect(calls, 1);
+    container.invalidate(p);
+    expect((await container.read(p.future)).items, [7]);
+    expect(calls, 2);
+  });
+
+  for (final fails in [false, true]) {
+    test(
+        'disposal durante loadMore ${fails ? 'fallita' : 'riuscita'} non pubblica stato tardivo',
+        () async {
+      final pending = Completer<SearchPage<int>>();
+      final p = listProvider((page) async {
+        if (page == 1) return const SearchPage<int>(items: [1], hasMore: true);
+        return pending.future;
+      });
+      container = ProviderContainer(retry: noProviderRetry);
+      final listener = container.listen(p, (_, __) {});
+      await container.read(p.future);
+      final notifier = container.read(p.notifier);
+      var updates = 0;
+      final stateListener = container.listen(p, (_, __) => updates++);
+      final loading = notifier.loadMore();
+      listener.close();
+      stateListener.close();
+      container.dispose();
+      final updatesAtDispose = updates;
+      if (fails) {
+        pending.completeError(StateError('offline dopo disposal'));
+      } else {
+        pending.complete(const SearchPage(items: [2], hasMore: false));
+      }
+      await expectLater(loading, completes);
+      expect(updates, updatesAtDispose);
+      // Il teardown resta proprietario di un container vivo.
+      container = ProviderContainer(retry: noProviderRetry);
+    });
+  }
+
+  test('cache scade dopo ultimo listener, ripresa annulla e riavvia il timer',
+      () {
+    fakeAsync((async) {
+      var calls = 0;
+      final p = listProvider((page) async {
+        calls++;
+        return const SearchPage(items: [1], hasMore: false);
+      }, cacheFor: const Duration(minutes: 30));
+      container = ProviderContainer(retry: noProviderRetry);
+      var listener = container.listen(p, (_, __) {});
+      async.flushMicrotasks();
+      expect(container.read(p).requireValue.items, [1]);
+      listener.close();
+      async.elapse(const Duration(minutes: 29));
+      async.flushMicrotasks();
+      listener = container.listen(p, (_, __) {});
+      async.flushMicrotasks();
+      expect(calls, 1);
+      async.elapse(const Duration(minutes: 31));
+      expect(calls, 1); // con listener attivo non scade.
+      listener.close();
+      async.elapse(const Duration(minutes: 30));
+      async.flushMicrotasks();
+      listener = container.listen(p, (_, __) {});
+      async.flushMicrotasks();
+      expect(calls, 2);
+      listener.close();
+      container.dispose();
+      container = ProviderContainer(retry: noProviderRetry);
+    });
+  });
+
+  test('prima pagina fallita non resta in cache per trenta minuti', () {
+    fakeAsync((async) {
+      var calls = 0;
+      final p = listProvider((page) async {
+        if (++calls == 1) throw StateError('offline');
+        return const SearchPage(items: [2], hasMore: false);
+      }, cacheFor: const Duration(minutes: 30));
+      container = ProviderContainer(retry: noProviderRetry);
+      var listener = container.listen(p, (_, __) {});
+      Object? observedError;
+      container.read(p.future).then<void>((_) {},
+          onError: (Object error, StackTrace _) => observedError = error);
+      async.flushMicrotasks();
+      expect(observedError, isA<StateError>());
+      expect(container.read(p).error, same(observedError));
+      listener.close();
+      async.elapse(Duration.zero);
+      async.flushMicrotasks();
+      listener = container.listen(p, (_, __) {});
+      async.flushMicrotasks();
+      expect(calls, 2);
+      expect(container.read(p).requireValue.items, [2]);
+      listener.close();
+      container.dispose();
+      container = ProviderContainer(retry: noProviderRetry);
+    });
+  });
 
   test('accoda le pagine successive e si ferma all\'ultima', () async {
     setUpWith(_FakeSearch([
@@ -97,9 +260,11 @@ void main() {
   });
 
   test('una ricerca di meno di 2 caratteri non chiama il service', () async {
-    setUpWith(_FakeSearch([
-      [1],
-    ]), query: 'z');
+    setUpWith(
+        _FakeSearch([
+          [1],
+        ]),
+        query: 'z');
     final state = await container.read(provider('z').future);
 
     expect(state.items, isEmpty);
