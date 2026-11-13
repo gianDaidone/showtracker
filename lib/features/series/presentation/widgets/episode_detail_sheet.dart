@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,7 +24,9 @@ Future<void> markEpisodeWatchedWithCheck(
 }) async {
   final dao = ref.read(showsDaoProvider);
   final hasMissing = await dao.hasMissingPreviousEpisodes(
-    showId, targetSeason, targetEpisode,
+    showId,
+    targetSeason,
+    targetEpisode,
   );
   if (!context.mounted) return;
 
@@ -39,9 +41,11 @@ Future<void> markEpisodeWatchedWithCheck(
   }
 
   if (markAll) {
-    await dao.markAllPreviousEpisodesWatched(showId, targetSeason, targetEpisode);
+    await dao.markAllPreviousEpisodesWatched(
+        showId, targetSeason, targetEpisode);
   }
-  await dao.markEpisodeWatched(showId, targetSeason, targetEpisode, watched: true);
+  await dao.markEpisodeWatched(showId, targetSeason, targetEpisode,
+      watched: true);
 }
 
 // ── Funzione pubblica per aprire il sheet ─────────────────────────────────────
@@ -114,7 +118,8 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
   /// Restituisce lo stato effettivo: usa il valore locale se disponibile,
   /// altrimenti legge dallo stream.
   bool _isWatched(Map<int, Set<int>> watchedMap) =>
-      _localWatched ?? (watchedMap[widget.season]?.contains(widget.episodeNum) ?? false);
+      _localWatched ??
+      (watchedMap[widget.season]?.contains(widget.episodeNum) ?? false);
 
   /// Toggle: se visto → segna non visto, se non visto → segna visto.
   /// Quando si segna come visto controlla gli episodi precedenti e mostra
@@ -125,11 +130,17 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
 
     if (!nextWatched) {
       // Deseleziona: nessun controllo, aggiornamento ottimistico immediato.
-      setState(() { _isLoading = true; _localWatched = false; });
+      setState(() {
+        _isLoading = true;
+        _localWatched = false;
+      });
       try {
         await ref.read(showsDaoProvider).markEpisodeWatched(
-          widget.trackedShow!.id, widget.season, widget.episodeNum, watched: false,
-        );
+              widget.trackedShow!.id,
+              widget.season,
+              widget.episodeNum,
+              watched: false,
+            );
       } catch (_) {
         AppToast.show('Impossibile aggiornare l\'episodio');
         if (mounted) setState(() => _localWatched = null);
@@ -147,7 +158,9 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
     try {
       final dao = ref.read(showsDaoProvider);
       final hasMissing = await dao.hasMissingPreviousEpisodes(
-        widget.trackedShow!.id, widget.season, widget.episodeNum,
+        widget.trackedShow!.id,
+        widget.season,
+        widget.episodeNum,
       );
 
       if (!mounted) return;
@@ -166,15 +179,23 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
         markAll = choice;
       }
 
-      setState(() { _isLoading = true; _localWatched = true; });
+      setState(() {
+        _isLoading = true;
+        _localWatched = true;
+      });
 
       if (markAll) {
         await dao.markAllPreviousEpisodesWatched(
-          widget.trackedShow!.id, widget.season, widget.episodeNum,
+          widget.trackedShow!.id,
+          widget.season,
+          widget.episodeNum,
         );
       }
       await dao.markEpisodeWatched(
-        widget.trackedShow!.id, widget.season, widget.episodeNum, watched: true,
+        widget.trackedShow!.id,
+        widget.season,
+        widget.episodeNum,
+        watched: true,
       );
     } catch (_) {
       AppToast.show('Impossibile aggiornare l\'episodio');
@@ -217,8 +238,8 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
     // Un episodio non ancora uscito non si segna (dal tab "In Uscita" il sheet
     // si apre proprio su quelli): stessa regola della checkbox di EpisodeTile.
     // Se però risulta già visto il pulsante resta, per poterlo togliere.
-    final canMark = widget.trackedShow != null &&
-        (widget.episode.hasAired || isWatched);
+    final canMark =
+        widget.trackedShow != null && (widget.episode.hasAired || isWatched);
 
     return Container(
       constraints: BoxConstraints(
@@ -233,6 +254,9 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
         children: [
           // ── Immagine header ──────────────────────────────────────────────
           _ImageHeader(
+            source: widget.episode.stillPath != null
+                ? MediaImageSource.tmdbStill
+                : MediaImageSource.tmdbPoster,
             imageUrl: _imageUrl,
             onClose: () => Navigator.pop(context),
           ),
@@ -244,7 +268,8 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
                 left: 20,
                 right: 20,
                 top: 16,
-                bottom: canMark ? 16 : MediaQuery.of(context).padding.bottom + 24,
+                bottom:
+                    canMark ? 16 : MediaQuery.of(context).padding.bottom + 24,
               ),
               child: _ContentArea(
                 showTitle: widget.showTitle,
@@ -298,14 +323,13 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
                       side: isWatched
                           ? BorderSide.none
                           : BorderSide(
-                              color: AppColors.textSecondary.withValues(alpha: 0.3)),
+                              color: AppColors.textSecondary
+                                  .withValues(alpha: 0.3)),
                     ),
                   ),
                   icon: Icon(
                     isWatched ? Icons.check_circle : Icons.check,
-                    color: isWatched
-                        ? Colors.white
-                        : AppColors.textPrimary,
+                    color: isWatched ? Colors.white : AppColors.textPrimary,
                   ),
                   label: Text(
                     isWatched ? 'Visto' : 'Segna come Visto',
@@ -327,10 +351,12 @@ class _EpisodeDetailSheetState extends ConsumerState<_EpisodeDetailSheet> {
 // ── Immagine con pulsanti sovrapposti ─────────────────────────────────────────
 
 class _ImageHeader extends StatelessWidget {
+  final MediaImageSource source;
   final String? imageUrl;
   final VoidCallback onClose;
 
   const _ImageHeader({
+    required this.source,
     required this.imageUrl,
     required this.onClose,
   });
@@ -349,7 +375,8 @@ class _ImageHeader extends StatelessWidget {
           children: [
             // Immagine di sfondo
             if (imageUrl != null)
-              CachedNetworkImage(
+              MediaImage(
+                source: source,
                 imageUrl: imageUrl!,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>
@@ -425,8 +452,18 @@ class _ContentArea extends StatelessWidget {
     try {
       final dt = DateTime.parse(iso);
       const months = [
-        'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
-        'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre',
+        'gennaio',
+        'febbraio',
+        'marzo',
+        'aprile',
+        'maggio',
+        'giugno',
+        'luglio',
+        'agosto',
+        'settembre',
+        'ottobre',
+        'novembre',
+        'dicembre',
       ];
       return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
     } catch (_) {
@@ -440,8 +477,10 @@ class _ContentArea extends StatelessWidget {
     String label;
     if (seasonName != null) {
       final baseName = seasonName!.split(' · ').first.trim();
-      var abbr = baseName.replaceAll(RegExp(r'^(Stagione|Season)\s*', caseSensitive: false), 'S');
-      abbr = abbr.replaceAll(RegExp(r'\s*Parte\s*', caseSensitive: false), ' P');
+      var abbr = baseName.replaceAll(
+          RegExp(r'^(Stagione|Season)\s*', caseSensitive: false), 'S');
+      abbr =
+          abbr.replaceAll(RegExp(r'\s*Parte\s*', caseSensitive: false), ' P');
       abbr = abbr.replaceAllMapped(RegExp(r'(S)(\d)(?!\d)'), (match) {
         return '${match.group(1)}0${match.group(2)}';
       });
@@ -481,8 +520,7 @@ class _ContentArea extends StatelessWidget {
 
         // Badge S##E##
         Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
             color: AppColors.accent.withAlpha(30),
             borderRadius: BorderRadius.circular(6),
@@ -528,8 +566,7 @@ class _ContentArea extends StatelessWidget {
             if (episode.airDate != null && (episode.voteAverage ?? 0) > 0)
               const SizedBox(width: 16),
             if ((episode.voteAverage ?? 0) > 0) ...[
-              const Icon(Icons.star_rounded,
-                  size: 16, color: AppColors.accent),
+              const Icon(Icons.star_rounded, size: 16, color: AppColors.accent),
               const SizedBox(width: 4),
               Text(
                 episode.voteAverage!.toStringAsFixed(1),
@@ -541,8 +578,7 @@ class _ContentArea extends StatelessWidget {
               ),
               const Text(
                 '/10',
-                style: TextStyle(
-                    color: AppColors.textSecondary, fontSize: 13),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
             ],
           ],

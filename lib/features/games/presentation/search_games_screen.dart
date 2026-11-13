@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -81,9 +81,8 @@ class _SearchGamesScreenState extends State<SearchGamesScreen> {
             ),
           ),
           Expanded(
-            child: _query.isEmpty
-                ? const _EmptyHint()
-                : _Results(query: _query),
+            child:
+                _query.isEmpty ? const _EmptyHint() : _Results(query: _query),
           ),
         ],
       ),
@@ -160,14 +159,11 @@ class _Results extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final resultsAsync = ref.watch(gameSearchProvider(query));
     final trackedAsync = ref.watch(trackedGamesProvider);
-    final trackedIds = trackedAsync.value
-            ?.map((g) => g.rawgId)
-            .toSet() ??
-        {};
+    final trackedIds = trackedAsync.value?.map((g) => g.rawgId).toSet() ?? {};
 
     return resultsAsync.when(
-      loading: () =>
-          const Center(child: CircularProgressIndicator(color: AppColors.accent)),
+      loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.accent)),
       error: (e, _) => Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -259,9 +255,8 @@ class _GameTileState extends ConsumerState<_GameTile> {
     setState(() => _adding = true);
     try {
       // Fetch dettaglio completo prima di salvare
-      final detail = await ref
-          .read(rawgServiceProvider)
-          .getGameDetails(widget.game.id);
+      final detail =
+          await ref.read(rawgServiceProvider).getGameDetails(widget.game.id);
       await ref.read(trackedGamesProvider.notifier).addGame(detail);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -286,8 +281,7 @@ class _GameTileState extends ConsumerState<_GameTile> {
     final platformLabel = game.platforms.take(2).join(' · ');
 
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       onTap: () => context.push('/games/detail/${game.id}'),
       leading: _Thumbnail(url: game.coverUrl),
       title: Text(
@@ -433,7 +427,7 @@ class _Thumbnail extends StatelessWidget {
         width: 64,
         height: 44,
         child: url != null
-            ? CachedNetworkImage(
+            ? MediaImage(
                 imageUrl: url!,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>

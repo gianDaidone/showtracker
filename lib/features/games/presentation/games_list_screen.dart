@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/games_providers.dart';
+import '../../sync/providers/metadata_recovery_provider.dart';
 
 List<String> _decodePlatforms(String? json) {
   if (json == null) return [];
@@ -30,6 +32,16 @@ class _GamesListScreenState extends ConsumerState<GamesListScreen> {
   final _controller = TextEditingController();
   String _query = '';
   MediaStatus? _selectedStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(ref.read(metadataRecoveryProvider).recoverGames());
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -90,8 +102,8 @@ class _GamesListScreenState extends ConsumerState<GamesListScreen> {
         ],
       ),
       body: gamesAsync.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator(color: AppColors.accent)),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.accent)),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -107,12 +119,13 @@ class _GamesListScreenState extends ConsumerState<GamesListScreen> {
 
           var filtered = games;
           if (_selectedStatus != null) {
-            filtered = filtered.where((g) => g.status == _selectedStatus).toList();
+            filtered =
+                filtered.where((g) => g.status == _selectedStatus).toList();
           }
           if (_query.isNotEmpty) {
             filtered = filtered
-                .where((g) =>
-                    g.title.toLowerCase().contains(_query.toLowerCase()))
+                .where(
+                    (g) => g.title.toLowerCase().contains(_query.toLowerCase()))
                 .toList();
           }
 
@@ -131,7 +144,8 @@ class _GamesListScreenState extends ConsumerState<GamesListScreen> {
             children: [
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
                     _FilterChip(
@@ -148,7 +162,8 @@ class _GamesListScreenState extends ConsumerState<GamesListScreen> {
                           child: _FilterChip(
                             label: status.gameLabel,
                             isSelected: _selectedStatus == status,
-                            onTap: () => setState(() => _selectedStatus = status),
+                            onTap: () =>
+                                setState(() => _selectedStatus = status),
                           ),
                         )),
                   ],
@@ -177,10 +192,13 @@ class _NoResults extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.search_off, size: 56, color: AppColors.textSecondary),
+            const Icon(Icons.search_off,
+                size: 56, color: AppColors.textSecondary),
             const SizedBox(height: 16),
             Text(
-              query.isNotEmpty ? 'Nessun gioco trovato\nper "$query"' : 'Nessun gioco in questo stato',
+              query.isNotEmpty
+                  ? 'Nessun gioco trovato\nper "$query"'
+                  : 'Nessun gioco in questo stato',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.textPrimary,
@@ -278,8 +296,8 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPlayed = game.status == MediaStatus.completed;
     final isDropped = game.status == MediaStatus.dropped;
-    final isUpcoming = game.releaseDate != null &&
-        game.releaseDate!.isAfter(DateTime.now());
+    final isUpcoming =
+        game.releaseDate != null && game.releaseDate!.isAfter(DateTime.now());
 
     final Color color;
     final String label;
@@ -344,7 +362,7 @@ class _Cover extends StatelessWidget {
         width: 60,
         height: 90,
         child: url != null
-            ? CachedNetworkImage(
+            ? MediaImage(
                 imageUrl: url!,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>

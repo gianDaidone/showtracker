@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/widgets/media_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
@@ -109,17 +110,22 @@ class _DetailBody extends ConsumerWidget {
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: detail.genres.map((g) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        g,
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-                      ),
-                    )).toList(),
+                    children: detail.genres
+                        .map((g) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                g,
+                                style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 11),
+                              ),
+                            ))
+                        .toList(),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -171,7 +177,7 @@ class _DetailBody extends ConsumerWidget {
                 ],
 
                 const SizedBox(height: 32),
-                
+
                 // RAWG Attribution
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -182,7 +188,8 @@ class _DetailBody extends ConsumerWidget {
                   ),
                   child: Column(
                     children: [
-                      const Icon(Icons.videogame_asset, color: AppColors.textSecondary, size: 28),
+                      const Icon(Icons.videogame_asset,
+                          color: AppColors.textSecondary, size: 28),
                       const SizedBox(height: 12),
                       const Text(
                         'Video game data and information are sourced from RAWG.',
@@ -198,18 +205,25 @@ class _DetailBody extends ConsumerWidget {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            final slug = detail.slug.isNotEmpty ? detail.slug : detail.id.toString();
-                            launchUrl(Uri.parse('https://rawg.io/games/$slug'), mode: LaunchMode.externalApplication);
+                            final slug = detail.slug.isNotEmpty
+                                ? detail.slug
+                                : detail.id.toString();
+                            launchUrl(Uri.parse('https://rawg.io/games/$slug'),
+                                mode: LaunchMode.externalApplication);
                           },
-                          icon: const Icon(Icons.open_in_new, color: AppColors.textPrimary, size: 18),
+                          icon: const Icon(Icons.open_in_new,
+                              color: AppColors.textPrimary, size: 18),
                           label: const Text(
                             'Vedi su RAWG',
-                            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.bold),
                           ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             side: const BorderSide(color: AppColors.divider),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
@@ -258,8 +272,8 @@ class _TopBar extends StatelessWidget {
                   color: AppColors.surface,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.arrow_back,
-                    color: Colors.white, size: 20),
+                child:
+                    const Icon(Icons.arrow_back, color: Colors.white, size: 20),
               ),
             ),
             const Spacer(),
@@ -399,7 +413,7 @@ class _ScreenshotCarouselState extends State<_ScreenshotCarousel> {
                   itemBuilder: (_, i) => GestureDetector(
                     onTap: () => _openViewer(i),
                     child: _FrameCard(
-                      child: CachedNetworkImage(
+                      child: MediaImage(
                         imageUrl: frames[i],
                         fit: BoxFit.contain,
                         placeholder: (_, __) => const SizedBox.shrink(),
@@ -650,7 +664,7 @@ class _TrailerList extends StatelessWidget {
                         children: [
                           const ColoredBox(color: AppColors.surface),
                           if (trailer.previewUrl != null)
-                            CachedNetworkImage(
+                            MediaImage(
                               imageUrl: trailer.previewUrl!,
                               fit: BoxFit.cover,
                               placeholder: (_, __) => const SizedBox.shrink(),
@@ -1058,12 +1072,15 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
               icon: const Icon(Icons.check, color: AppColors.textSecondary),
               label: const Text(
                 'Nel backlog',
-                style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.bold),
               ),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: AppColors.divider),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             )
           : FilledButton.icon(
@@ -1072,17 +1089,20 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.accent),
                     )
                   : const Icon(Icons.add, color: AppColors.accent),
               label: const Text(
                 'Aggiungi al backlog',
-                style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: AppColors.accent, fontWeight: FontWeight.bold),
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white.withAlpha(24),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
     );
@@ -1090,7 +1110,6 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
-
 
 class _Tag extends StatelessWidget {
   final String label;
@@ -1162,8 +1181,7 @@ class _ExpandableTextState extends State<_ExpandableText> {
           style: const TextStyle(
               color: AppColors.textSecondary, fontSize: 14, height: 1.5),
           maxLines: _expanded ? null : 5,
-          overflow:
-              _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+          overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
         ),
         const SizedBox(height: 6),
         GestureDetector(
@@ -1231,7 +1249,7 @@ class _InfoBox extends StatelessWidget {
               Expanded(
                 child: _InfoItem(
                   label: 'Sviluppatore',
-                  value: detail.developers.isNotEmpty 
+                  value: detail.developers.isNotEmpty
                       ? detail.developers.join(', ')
                       : '-',
                   align: TextAlign.start,
@@ -1241,7 +1259,7 @@ class _InfoBox extends StatelessWidget {
               Expanded(
                 child: _InfoItem(
                   label: 'Publisher',
-                  value: detail.publishers.isNotEmpty 
+                  value: detail.publishers.isNotEmpty
                       ? detail.publishers.join(', ')
                       : '-',
                   align: TextAlign.start,
@@ -1252,9 +1270,8 @@ class _InfoBox extends StatelessWidget {
           const SizedBox(height: 16),
           _InfoItem(
             label: 'Piattaforme',
-            value: detail.platforms.isNotEmpty 
-                ? detail.platforms.join(', ')
-                : '-',
+            value:
+                detail.platforms.isNotEmpty ? detail.platforms.join(', ') : '-',
             align: TextAlign.start,
           ),
         ],
@@ -1267,12 +1284,17 @@ class _InfoItem extends StatelessWidget {
   final String label;
   final String value;
   final TextAlign align;
-  const _InfoItem({required this.label, required this.value, this.align = TextAlign.center});
+  const _InfoItem(
+      {required this.label,
+      required this.value,
+      this.align = TextAlign.center});
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: align == TextAlign.start ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      crossAxisAlignment: align == TextAlign.start
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
       children: [
         Text(
           label,

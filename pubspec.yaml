@@ -24,6 +24,7 @@ dependencies:
   # HTTP & API
   http: ^1.2.2
   cached_network_image: ^3.4.1
+  octo_image: ^2.1.0
 
   # Navigation
   go_router: ^14.6.2

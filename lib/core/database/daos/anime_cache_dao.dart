@@ -47,7 +47,8 @@ class AnimeCacheDao extends DatabaseAccessor<AppDatabase>
     // Se anche solo una stagione è scaduta, invalida tutta la cache.
     // Questo previene il bug in cui una stagione in corso scade prima delle
     // stagioni concluse, scomparendo silenziosamente dall'interfaccia.
-    if (rows.any((r) => r.validUntil.isBefore(now) || r.validUntil.isAtSameMomentAs(now))) {
+    if (rows.any((r) =>
+        r.validUntil.isBefore(now) || r.validUntil.isAtSameMomentAs(now))) {
       return null;
     }
 
@@ -66,6 +67,31 @@ class AnimeCacheDao extends DatabaseAccessor<AppDatabase>
     final rows = await _seasonRows(tmdbShowId);
     if (rows.isEmpty) return null;
     return rows.map(_decodeSeason).toList();
+  }
+
+  /// Cache completa, ordinata per cour, senza filtrare le righe scadute.
+  /// Ogni id richiesto compare nella mappa, anche quando non ha cache.
+  /// Al massimo 900 parametri per query, indipendentemente dal limite del DB.
+  Future<Map<int, List<NormalizedAnimeSeason>>> getStaleAnimeSeasonsForShows(
+    Iterable<int> tmdbShowIds,
+  ) async {
+    final ids = tmdbShowIds.toSet().toList();
+    final result = <int, List<NormalizedAnimeSeason>>{
+      for (final id in ids) id: [],
+    };
+    for (var start = 0; start < ids.length; start += 900) {
+      final rows = await (select(animeSeasonCache)
+            ..where((t) => t.tmdbShowId.isIn(ids.skip(start).take(900)))
+            ..orderBy([
+              (t) => OrderingTerm.asc(t.tmdbShowId),
+              (t) => OrderingTerm.asc(t.seasonNumber),
+            ]))
+          .get();
+      for (final row in rows) {
+        result[row.tmdbShowId]!.add(_decodeSeason(row));
+      }
+    }
+    return result;
   }
 
   Future<List<AnimeSeasonCacheData>> _seasonRows(int tmdbShowId) =>
@@ -87,44 +113,43 @@ class AnimeCacheDao extends DatabaseAccessor<AppDatabase>
         .get();
     if (rows.isEmpty) return false;
     final r = rows.first;
-    final totalMs =
-        r.validUntil.difference(r.cachedAt).inMilliseconds;
+    final totalMs = r.validUntil.difference(r.cachedAt).inMilliseconds;
     if (totalMs <= 0) return true;
-    final elapsedMs =
-        DateTime.now().difference(r.cachedAt).inMilliseconds;
+    final elapsedMs = DateTime.now().difference(r.cachedAt).inMilliseconds;
     return elapsedMs / totalMs > 0.8;
   }
 
   Future<void> saveAnimeSeasons(
       int tmdbShowId, List<NormalizedAnimeSeason> seasons) async {
     await transaction(() async {
-      for (final s in seasons) {
-        final now = DateTime.now();
-        final validUntil = now.add(s.cacheTtl);
-        final row = AnimeSeasonCacheCompanion(
-          tmdbShowId: Value(tmdbShowId),
-          seasonNumber: Value(s.seasonNumber),
-          anilistId: Value(s.anilistId),
-          episodeCount: Value(s.episodeCount),
-          status: Value(s.status),
-          animeSeasonJson: Value(jsonEncode(s.toJson())),
-          cachedAt: Value(now),
-          validUntil: Value(validUntil),
-        );
-        // Il conflitto va cercato sulla chiave unica (show, stagione), non
-        // sulla chiave primaria `id`, che è autoincrementale e non coincide
-        // mai: `insertOnConflictUpdate` usa quella, e su una riga già presente
-        // fallirebbe con UNIQUE constraint failed. Da quando la cache si fa
-        // scadere invece di cancellarla la riga c'è sempre, quindi ogni
-        // refresh falliva e l'app restava sui dati del primo download.
-        await into(animeSeasonCache).insert(
-          row,
-          onConflict: DoUpdate(
-            (_) => row,
-            target: [animeSeasonCache.tmdbShowId, animeSeasonCache.seasonNumber],
-          ),
-        );
-      }
+      final now = DateTime.now();
+      await batch((b) {
+        for (final s in seasons) {
+          final row = AnimeSeasonCacheCompanion(
+            tmdbShowId: Value(tmdbShowId),
+            seasonNumber: Value(s.seasonNumber),
+            anilistId: Value(s.anilistId),
+            episodeCount: Value(s.episodeCount),
+            status: Value(s.status),
+            animeSeasonJson: Value(jsonEncode(s.toJson())),
+            cachedAt: Value(now),
+            validUntil: Value(now.add(s.cacheTtl)),
+          );
+          // Conflitto sulla chiave naturale: l'id autoincrementale non
+          // identifica una cour già salvata e romperebbe il refresh.
+          b.insert(
+            animeSeasonCache,
+            row,
+            onConflict: DoUpdate(
+              (_) => row,
+              target: [
+                animeSeasonCache.tmdbShowId,
+                animeSeasonCache.seasonNumber
+              ],
+            ),
+          );
+        }
+      });
       // Cour che non esistono più nei dati nuovi (es. un aggancio AniList
       // sbagliato che ne produceva di più): lasciarli farebbe convivere
       // stagioni vecchie e nuove. Qui il download è riuscito, quindi non

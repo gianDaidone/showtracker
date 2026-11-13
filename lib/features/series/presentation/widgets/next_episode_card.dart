@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -59,7 +59,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       _markState = _MarkState.marking;
       _lockedShowData = widget.showData; // congela l'intera card
     });
-    
+
     // Mostriamo un piccolo ritardo fittizio per dare feedback visivo
     await Future.delayed(const Duration(milliseconds: 200));
 
@@ -77,16 +77,19 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
 
     try {
       await dao.markEpisodeWatched(
-            showId, season, episode,
-            watched: true,
-          );
-      
+        showId,
+        season,
+        episode,
+        watched: true,
+      );
+
       notifier.rescheduleNotificationById(tmdbId);
-      
+
       if (mounted) {
         setState(() {
           _markState = _MarkState.idle;
-          _lockedShowData = null; // sblocca la card, permettendo l'aggiornamento visivo
+          _lockedShowData =
+              null; // sblocca la card, permettendo l'aggiornamento visivo
         });
       }
     } catch (e) {
@@ -129,7 +132,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     // con quelli con cui sono salvati gli episodi visti. In quel caso restiamo
     // sui conteggi del DB, che sono cour-based.
     final animeDataMissing =
-        detail != null && detail.isAnime && detail.animeSeasonsData == null;
+        (detail?.isAnime ?? show.isAnime) && detail?.animeSeasonsData == null;
     final seasonCounts =
         (detail != null && detail.seasons.isNotEmpty && !animeDataMissing)
             ? {for (final s in detail.seasons) s.seasonNumber: s.episodeCount}
@@ -154,10 +157,11 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       return const NextEpisodeSkeletonCard();
     }
 
-    var loadedEpisodes = seasonAsync.value?.episodes;
-    var nextEpisode = loadedEpisodes
-        ?.where((e) => e.episodeNumber == nextEp)
-        .firstOrNull;
+    var loadedSeason = seasonAsync.value;
+    // Senza mappatura cour gli episodi TMDB grezzi hanno coordinate ambigue.
+    var loadedEpisodes = animeDataMissing ? null : loadedSeason?.episodes;
+    var nextEpisode =
+        loadedEpisodes?.where((e) => e.episodeNumber == nextEp).firstOrNull;
 
     // ── Discrepanza AniList/TMDB ───────────────────────────────────────────
     // AniList può riportare un episodeCount maggiore di quanti episodi TMDB
@@ -166,6 +170,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     // tutti gli ep reali (12) ma il codice cerca l'ep 13 che non esiste.
     // In questo caso: ricalcola con il conteggio reale e avanza la stagione.
     if (seasonAsync.hasValue &&
+        loadedSeason?.isLocalSnapshot == false &&
         nextEpisode == null &&
         loadedEpisodes != null &&
         loadedEpisodes.isNotEmpty &&
@@ -191,10 +196,10 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
         if (!corrSeasonAsync.hasValue && !corrSeasonAsync.hasError) {
           return const NextEpisodeSkeletonCard();
         }
-        loadedEpisodes = corrSeasonAsync.value?.episodes;
-        nextEpisode = loadedEpisodes
-            ?.where((e) => e.episodeNumber == nextEp)
-            .firstOrNull;
+        loadedSeason = corrSeasonAsync.value;
+        loadedEpisodes = loadedSeason?.episodes;
+        nextEpisode =
+            loadedEpisodes?.where((e) => e.episodeNumber == nextEp).firstOrNull;
       }
     }
 
@@ -220,16 +225,21 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     // total può essere calcolato con episodeCount=0 per stagioni in corso,
     // rendendo il confronto inaffidabile (e potendo triggerare "completato"
     // prematuro). Usiamo la logica stagione/episodio come fonte di verità.
-    final isAnimeWithData = detail != null && detail.isAnime && detail.animeSeasonsData != null;
+    final isAnimeWithData =
+        detail != null && detail.isAnime && detail.animeSeasonsData != null;
     final lastWatchedSeason = watchedBySeason.keys.isEmpty
         ? 0
         : watchedBySeason.keys.reduce((a, b) => a > b ? a : b);
-    final isCompleted = isAnimeWithData
-        ? (nextEpisode == null &&
-            (loadedEpisodes == null || loadedEpisodes.isEmpty) &&
-            !hasLaterUpcomingAnimeSeason(
-                detail.animeSeasonsData!, lastWatchedSeason))
-        : (total != null && watchedCount >= total);
+    // Una stagione locale può contenere soltanto parte degli episodi, o
+    // nessuno: non è una conferma autorevole che la serie sia finita.
+    final isCompleted = loadedSeason?.isLocalSnapshot != true &&
+        !animeDataMissing &&
+        (isAnimeWithData
+            ? (nextEpisode == null &&
+                (loadedEpisodes == null || loadedEpisodes.isEmpty) &&
+                !hasLaterUpcomingAnimeSeason(
+                    detail.animeSeasonsData!, lastWatchedSeason))
+            : (total != null && watchedCount >= total));
 
     // Serie finita e vista tutta: la card riepiloga e offre "Completata".
     // Se però è uscito un nuovo episodio il completamento va ignorato.
@@ -251,13 +261,44 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       );
     }
 
+    // L'autorità della lista può mantenere un riepilogo per una serie terminata.
+    // Se mancano episodi locali non deduciamo un nuovo completamento, ma non
+    // nascondiamo neanche la voce già contata: nessuna azione sui progressi.
+    if (loadedSeason?.isLocalSnapshot == true &&
+        !hasAired &&
+        total != null &&
+        total > 0 &&
+        watchedCount >= total &&
+        (show.tmdbStatus == 'Ended' || show.tmdbStatus == 'Canceled')) {
+      return _CardShell(
+        show: show,
+        loading: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              show.title,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Dati episodio non disponibili offline.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
     // Episodio non ancora uscito: niente card, apparirà in "In Uscita".
     if (!hasAired) {
       _requestVisibilityResync();
       return const SizedBox.shrink();
     }
-
-
 
     int? airedEpisodes;
     if (detail != null) {
@@ -278,7 +319,8 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       airedEpisodes = total;
     }
 
-    final int? availableUnwatched = airedEpisodes != null ? (airedEpisodes - watchedCount) : null;
+    final int? availableUnwatched =
+        airedEpisodes != null ? (airedEpisodes - watchedCount) : null;
     final bool showBadge = availableUnwatched == null || availableUnwatched > 1;
 
     final episodeTitle = nextEpisode?.name;
@@ -298,7 +340,9 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
             final detail = ref.read(showDetailProvider(show.tmdbId)).value;
             String? sName;
             if (detail != null && detail.isAnime) {
-              final sSeason = detail.seasons.where((s) => s.seasonNumber == nextSeason).firstOrNull;
+              final sSeason = detail.seasons
+                  .where((s) => s.seasonNumber == nextSeason)
+                  .firstOrNull;
               if (sSeason != null && sSeason.name != null) {
                 sName = sSeason.name!.split(' · ').first.trim();
               }
@@ -331,7 +375,10 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
                   width: 96,
                   height: 80,
                   child: imageUrl != null
-                      ? CachedNetworkImage(
+                      ? MediaImage(
+                          source: nextEpisode?.stillPath != null
+                              ? MediaImageSource.tmdbStill
+                              : MediaImageSource.tmdbPoster,
                           imageUrl: imageUrl,
                           fit: BoxFit.cover,
                           placeholder: (_, __) =>
@@ -367,7 +414,9 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
                         if (showBadge) ...[
                           const SizedBox(width: 6),
                           Text(
-                            availableUnwatched != null ? '(+${availableUnwatched - 1})' : '(+?)',
+                            availableUnwatched != null
+                                ? '(+${availableUnwatched - 1})'
+                                : '(+?)',
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 13,
@@ -380,21 +429,35 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
                     const SizedBox(height: 6),
                     Consumer(
                       builder: (context, ref, _) {
-                        final detail = ref.watch(showDetailProvider(show.tmdbId)).value;
+                        final detail =
+                            ref.watch(showDetailProvider(show.tmdbId)).value;
                         String? seasonName;
                         if (detail != null && detail.isAnime) {
-                          final sSeason = detail.seasons.where((s) => s.seasonNumber == nextSeason).firstOrNull;
+                          final sSeason = detail.seasons
+                              .where((s) => s.seasonNumber == nextSeason)
+                              .firstOrNull;
                           if (sSeason != null && sSeason.name != null) {
-                            seasonName = sSeason.name!.split(' · ').first.trim();
+                            seasonName =
+                                sSeason.name!.split(' · ').first.trim();
                           }
                         }
                         return _EpisodeBadge(
-                          season: nextSeason, 
+                          season: nextSeason,
                           episode: nextEp,
                           seasonName: seasonName,
                         );
                       },
                     ),
+                    if (animeDataMissing) ...[
+                      const SizedBox(height: 5),
+                      const Text(
+                        'Dati anime incompleti: aggiorna online per segnare episodi.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                     if (episodeTitle != null) ...[
                       const SizedBox(height: 5),
                       Text(
@@ -416,7 +479,9 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
               // ── Pulsante circolare ───────────────────────────────────
               _CircularMarkButton(
                 state: _markState,
-                onTap: () => _markWatched(nextSeason, nextEp),
+                onTap: animeDataMissing
+                    ? null
+                    : () => _markWatched(nextSeason, nextEp),
               ),
             ],
           ),
@@ -430,7 +495,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
 
 class _CircularMarkButton extends StatelessWidget {
   final _MarkState state;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _CircularMarkButton({required this.state, required this.onTap});
 
@@ -442,13 +507,16 @@ class _CircularMarkButton extends StatelessWidget {
         _MarkState.success => _green,
       };
 
-  Color get _iconColor =>
-      state == _MarkState.idle ? AppColors.accent : Colors.white;
+  Color get _iconColor => onTap == null
+      ? AppColors.textSecondary
+      : state == _MarkState.idle
+          ? AppColors.accent
+          : Colors.white;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: state == _MarkState.idle ? onTap : () {},
+      onTap: state == _MarkState.idle ? onTap : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeInOut,
@@ -586,7 +654,8 @@ class _CardShell extends StatelessWidget {
                         width: 54,
                         height: 80,
                         child: show.posterPath != null
-                            ? CachedNetworkImage(
+                            ? MediaImage(
+                                source: MediaImageSource.tmdbPoster,
                                 imageUrl:
                                     'https://image.tmdb.org/t/p/w185${show.posterPath}',
                                 fit: BoxFit.cover,
@@ -715,22 +784,26 @@ class _EpisodeBadge extends StatelessWidget {
   final int season;
   final int episode;
   final String? seasonName;
-  const _EpisodeBadge({required this.season, required this.episode, this.seasonName});
+  const _EpisodeBadge(
+      {required this.season, required this.episode, this.seasonName});
 
   @override
   Widget build(BuildContext context) {
     String label;
     if (seasonName != null) {
       final baseName = seasonName!.split(' · ').first.trim();
-      var abbr = baseName.replaceAll(RegExp(r'^(Stagione|Season)\s*', caseSensitive: false), 'S');
-      abbr = abbr.replaceAll(RegExp(r'\s*Parte\s*', caseSensitive: false), ' P');
+      var abbr = baseName.replaceAll(
+          RegExp(r'^(Stagione|Season)\s*', caseSensitive: false), 'S');
+      abbr =
+          abbr.replaceAll(RegExp(r'\s*Parte\s*', caseSensitive: false), ' P');
       // Aggiungi padding alla stagione se a una sola cifra (S1 -> S01)
       abbr = abbr.replaceAllMapped(RegExp(r'(S)(\d)(?!\d)'), (match) {
         return '${match.group(1)}0${match.group(2)}';
       });
       label = '$abbr E${episode.toString().padLeft(2, '0')}';
     } else {
-      label = 'S${season.toString().padLeft(2, '0')} E${episode.toString().padLeft(2, '0')}';
+      label =
+          'S${season.toString().padLeft(2, '0')} E${episode.toString().padLeft(2, '0')}';
     }
 
     return Container(

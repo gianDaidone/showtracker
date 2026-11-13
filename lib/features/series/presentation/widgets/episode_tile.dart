@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants.dart';
@@ -93,7 +93,9 @@ class EpisodeTile extends StatelessWidget {
       return Text(
         '$dayLabel alle $timeStr',
         style: TextStyle(
-          color: aired ? AppColors.textSecondary : (isBatchRelease ? Colors.orange : AppColors.accent),
+          color: aired
+              ? AppColors.textSecondary
+              : (isBatchRelease ? Colors.orange : AppColors.accent),
           fontSize: 11,
           fontWeight: isBatchRelease ? FontWeight.bold : FontWeight.w500,
         ),
@@ -105,7 +107,9 @@ class EpisodeTile extends StatelessWidget {
       return Text(
         _formatDate(episode.airDate!),
         style: TextStyle(
-          color: aired ? AppColors.textSecondary : (isBatchRelease ? Colors.orange : AppColors.textSecondary),
+          color: aired
+              ? AppColors.textSecondary
+              : (isBatchRelease ? Colors.orange : AppColors.textSecondary),
           fontSize: 11,
           fontWeight: isBatchRelease ? FontWeight.bold : FontWeight.normal,
         ),
@@ -145,7 +149,8 @@ class _EpisodeStill extends StatelessWidget {
         width: _w,
         height: _h,
         child: stillPath != null
-            ? CachedNetworkImage(
+            ? MediaImage(
+                source: MediaImageSource.tmdbStill,
                 imageUrl: '$kTmdbImageBase/w185$stillPath',
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>

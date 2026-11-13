@@ -315,14 +315,25 @@ void main() {
         '/3/movie/303' => <String, dynamic>{
             'id': 303,
             'title': 'Film idratato',
+            'poster_path': '/film.jpg',
+            'overview': 'Trama recuperata',
             'release_date': '2020-05-06'
           },
         '/api/games/202' => <String, dynamic>{
             'id': 202,
             'name': 'Gioco idratato',
+            'background_image': 'https://example.com/cover.jpg',
             'released': '2021-06-07',
             'playtime': 20,
-            'rating': 4.5
+            'rating': 4.5,
+            'platforms': [
+              {
+                'platform': {'name': 'PC'}
+              },
+              {
+                'platform': {'name': 'PlayStation 5'}
+              },
+            ],
           },
         _ => throw StateError('Richiesta inattesa ${request.url}'),
       };
@@ -339,10 +350,17 @@ void main() {
     expect(show.nextEpisodeAirDate, DateTime(2026, 11, 1, 9));
     final movie = (await target.moviesDao.getByTmdbId(303))!;
     expect(movie.title, 'Film idratato');
+    expect(movie.posterPath, '/film.jpg');
+    expect(movie.overview, 'Trama recuperata');
     expect(movie.releaseYear, 2020);
+    expect(movie.releaseDate, DateTime(2020, 5, 6));
     final game = (await target.gamesDao.getByRawgId(202))!;
     expect(game.title, 'Gioco idratato');
+    expect(game.coverUrl, 'https://example.com/cover.jpg');
+    expect(game.releaseDate, DateTime(2021, 6, 7));
     expect(game.playtime, 20);
+    expect(game.voteAverage, 9.0);
+    expect(jsonDecode(game.platforms!), ['PC', 'PlayStation 5']);
     expect((await receiver.exportData()).toJson(), before);
     await _service(target, metadataClient).hydrateUnknownMedia();
     expect(paths, hasLength(5)); // nessuna richiesta per media già idratati.

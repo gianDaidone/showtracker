@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/app_toast.dart';
 import '../services/sync_service.dart';
+import '../providers/metadata_recovery_provider.dart';
 import '../services/local_sync_server.dart';
 import '../utils/sync_compressor.dart';
 import '../domain/models/sync_payload.dart';
@@ -18,16 +20,17 @@ class SyncScreen extends ConsumerStatefulWidget {
   ConsumerState<SyncScreen> createState() => _SyncScreenState();
 }
 
-class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProviderStateMixin {
+class _SyncScreenState extends ConsumerState<SyncScreen>
+    with SingleTickerProviderStateMixin {
   final _localServer = LocalSyncServer();
-  
+
   bool _isLoading = true;
   String? _qrData;
   bool _isLocalServerActive = false;
-  
+
   // Scanning state
   bool _isProcessingScan = false;
-  
+
   late final MobileScannerController _scannerController;
   late final AnimationController _scanAnimController;
 
@@ -42,7 +45,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    
+
     _prepareExportData();
   }
 
@@ -59,7 +62,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
       final syncService = ref.read(syncServiceProvider);
       final payload = await syncService.exportData();
       final base64String = SyncCompressor.compressPayload(payload.toJson());
-      
+
       if (base64String.length > 2000) {
         final uri = await _localServer.start(base64String);
         if (uri != null) {
@@ -71,7 +74,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
           return;
         }
       }
-      
+
       setState(() {
         _qrData = base64String;
         _isLocalServerActive = false;
@@ -79,47 +82,58 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
       });
     } catch (e) {
       if (mounted) {
-        AppToast.show('Errore durante l\'esportazione: $e', type: ToastType.error);
+        AppToast.show('Errore durante l\'esportazione: $e',
+            type: ToastType.error);
         setState(() => _isLoading = false);
       }
     }
   }
-  
+
   Future<void> _processScannedData(String data) async {
     if (_isProcessingScan) return;
     setState(() => _isProcessingScan = true);
     AppToast.show('Sincronizzazione in corso...', type: ToastType.info);
-    
+    final container = ProviderScope.containerOf(context, listen: false);
+
     try {
       String base64String = data;
-      
+
       if (data.startsWith('http://')) {
         final response = await http.get(Uri.parse(data)).timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => throw Exception('Connessione scaduta. Assicurati che i due dispositivi siano sulla stessa rete Wi-Fi e riprova.'),
-        );
+              const Duration(seconds: 10),
+              onTimeout: () => throw Exception(
+                  'Connessione scaduta. Assicurati che i due dispositivi siano sulla stessa rete Wi-Fi e riprova.'),
+            );
         if (response.statusCode == 200) {
           base64String = response.body;
         } else {
-          throw Exception('Errore ${response.statusCode} dal dispositivo mittente. Riprova.');
+          throw Exception(
+              'Errore ${response.statusCode} dal dispositivo mittente. Riprova.');
         }
       }
-      
+
       final jsonMap = SyncCompressor.decompressPayload(base64String);
       final payload = SyncPayload.fromJson(jsonMap);
-      
-      final syncService = ref.read(syncServiceProvider);
-      await syncService.importData(payload);
-      
-      syncService.hydrateUnknownMedia();
-      
+
+      final serviceSubscription =
+          container.listen(syncServiceProvider, (_, __) {});
+      try {
+        await serviceSubscription.read().importData(payload);
+      } finally {
+        serviceSubscription.close();
+      }
+      // Il coordinatore appartiene al container dell'app: continua anche dopo
+      // il pop della schermata e riprova al successivo inserimento credenziali.
+      unawaited(container.read(metadataRecoveryProvider).recoverAfterImport());
+
       if (mounted) {
         AppToast.show('Sincronizzazione completata!', type: ToastType.success);
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
-        AppToast.show(e.toString().replaceAll('Exception: ', ''), type: ToastType.error);
+        AppToast.show(e.toString().replaceAll('Exception: ', ''),
+            type: ToastType.error);
       }
     } finally {
       if (mounted) {
@@ -137,12 +151,15 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
         backgroundColor: AppColors.background,
         appBar: AppBar(
           backgroundColor: AppColors.background,
-          title: const Text('Trasferimento', style: TextStyle(fontWeight: FontWeight.w600)),
+          title: const Text('Trasferimento',
+              style: TextStyle(fontWeight: FontWeight.w600)),
           centerTitle: true,
           bottom: TabBar(
             tabs: const [
               Tab(text: 'Mostra QR', icon: Icon(Icons.qr_code_rounded)),
-              Tab(text: 'Scansiona QR', icon: Icon(Icons.qr_code_scanner_rounded)),
+              Tab(
+                  text: 'Scansiona QR',
+                  icon: Icon(Icons.qr_code_scanner_rounded)),
             ],
             indicatorColor: AppColors.accent,
             indicatorWeight: 3,
@@ -164,15 +181,18 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
 
   Widget _buildExportTab() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+      return const Center(
+          child: CircularProgressIndicator(color: AppColors.accent));
     }
-    
+
     if (_qrData == null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline_rounded, size: 64, color: AppColors.textSecondary.withValues(alpha: 0.5)),
+            Icon(Icons.error_outline_rounded,
+                size: 64,
+                color: AppColors.textSecondary.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
             const Text(
               'Impossibile generare il codice.',
@@ -182,7 +202,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
         ),
       );
     }
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
       child: Column(
@@ -191,8 +211,8 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             'Inquadra questo codice dal tuo\nsecondo dispositivo.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: AppColors.textPrimary, 
-              fontSize: 20, 
+              color: AppColors.textPrimary,
+              fontSize: 20,
               fontWeight: FontWeight.w600,
               height: 1.3,
             ),
@@ -201,10 +221,11 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
           const Text(
             'Tutto il tuo storico visioni e giochi verrà trasferito offline istantaneamente.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+            style: TextStyle(
+                color: AppColors.textSecondary, fontSize: 14, height: 1.5),
           ),
           const SizedBox(height: 48),
-          
+
           // QR Code Card con Glow
           Container(
             padding: const EdgeInsets.all(24),
@@ -241,16 +262,17 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
               ),
             ),
           ),
-          
+
           const SizedBox(height: 48),
-          
+
           if (_isLocalServerActive)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.accent.withValues(alpha: 0.3), width: 1.5),
+                border: Border.all(
+                    color: AppColors.accent.withValues(alpha: 0.3), width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.accent.withValues(alpha: 0.05),
@@ -268,12 +290,18 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                       children: [
                         Text(
                           'Connessione Locale P2P',
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold),
                         ),
                         SizedBox(height: 4),
                         Text(
                           'I dati sono voluminosi. Assicurati che entrambi i dispositivi siano sulla stessa rete Wi-Fi.',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+                          style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                              height: 1.4),
                         ),
                       ],
                     ),
@@ -302,13 +330,11 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             }
           },
         ),
-        
         Positioned.fill(
           child: CustomPaint(
             painter: _ScannerOverlayPainter(),
           ),
         ),
-        
         Center(
           child: SizedBox(
             width: 260,
@@ -326,7 +352,6 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             ),
           ),
         ),
-        
         const Positioned(
           bottom: 80,
           left: 40,
@@ -335,14 +360,13 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
             'Allinea il QR Code all\'interno della cornice.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white, 
-              fontSize: 14, 
+              color: Colors.white,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
               shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
             ),
           ),
         ),
-        
         if (_isProcessingScan)
           Positioned.fill(
             child: ClipRect(
@@ -368,20 +392,22 @@ class _SyncScreenState extends ConsumerState<SyncScreen> with SingleTickerProvid
                       child: const Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircularProgressIndicator(color: AppColors.accent, strokeWidth: 3),
+                          CircularProgressIndicator(
+                              color: AppColors.accent, strokeWidth: 3),
                           SizedBox(height: 24),
                           Text(
                             'Sincronizzazione...',
                             style: TextStyle(
-                              color: AppColors.textPrimary, 
-                              fontSize: 18, 
+                              color: AppColors.textPrimary,
+                              fontSize: 18,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           SizedBox(height: 8),
                           Text(
                             'Non chiudere l\'applicazione',
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                            style: TextStyle(
+                                color: AppColors.textSecondary, fontSize: 13),
                           ),
                         ],
                       ),
@@ -473,7 +499,8 @@ class _ScannerFramePainter extends CustomPainter {
       Path()
         ..moveTo(size.width - length, size.height)
         ..lineTo(size.width - r, size.height)
-        ..quadraticBezierTo(size.width, size.height, size.width, size.height - r)
+        ..quadraticBezierTo(
+            size.width, size.height, size.width, size.height - r)
         ..lineTo(size.width, size.height - length),
       paint,
     );
@@ -482,13 +509,13 @@ class _ScannerFramePainter extends CustomPainter {
     final linePaint = Paint()
       ..color = color.withValues(alpha: 0.7)
       ..style = PaintingStyle.fill;
-    
+
     final scanY = size.height * progress;
     canvas.drawRect(
       Rect.fromLTWH(10, scanY, size.width - 20, 2),
       linePaint,
     );
-    
+
     canvas.drawRect(
       Rect.fromLTWH(10, scanY - 5, size.width - 20, 12),
       Paint()

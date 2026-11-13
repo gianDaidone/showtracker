@@ -28,8 +28,7 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
       into(trackedShows).insert(show);
 
   Future<List<TrackedShow>> getAll() =>
-      (select(trackedShows)
-            ..orderBy([(t) => OrderingTerm.desc(t.addedAt)]))
+      (select(trackedShows)..orderBy([(t) => OrderingTerm.desc(t.addedAt)]))
           .get();
 
   Future<TrackedShow?> getById(int id) =>
@@ -40,12 +39,14 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
           .getSingleOrNull();
 
   Future<void> updateStatus(int id, MediaStatus status) =>
-      (update(trackedShows)..where((t) => t.id.equals(id)))
-          .write(TrackedShowsCompanion(status: Value(status), updatedAt: Value(DateTime.now())));
+      (update(trackedShows)..where((t) => t.id.equals(id))).write(
+          TrackedShowsCompanion(
+              status: Value(status), updatedAt: Value(DateTime.now())));
 
   Future<void> updateRating(int id, double? rating) =>
-      (update(trackedShows)..where((t) => t.id.equals(id)))
-          .write(TrackedShowsCompanion(userRating: Value(rating), updatedAt: Value(DateTime.now())));
+      (update(trackedShows)..where((t) => t.id.equals(id))).write(
+          TrackedShowsCompanion(
+              userRating: Value(rating), updatedAt: Value(DateTime.now())));
 
   Future<int> deleteShow(int id) => transaction(() async {
         // La rimozione elimina anche i progressi, senza affidarsi a cascade
@@ -58,8 +59,7 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
   // ── Shows: stream (reactive) ─────────────────────────────────────────────
 
   Stream<List<TrackedShow>> watchAll() =>
-      (select(trackedShows)
-            ..orderBy([(t) => OrderingTerm.desc(t.addedAt)]))
+      (select(trackedShows)..orderBy([(t) => OrderingTerm.desc(t.addedAt)]))
           .watch();
 
   // ── Episodes: one-shot ───────────────────────────────────────────────────
@@ -71,38 +71,54 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
     int season,
     int episode, {
     bool watched = true,
-  }) async {
-    if (watched) {
-      await (update(trackedShows)..where((t) => t.id.equals(showId)))
-          .write(TrackedShowsCompanion(lastWatchedAt: Value(DateTime.now()), updatedAt: Value(DateTime.now())));
-    }
+  }) =>
+      transaction(() async {
+        final now = DateTime.now();
+        if (watched) {
+          await (update(trackedShows)..where((t) => t.id.equals(showId))).write(
+              TrackedShowsCompanion(
+                  lastWatchedAt: Value(now), updatedAt: Value(now)));
+        }
 
-    final updated = await (update(trackedEpisodes)
-          ..where(
-            (t) =>
-                t.showId.equals(showId) &
-                t.seasonNumber.equals(season) &
-                t.episodeNumber.equals(episode),
-          ))
-        .write(TrackedEpisodesCompanion(watched: Value(watched), updatedAt: Value(DateTime.now())));
+        final updated = await (update(trackedEpisodes)
+              ..where(
+                (t) =>
+                    t.showId.equals(showId) &
+                    t.seasonNumber.equals(season) &
+                    t.episodeNumber.equals(episode),
+              ))
+            .write(TrackedEpisodesCompanion(
+                watched: Value(watched), updatedAt: Value(now)));
 
-    if (updated == 0) {
-      await into(trackedEpisodes).insert(
-        TrackedEpisodesCompanion(
-          showId: Value(showId),
-          seasonNumber: Value(season),
-          episodeNumber: Value(episode),
-          watched: Value(watched),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
-    }
-  }
+        if (updated == 0) {
+          await into(trackedEpisodes).insert(
+            TrackedEpisodesCompanion(
+              showId: Value(showId),
+              seasonNumber: Value(season),
+              episodeNumber: Value(episode),
+              watched: Value(watched),
+              updatedAt: Value(now),
+            ),
+          );
+        }
+      });
 
   Future<List<TrackedEpisode>> getEpisodesByShow(int showId) =>
       (select(trackedEpisodes)
             ..where((t) => t.showId.equals(showId))
             ..orderBy([
+              (t) => OrderingTerm.asc(t.seasonNumber),
+              (t) => OrderingTerm.asc(t.episodeNumber),
+            ]))
+          .get();
+
+  /// Tutti e soli gli episodi visti, raggruppabili in memoria per l'export sync.
+  /// Una lettura indipendente dal numero di serie, senza payload non visti.
+  Future<List<TrackedEpisode>> getAllWatchedEpisodes() =>
+      (select(trackedEpisodes)
+            ..where((t) => t.watched.equals(true))
+            ..orderBy([
+              (t) => OrderingTerm.asc(t.showId),
               (t) => OrderingTerm.asc(t.seasonNumber),
               (t) => OrderingTerm.asc(t.episodeNumber),
             ]))
@@ -119,14 +135,16 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
   }
 
   Future<void> updateShowMetadata(
-      int id, int? totalEpisodes, int? totalSeasons, String? status,
-      {
-        Value<String> title = const Value.absent(),
-        Value<int?> nextEpisodeNumber = const Value.absent(),
-        Value<int?> nextEpisodeSeason = const Value.absent(),
-        Value<String?> nextEpisodeName = const Value.absent(),
-        Value<DateTime?> nextEpisodeAirDate = const Value.absent(),
-      }) async {
+    int id,
+    int? totalEpisodes,
+    int? totalSeasons,
+    String? status, {
+    Value<String> title = const Value.absent(),
+    Value<int?> nextEpisodeNumber = const Value.absent(),
+    Value<int?> nextEpisodeSeason = const Value.absent(),
+    Value<String?> nextEpisodeName = const Value.absent(),
+    Value<DateTime?> nextEpisodeAirDate = const Value.absent(),
+  }) async {
     await (update(trackedShows)..where((t) => t.id.equals(id))).write(
       TrackedShowsCompanion(
         title: title,
@@ -145,34 +163,31 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
   // ── Episodes: stream (reactive) ──────────────────────────────────────────
 
   Stream<List<TrackedEpisode>> watchEpisodesByShow(int showId) =>
-      (select(trackedEpisodes)
-            ..where((t) => t.showId.equals(showId)))
-          .watch();
+      (select(trackedEpisodes)..where((t) => t.showId.equals(showId))).watch();
 
   // ── Seasons: episodi per stagione (dal DB, senza API) ────────────────────
 
   /// Salva o aggiorna il numero di episodi per ogni stagione di una serie.
   Future<void> insertSeasons(int showId, Map<int, int> counts) async {
     await transaction(() async {
-      for (final entry in counts.entries) {
-        final row = TrackedSeasonsCompanion(
-          showId: Value(showId),
-          seasonNumber: Value(entry.key),
-          episodeCount: Value(entry.value),
-        );
-        // Conflitto sulla chiave unica (serie, stagione), non sull'`id`
-        // autoincrementale che `insertOnConflictUpdate` userebbe: su una
-        // stagione già salvata fallirebbe con UNIQUE constraint failed e il
-        // conteggio episodi resterebbe quello vecchio (stesso errore già
-        // corretto in `AnimeCacheDao.saveAnimeSeasons`).
-        await into(trackedSeasons).insert(
-          row,
-          onConflict: DoUpdate(
-            (_) => row,
-            target: [trackedSeasons.showId, trackedSeasons.seasonNumber],
-          ),
-        );
-      }
+      await batch((b) {
+        for (final entry in counts.entries) {
+          final row = TrackedSeasonsCompanion(
+            showId: Value(showId),
+            seasonNumber: Value(entry.key),
+            episodeCount: Value(entry.value),
+          );
+          // Il target resta la chiave naturale, non l'id autoincrementale.
+          b.insert(
+            trackedSeasons,
+            row,
+            onConflict: DoUpdate(
+              (_) => row,
+              target: [trackedSeasons.showId, trackedSeasons.seasonNumber],
+            ),
+          );
+        }
+      });
     });
   }
 
@@ -183,6 +198,18 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
         .get();
     return {for (final r in rows) r.seasonNumber: r.episodeCount};
   }
+
+  /// Una sola query reattiva per tutti i conteggi, condivisa dai consumer.
+  /// La chiave esterna è l'id locale della serie, quella interna la stagione.
+  Stream<Map<int, Map<int, int>>> watchSeasonCounts() =>
+      select(trackedSeasons).watch().map((rows) {
+        final result = <int, Map<int, int>>{};
+        for (final row in rows) {
+          result.putIfAbsent(row.showId, () => {})[row.seasonNumber] =
+              row.episodeCount;
+        }
+        return result;
+      });
 
   /// Restituisce true se almeno un episodio precedente a
   /// [targetSeason]/[targetEpisode] non è ancora segnato come visto.
@@ -218,33 +245,36 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
     int showId,
     int targetSeason,
     int targetEpisode,
-  ) async {
-    if (targetSeason > 1 || targetEpisode > 1) {
-      await (update(trackedShows)..where((t) => t.id.equals(showId)))
-          .write(TrackedShowsCompanion(lastWatchedAt: Value(DateTime.now()), updatedAt: Value(DateTime.now())));
-    }
-    
-    final seasonCounts = await getSeasonCounts(showId);
-    await batch((b) {
-      for (int s = 1; s <= targetSeason; s++) {
-        final maxEp =
-            s < targetSeason ? (seasonCounts[s] ?? 0) : targetEpisode - 1;
-        for (int e = 1; e <= maxEp; e++) {
-          b.insert(
-            trackedEpisodes,
-            TrackedEpisodesCompanion(
-              showId: Value(showId),
-              seasonNumber: Value(s),
-              episodeNumber: Value(e),
-              watched: const Value(true),
-              updatedAt: Value(DateTime.now()),
-            ),
-            mode: InsertMode.insertOrReplace,
-          );
+  ) =>
+      transaction(() async {
+        final now = DateTime.now();
+        if (targetSeason > 1 || targetEpisode > 1) {
+          await (update(trackedShows)..where((t) => t.id.equals(showId))).write(
+              TrackedShowsCompanion(
+                  lastWatchedAt: Value(now), updatedAt: Value(now)));
         }
-      }
-    });
-  }
+
+        final seasonCounts = await getSeasonCounts(showId);
+        await batch((b) {
+          for (int s = 1; s <= targetSeason; s++) {
+            final maxEp =
+                s < targetSeason ? (seasonCounts[s] ?? 0) : targetEpisode - 1;
+            for (int e = 1; e <= maxEp; e++) {
+              b.insert(
+                trackedEpisodes,
+                TrackedEpisodesCompanion(
+                  showId: Value(showId),
+                  seasonNumber: Value(s),
+                  episodeNumber: Value(e),
+                  watched: const Value(true),
+                  updatedAt: Value(now),
+                ),
+                mode: InsertMode.insertOrReplace,
+              );
+            }
+          }
+        });
+      });
 
   // ── Query aggregata: serie in visione + episodi visti ────────────────────
 

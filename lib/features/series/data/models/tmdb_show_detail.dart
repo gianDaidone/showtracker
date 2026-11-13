@@ -67,6 +67,10 @@ class TmdbShowDetail {
   final TmdbNextEpisode? nextEpisodeToAir;
   final List<NormalizedAnimeSeason>? animeSeasonsData;
 
+  /// Ricostruzione parziale dal DB, mai autorevole per sincronizzare metadata.
+  final bool isLocalSnapshot;
+  final bool? isAnimeOverride;
+
   const TmdbShowDetail({
     required this.id,
     required this.name,
@@ -85,6 +89,8 @@ class TmdbShowDetail {
     required this.seasons,
     this.nextEpisodeToAir,
     this.animeSeasonsData,
+    this.isLocalSnapshot = false,
+    this.isAnimeOverride,
   });
 
   factory TmdbShowDetail.fromJson(
@@ -167,11 +173,14 @@ class TmdbShowDetail {
         seasons: seasons ?? this.seasons,
         nextEpisodeToAir: nextEpisodeToAir,
         animeSeasonsData: animeSeasonsData ?? this.animeSeasonsData,
+        isLocalSnapshot: isLocalSnapshot,
+        isAnimeOverride: isAnimeOverride,
       );
 
   // ── Computed ──────────────────────────────────────────────────────────────
 
   bool get isAnime {
+    if (isAnimeOverride != null) return isAnimeOverride!;
     final asianCountries = {'JP', 'KR', 'CN', 'TW', 'HK'};
     final isAnimation = genres.any((g) {
       final lower = g.toLowerCase();

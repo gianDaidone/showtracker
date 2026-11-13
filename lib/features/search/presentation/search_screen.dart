@@ -18,6 +18,7 @@ import '../../series/providers/series_providers.dart';
 import '../providers/search_providers.dart';
 import 'discover_view.dart';
 import 'widgets/search_result_tile.dart';
+import 'widgets/search_error_message.dart';
 
 // ── Filtro attivo ─────────────────────────────────────────────────────────────
 
@@ -183,8 +184,8 @@ class _SearchScreenState extends State<SearchScreen> {
               child: _query.isEmpty
                   ? DiscoverView(
                       type: _filter.resultType,
-                      onSeeAll: (type) => setState(
-                          () => _filter = _SearchFilter.of(type)),
+                      onSeeAll: (type) =>
+                          setState(() => _filter = _SearchFilter.of(type)),
                     )
                   : _Results(query: _query, filter: _filter),
             ),
@@ -228,12 +229,12 @@ class _SearchBar extends StatelessWidget {
               autofocus: true,
               onChanged: onChanged,
               onSubmitted: onSubmitted,
-              style: const TextStyle(
-                  color: AppColors.textPrimary, fontSize: 15),
+              style:
+                  const TextStyle(color: AppColors.textPrimary, fontSize: 15),
               decoration: const InputDecoration(
                 hintText: 'Cerca serie TV, film e giochi...',
-                hintStyle: TextStyle(
-                    color: AppColors.textSecondary, fontSize: 15),
+                hintStyle:
+                    TextStyle(color: AppColors.textSecondary, fontSize: 15),
                 border: InputBorder.none,
                 isDense: true,
               ),
@@ -360,7 +361,8 @@ class _Results extends ConsumerWidget {
       _SearchFilter.series => showsAsync.isLoading,
       _SearchFilter.movie => moviesAsync.isLoading,
       _SearchFilter.game => gamesAsync.isLoading,
-      _ => showsAsync.isLoading && moviesAsync.isLoading && gamesAsync.isLoading,
+      _ =>
+        showsAsync.isLoading && moviesAsync.isLoading && gamesAsync.isLoading,
     };
 
     if (isFullLoading) {
@@ -372,7 +374,8 @@ class _Results extends ConsumerWidget {
       _SearchFilter.series => showsAsync.isLoading,
       _SearchFilter.movie => moviesAsync.isLoading,
       _SearchFilter.game => gamesAsync.isLoading,
-      _ => showsAsync.isLoading || moviesAsync.isLoading || gamesAsync.isLoading,
+      _ =>
+        showsAsync.isLoading || moviesAsync.isLoading || gamesAsync.isLoading,
     };
 
     // Con "Tutti" ogni tipo resta alla prima pagina (20 risultati), così uno
@@ -402,8 +405,7 @@ class _Results extends ConsumerWidget {
         ),
       _ => (null, null),
     };
-    final hasFooter =
-        paged != null && (paged.hasMore || paged.loadMoreFailed);
+    final hasFooter = paged != null && (paged.hasMore || paged.loadMoreFailed);
 
     final results = [
       ...rawShows.map(SearchResult.fromShow),
@@ -436,9 +438,23 @@ class _Results extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${failed.first.error}',
+                  searchErrorMessage(failed.first.error!),
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (showShows && showsAsync.hasError) {
+                      ref.invalidate(showSearchProvider(query));
+                    }
+                    if (showMovies && moviesAsync.hasError) {
+                      ref.invalidate(movieSearchProvider(query));
+                    }
+                    if (showGames && gamesAsync.hasError) {
+                      ref.invalidate(gameSearchProvider(query));
+                    }
+                  },
+                  child: const Text('Riprova'),
                 ),
               ] else ...[
                 const Text(

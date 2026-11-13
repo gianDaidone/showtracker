@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -39,8 +39,7 @@ class _DetailBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final trackedList =
-        ref.watch(trackedMoviesProvider).value ?? [];
+    final trackedList = ref.watch(trackedMoviesProvider).value ?? [];
     final TrackedMovy? trackedMovie =
         trackedList.where((m) => m.tmdbId == detail.id).firstOrNull;
 
@@ -84,7 +83,8 @@ class _DetailBody extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
-              child: _RemoveMovieButton(detail: detail, trackedMovie: trackedMovie),
+              child: _RemoveMovieButton(
+                  detail: detail, trackedMovie: trackedMovie),
             ),
           ),
         const SliverToBoxAdapter(child: SizedBox(height: 32)),
@@ -126,7 +126,8 @@ class _BackdropAppBarState extends ConsumerState<_BackdropAppBar> {
       ],
       flexibleSpace: FlexibleSpaceBar(
         background: widget.detail.backdropUrl != null
-            ? CachedNetworkImage(
+            ? MediaImage(
+                source: MediaImageSource.tmdbBackdrop,
                 imageUrl: widget.detail.backdropUrl!,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>
@@ -221,7 +222,8 @@ class _Header extends StatelessWidget {
             width: 90,
             height: 135,
             child: detail.posterUrl != null
-                ? CachedNetworkImage(
+                ? MediaImage(
+                    source: MediaImageSource.tmdbPoster,
                     imageUrl: detail.posterUrl!,
                     fit: BoxFit.cover,
                     placeholder: (_, __) =>
@@ -258,7 +260,8 @@ class _Header extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.star, color: AppColors.accent, size: 16),
+                        const Icon(Icons.star,
+                            color: AppColors.accent, size: 16),
                         const SizedBox(width: 4),
                         Text(
                           detail.voteAverage!.toStringAsFixed(1),
@@ -285,21 +288,24 @@ class _Header extends StatelessWidget {
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: detail.genres.map((g) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.divider.withAlpha(80),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      g,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  )).toList(),
+                  children: detail.genres
+                      .map((g) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.divider.withAlpha(80),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              g,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ))
+                      .toList(),
                 ),
               ],
             ],
@@ -383,8 +389,7 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
             : const Icon(Icons.add, color: Colors.black),
         label: const Text(
           'Aggiungi alla libreria',
-          style:
-              TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.accent,
@@ -397,9 +402,7 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
   Future<void> _add() async {
     setState(() => _loading = true);
     try {
-      await ref
-          .read(trackedMoviesProvider.notifier)
-          .addMovie(widget.detail);
+      await ref.read(trackedMoviesProvider.notifier).addMovie(widget.detail);
     } catch (_) {
       AppToast.show('Impossibile aggiungere "${widget.detail.title}"');
     } finally {
@@ -505,9 +508,13 @@ class _StatusSelector extends ConsumerWidget {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: selected ? AppColors.divider.withAlpha(120) : Colors.transparent,
+                color: selected
+                    ? AppColors.divider.withAlpha(120)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
-                border: selected ? null : Border.all(color: AppColors.divider.withAlpha(50)),
+                border: selected
+                    ? null
+                    : Border.all(color: AppColors.divider.withAlpha(50)),
               ),
               child: Text(
                 s.label,
@@ -562,7 +569,7 @@ class _InfoBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (detail.runtimeFormatted == null) return const SizedBox.shrink();
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

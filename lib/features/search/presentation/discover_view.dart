@@ -16,6 +16,7 @@ import '../data/discover_rules.dart';
 import '../providers/discover_providers.dart';
 import '../providers/search_providers.dart';
 import 'widgets/search_result_tile.dart';
+import 'widgets/search_error_message.dart';
 
 /// Elementi per riga con il filtro "Tutti": una pagina TMDB.
 const _rowCap = 20;
@@ -85,12 +86,12 @@ bool? _watchHasSeeds(WidgetRef ref, SearchResultType type) {
   bool? has<T>(AsyncValue<List<T>> a, List<T> Function(List<T>) seeds) =>
       a.hasValue ? seeds(a.requireValue).isNotEmpty : null;
   return switch (type) {
-    SearchResultType.series => ref.watch(
-        trackedShowsProvider.select((a) => has(a, showSeeds))),
-    SearchResultType.movie => ref.watch(
-        trackedMoviesProvider.select((a) => has(a, movieSeeds))),
-    SearchResultType.game => ref.watch(
-        trackedGamesProvider.select((a) => has(a, gameSeeds))),
+    SearchResultType.series =>
+      ref.watch(trackedShowsProvider.select((a) => has(a, showSeeds))),
+    SearchResultType.movie =>
+      ref.watch(trackedMoviesProvider.select((a) => has(a, movieSeeds))),
+    SearchResultType.game =>
+      ref.watch(trackedGamesProvider.select((a) => has(a, gameSeeds))),
   };
 }
 
@@ -116,8 +117,8 @@ _Feed _watchFeed(WidgetRef ref, SearchResultType type, DiscoverList list) {
       final p = showDiscoverProvider(list);
       final async = ref.watch(p);
       final tracked = {
-        for (final s in ref.watch(trackedShowsProvider).value ??
-            const <TrackedShow>[])
+        for (final s
+            in ref.watch(trackedShowsProvider).value ?? const <TrackedShow>[])
           s.tmdbId,
       };
       return _Feed(
@@ -133,8 +134,8 @@ _Feed _watchFeed(WidgetRef ref, SearchResultType type, DiscoverList list) {
       final p = movieDiscoverProvider(list);
       final async = ref.watch(p);
       final tracked = {
-        for (final m in ref.watch(trackedMoviesProvider).value ??
-            const <TrackedMovy>[])
+        for (final m
+            in ref.watch(trackedMoviesProvider).value ?? const <TrackedMovy>[])
           m.tmdbId,
       };
       return _Feed(
@@ -150,8 +151,8 @@ _Feed _watchFeed(WidgetRef ref, SearchResultType type, DiscoverList list) {
       final p = gameDiscoverProvider(list);
       final async = ref.watch(p);
       final tracked = {
-        for (final g in ref.watch(trackedGamesProvider).value ??
-            const <TrackedGame>[])
+        for (final g
+            in ref.watch(trackedGamesProvider).value ?? const <TrackedGame>[])
           g.rawgId,
       };
       return _Feed(
@@ -486,7 +487,8 @@ class _DiscoverList extends ConsumerWidget {
           child: Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
         ),
       );
@@ -508,8 +510,8 @@ class _Spinner extends StatelessWidget {
   const _Spinner();
 
   @override
-  Widget build(BuildContext context) => const Center(
-      child: CircularProgressIndicator(color: AppColors.accent));
+  Widget build(BuildContext context) =>
+      const Center(child: CircularProgressIndicator(color: AppColors.accent));
 }
 
 class _ErrorMessage extends StatelessWidget {
@@ -527,7 +529,7 @@ class _ErrorMessage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '$error',
+              searchErrorMessage(error),
               textAlign: TextAlign.center,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,

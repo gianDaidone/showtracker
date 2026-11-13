@@ -8,6 +8,9 @@ class TmdbSeason {
   final String? name;
   final List<TmdbEpisode>? episodes;
 
+  /// Cache locale potenzialmente incompleta: non prova i totali né il completamento.
+  final bool isLocalSnapshot;
+
   /// Data di uscita del primo episodio (`YYYY-MM-DD`), solo dal blocco
   /// `seasons[]` di /tv/{id}.
   final String? airDate;
@@ -19,6 +22,7 @@ class TmdbSeason {
     this.name,
     this.episodes,
     this.airDate,
+    this.isLocalSnapshot = false,
   });
 
   /// Costruito dal blocco `seasons[]` nella risposta /tv/{id}.
@@ -41,7 +45,8 @@ class TmdbSeason {
     final episodes = itEps.asMap().entries.map((entry) {
       final idx = entry.key;
       final itEp = entry.value as Map<String, dynamic>;
-      final enEp = idx < enEps.length ? enEps[idx] as Map<String, dynamic> : null;
+      final enEp =
+          idx < enEps.length ? enEps[idx] as Map<String, dynamic> : null;
       return TmdbEpisode.fromJson(itEp, en: enEp);
     }).toList();
 

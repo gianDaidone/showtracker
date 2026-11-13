@@ -263,7 +263,7 @@ final class ShowDetailProvider extends $FunctionalProvider<
   }
 }
 
-String _$showDetailHash() => r'8c087a74d235c01d71d4da29cbb0bd909c63e314';
+String _$showDetailHash() => r'bfc0cece1fba42a0fe7fe9a55c0ca808e88ad67e';
 
 final class ShowDetailFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<TmdbShowDetail>, int> {
@@ -345,7 +345,7 @@ final class SeasonDetailProvider extends $FunctionalProvider<
   }
 }
 
-String _$seasonDetailHash() => r'95927f7a72a3cce887dfc55d4dddb45efc8959d6';
+String _$seasonDetailHash() => r'5b4d78a1da5912bc4cf87812eaf35b3e276c727e';
 
 final class SeasonDetailFamily extends $Family
     with
@@ -402,7 +402,7 @@ final class TrackedShowsNotifierProvider
 }
 
 String _$trackedShowsNotifierHash() =>
-    r'5d25f1b6ab8877e4de0293ae098ef4240ef4bef8';
+    r'83ab8fa8c04d54ee285186426455f9cff7b7fae4';
 
 abstract class _$TrackedShowsNotifier
     extends $StreamNotifier<List<TrackedShow>> {
@@ -629,7 +629,7 @@ final class SeasonEpisodeCountsProvider extends $FunctionalProvider<
 }
 
 String _$seasonEpisodeCountsHash() =>
-    r'9f69d5655b139e66722dde187700ad084cee8829';
+    r'575d2e245588449f7e2d261128c97f47575cf60c';
 
 final class SeasonEpisodeCountsFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<Map<int, int>>, int> {

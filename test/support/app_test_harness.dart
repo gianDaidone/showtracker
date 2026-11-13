@@ -12,6 +12,7 @@ import 'package:showtracker/core/auth/rawg_auth_state.dart';
 import 'package:showtracker/core/database/app_database.dart';
 import 'package:showtracker/core/database/database_provider.dart';
 import 'package:showtracker/core/riverpod_utils.dart';
+import 'package:showtracker/core/services/startup_coordinator.dart';
 import 'package:showtracker/core/router/app_router.dart';
 import 'package:showtracker/features/games/data/rawg_service.dart';
 import 'package:showtracker/features/games/providers/games_providers.dart';
@@ -53,6 +54,9 @@ class AppTestHarness {
   static Future<AppTestHarness> create({
     AuthState auth = const AuthenticatedWithManualKey('test-key'),
     bool rescheduleAtStartup = false,
+    TmdbService? tmdbService,
+    RawgService? rawgService,
+    RawgAuthState rawgAuth = const RawgUnauthenticated(),
     List<Override> overrides = const [],
   }) async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -66,10 +70,12 @@ class AppTestHarness {
         databaseProvider.overrideWithValue(db),
         authControllerProvider.overrideWith(() => TestAuthController(auth)),
         rawgAuthControllerProvider.overrideWithBuild(
-          (ref, notifier) async => const RawgUnauthenticated(),
+          (ref, notifier) async => rawgAuth,
         ),
-        tmdbServiceProvider.overrideWithValue(TmdbService(client)),
-        rawgServiceProvider.overrideWithValue(RawgService(client)),
+        tmdbServiceProvider
+            .overrideWithValue(tmdbService ?? TmdbService(client)),
+        rawgServiceProvider
+            .overrideWithValue(rawgService ?? RawgService(client)),
         packageInfoProvider.overrideWith((ref) async => PackageInfo(
               appName: 'ShowTracker',
               packageName: 'test.showtracker',
@@ -84,14 +90,35 @@ class AppTestHarness {
     await container.read(authControllerProvider.future);
     container.listen(trackedShowsProvider, (_, __) {});
     await container.read(trackedShowsProvider.future);
-    return AppTestHarness._(db, container, client);
+    final app = AppTestHarness._(db, container, client);
+    if (rescheduleAtStartup) {
+      app._startup = StartupCoordinator(
+        container,
+        setupWidgets: () async {},
+        requestPermission: () async {},
+        refreshWidgets: () async {},
+      );
+    }
+    return app;
   }
 
+  StartupCoordinator? _startup;
+
   Future<void> pump(WidgetTester tester) async {
-    await tester.pumpWidget(UncontrolledProviderScope(
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startup?.start();
+    });
+    final widget = UncontrolledProviderScope(
       container: container,
       child: const ShowTrackerApp(),
-    ));
+    );
+    if (_startup != null) {
+      // Solo il bootstrap avvia la manutenzione nel primo frame: la relativa
+      // transazione SQLite deve partire fuori dal fake clock del runner.
+      await tester.runAsync(() => tester.pumpWidget(widget));
+    } else {
+      await tester.pumpWidget(widget);
+    }
     await flush(tester);
   }
 

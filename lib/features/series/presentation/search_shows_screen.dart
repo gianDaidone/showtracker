@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -85,9 +85,8 @@ class _SearchShowsScreenState extends ConsumerState<SearchShowsScreen> {
 
             // ── Body ─────────────────────────────────────────────────────
             Expanded(
-              child: _query.isEmpty
-                  ? const _EmptyHint()
-                  : _Results(query: _query),
+              child:
+                  _query.isEmpty ? const _EmptyHint() : _Results(query: _query),
             ),
           ],
         ),
@@ -131,8 +130,8 @@ class _SearchBar extends StatelessWidget {
               autofocus: true,
               onChanged: onChanged,
               onSubmitted: onSubmitted,
-              style: const TextStyle(
-                  color: AppColors.textPrimary, fontSize: 15),
+              style:
+                  const TextStyle(color: AppColors.textPrimary, fontSize: 15),
               decoration: InputDecoration(
                 hintText: hint,
                 hintStyle: const TextStyle(
@@ -270,8 +269,9 @@ class _Results extends ConsumerWidget {
                 itemBuilder: (_, i) => i == shows.length
                     ? PagedListFooter(
                         results: results,
-                        onLoadMore: () =>
-                            ref.read(showSearchProvider(query).notifier).loadMore(),
+                        onLoadMore: () => ref
+                            .read(showSearchProvider(query).notifier)
+                            .loadMore(),
                       )
                     : _ResultTile(
                         show: shows[i],
@@ -314,14 +314,14 @@ class _ResultTile extends ConsumerWidget {
           if (show.year != null)
             Text(
               '${show.year}',
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 12),
+              style:
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
           if (show.overview?.isNotEmpty == true)
             Text(
               show.overview!,
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 12),
+              style:
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 12),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -330,8 +330,8 @@ class _ResultTile extends ConsumerWidget {
       trailing: isTracked
           ? const Icon(Icons.check_circle, color: AppColors.accent)
           : IconButton(
-              icon: const Icon(Icons.add_circle_outline,
-                  color: AppColors.accent),
+              icon:
+                  const Icon(Icons.add_circle_outline, color: AppColors.accent),
               tooltip: 'Aggiungi',
               onPressed: () => _quickAdd(context, ref),
             ),
@@ -369,21 +369,21 @@ class _SearchPoster extends StatelessWidget {
         width: 46,
         height: 68,
         child: url != null
-            ? CachedNetworkImage(
+            ? MediaImage(
+                source: MediaImageSource.tmdbPoster,
                 imageUrl: url!,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>
                     const ColoredBox(color: AppColors.divider),
                 errorWidget: (_, __, ___) => const ColoredBox(
                   color: AppColors.divider,
-                  child: Icon(Icons.tv,
-                      color: AppColors.textSecondary, size: 20),
+                  child:
+                      Icon(Icons.tv, color: AppColors.textSecondary, size: 20),
                 ),
               )
             : const ColoredBox(
                 color: AppColors.divider,
-                child: Icon(Icons.tv,
-                    color: AppColors.textSecondary, size: 20),
+                child: Icon(Icons.tv, color: AppColors.textSecondary, size: 20),
               ),
       ),
     );
