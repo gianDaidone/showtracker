@@ -116,6 +116,11 @@ La revisione pre-commit aggiunge regressioni per stagione cache13→12 con
 rollback, anime senza mapping anche su numeri coincidenti con TMDB, orario
 09:00 preservato offline e notifiche widget su aggiornamenti della sola cache.
 
+`native_widget_metadata_test.dart` controlla etichette/descrizioni dei receiver,
+layout di anteprima e fallback PNG dei widget. La build Android valida le
+risorse XML; il test non prova il rendering dei diversi launcher. Verificare
+manualmente il selettore dopo un aggiornamento APK, senza disinstallare l’app.
+
 ## Confini e checklist nativa
 
 La suite e la CI verificano la logica e l'interfaccia sul computer. I mock dei
