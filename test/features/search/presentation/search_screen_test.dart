@@ -3,6 +3,7 @@ import 'package:showtracker/core/database/app_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:showtracker/core/paged_search.dart';
 import 'package:showtracker/core/theme/app_theme.dart';
 import 'package:showtracker/features/search/data/discover_rules.dart';
@@ -15,6 +16,65 @@ import 'package:showtracker/features/series/providers/series_providers.dart';
 import '../../../support/app_test_harness.dart';
 
 void main() {
+  for (final query in ['', 'zelda']) {
+    testWidgets(
+        'offline Cerca mostra messaggio leggibile e retry (query="$query")',
+        (tester) async {
+      var online = false;
+      var requests = 0;
+      Future<SearchPage<TmdbShow>> fetch() async {
+        requests++;
+        if (!online) {
+          throw http.ClientException(
+              'SocketException: Failed host lookup api.themoviedb.org');
+        }
+        return const SearchPage(
+            items: [TmdbShow(id: 42, name: 'Risultato dopo riconnessione')],
+            hasMore: false);
+      }
+
+      final app =
+          (await tester.runAsync(() => AppTestHarness.create(overrides: [
+                showDiscoverProvider(DiscoverList.trending).overrideWith(
+                  () => PagedListNotifier<TmdbShow>(
+                      (_) => (_) => fetch(), (show) => show.id),
+                ),
+                showSearchProvider.overrideWith2((query) =>
+                    PagedSearchNotifier<TmdbShow>(
+                        query, (_) => (_, __) => fetch(), (show) => show.id)),
+              ])))!;
+      addTearDown(() => app.dispose(tester));
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: app.container,
+        child: MaterialApp(
+            theme: AppTheme.dark(),
+            home: const SearchScreen(initialFilter: 'series')),
+      ));
+      await app.flush(tester);
+      if (query.isNotEmpty) {
+        await tester.enterText(find.byType(TextField), query);
+        await tester.pump(const Duration(milliseconds: 400));
+        await app.flush(tester);
+      }
+      expect(find.textContaining('Controlla la connessione'), findsOneWidget);
+      for (final raw in [
+        'ClientException',
+        'SocketException',
+        'api.themoviedb.org'
+      ]) {
+        expect(find.textContaining(raw), findsNothing);
+      }
+      expect(find.text('Riprova'), findsOneWidget);
+      final beforeRetry = requests;
+      online = true;
+      await tester.tap(find.text('Riprova'));
+      await app.flush(tester);
+      expect(requests, beforeRetry + 1);
+      expect(find.text('Risultato dopo riconnessione'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('discovery riprova e nasconde i titoli aggiunti senza refetch',
       (tester) async {
     var requests = 0;

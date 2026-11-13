@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -144,7 +144,9 @@ class _RawgEmptyShellState extends ConsumerState<_RawgEmptyShell> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
-                  onPressed: () => launchUrl(Uri.parse('https://rawg.io/apidocs'), mode: LaunchMode.externalApplication),
+                  onPressed: () => launchUrl(
+                      Uri.parse('https://rawg.io/apidocs'),
+                      mode: LaunchMode.externalApplication),
                   icon: const Icon(Icons.open_in_new, size: 16),
                   label: const Text('Richiedi chiave gratis'),
                 ),
@@ -154,7 +156,9 @@ class _RawgEmptyShellState extends ConsumerState<_RawgEmptyShell> {
                 onPressed: () {
                   final key = _controller.text.trim();
                   if (key.isNotEmpty) {
-                    ref.read(rawgAuthControllerProvider.notifier).loginWithKey(key);
+                    ref
+                        .read(rawgAuthControllerProvider.notifier)
+                        .loginWithKey(key);
                   }
                 },
                 style: FilledButton.styleFrom(
@@ -165,7 +169,8 @@ class _RawgEmptyShellState extends ConsumerState<_RawgEmptyShell> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('Salva e Attiva', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text('Salva e Attiva',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -203,8 +208,7 @@ class _GamesHeader extends StatelessWidget {
           ),
         ),
         IconButton(
-          icon:
-              const Icon(Icons.search, color: AppColors.accent, size: 30),
+          icon: const Icon(Icons.search, color: AppColors.accent, size: 30),
           onPressed: () => context.go('/search?filter=game'),
           tooltip: 'Cerca giochi',
         ),
@@ -302,7 +306,8 @@ class _BacklogTabState extends ConsumerState<_BacklogTab>
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                 child: Container(
                   decoration: const BoxDecoration(
-                    border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+                    border: Border(
+                        left: BorderSide(color: Colors.orange, width: 4)),
                   ),
                   padding: const EdgeInsets.only(left: 8),
                   child: Text(
@@ -360,8 +365,7 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
       data: (games) {
         // In Uscita: planToWatch con data futura o TBA
         final upcoming = games
-            .where(
-                (g) => g.status == MediaStatus.planToWatch && _isUpcoming(g))
+            .where((g) => g.status == MediaStatus.planToWatch && _isUpcoming(g))
             .toList()
           ..sort((a, b) {
             if (a.releaseDate == null && b.releaseDate == null) return 0;
@@ -379,7 +383,9 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
         final inArrivo = <TrackedGame>[];
 
         for (final game in upcoming) {
-          if (game.releaseDate == null || game.releaseDate!.isAfter(threshold) || game.releaseDate!.isAtSameMomentAs(threshold)) {
+          if (game.releaseDate == null ||
+              game.releaseDate!.isAfter(threshold) ||
+              game.releaseDate!.isAtSameMomentAs(threshold)) {
             inArrivo.add(game);
           } else {
             prossimamente.add(game);
@@ -395,7 +401,8 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                   child: Container(
                     decoration: const BoxDecoration(
-                      border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+                      border: Border(
+                          left: BorderSide(color: Colors.orange, width: 4)),
                     ),
                     padding: const EdgeInsets.only(left: 8),
                     child: Text(
@@ -426,7 +433,8 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                   child: Container(
                     decoration: const BoxDecoration(
-                      border: Border(left: BorderSide(color: Colors.grey, width: 4)),
+                      border: Border(
+                          left: BorderSide(color: Colors.grey, width: 4)),
                     ),
                     padding: const EdgeInsets.only(left: 8),
                     child: Text(
@@ -523,7 +531,8 @@ class _GiocatiTabState extends ConsumerState<_GiocatiTab>
                           20, item.topMargin ? 16 : 12, 20, 8),
                       child: Container(
                         decoration: BoxDecoration(
-                          border: Border(left: BorderSide(color: color, width: 4)),
+                          border:
+                              Border(left: BorderSide(color: color, width: 4)),
                         ),
                         padding: const EdgeInsets.only(left: 8),
                         child: Text(
@@ -586,9 +595,7 @@ class _GameCardState extends ConsumerState<_GameCard> {
       // Reset al backlog
       setState(() => _loading = true);
       try {
-        await ref
-            .read(trackedGamesProvider.notifier)
-            .resetToBacklog(game.id);
+        await ref.read(trackedGamesProvider.notifier).resetToBacklog(game.id);
       } finally {
         if (mounted) setState(() => _loading = false);
       }
@@ -621,9 +628,7 @@ class _GameCardState extends ConsumerState<_GameCard> {
           Navigator.of(context).pop();
           setState(() => _loading = true);
           try {
-            await ref
-                .read(trackedGamesProvider.notifier)
-                .markFolded(game.id);
+            await ref.read(trackedGamesProvider.notifier).markFolded(game.id);
           } finally {
             if (mounted) setState(() => _loading = false);
           }
@@ -636,8 +641,7 @@ class _GameCardState extends ConsumerState<_GameCard> {
   Widget build(BuildContext context) {
     final game = widget.game;
     final platforms = _decodePlatforms(game.platforms);
-    final platformLabel =
-        platforms.take(2).join(' · ');
+    final platformLabel = platforms.take(2).join(' · ');
     final releaseYear = game.releaseDate?.year;
     final isPlayed = game.status == MediaStatus.completed;
     final isDropped = game.status == MediaStatus.dropped;
@@ -714,7 +718,8 @@ class _GameCardState extends ConsumerState<_GameCard> {
 class _UpcomingGameCard extends StatelessWidget {
   final TrackedGame game;
   final bool isFarFuture;
-  const _UpcomingGameCard({super.key, required this.game, this.isFarFuture = false});
+  const _UpcomingGameCard(
+      {super.key, required this.game, this.isFarFuture = false});
 
   @override
   Widget build(BuildContext context) {
@@ -749,7 +754,8 @@ class _UpcomingGameCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     if (game.releaseDate != null)
-                      _ReleaseDateBadge(date: game.releaseDate!, isFarFuture: isFarFuture)
+                      _ReleaseDateBadge(
+                          date: game.releaseDate!, isFarFuture: isFarFuture)
                     else
                       const _TbaBadge(),
                     if (platforms.isNotEmpty) ...[
@@ -784,8 +790,18 @@ class _ReleaseDateBadge extends StatelessWidget {
   const _ReleaseDateBadge({required this.date, this.isFarFuture = false});
 
   static const _months = [
-    'gen', 'feb', 'mar', 'apr', 'mag', 'giu',
-    'lug', 'ago', 'set', 'ott', 'nov', 'dic',
+    'gen',
+    'feb',
+    'mar',
+    'apr',
+    'mag',
+    'giu',
+    'lug',
+    'ago',
+    'set',
+    'ott',
+    'nov',
+    'dic',
   ];
 
   String get _formatted =>
@@ -874,8 +890,8 @@ class _RatingRow extends StatelessWidget {
           ),
           if (game.voteAverage != null) ...[
             const SizedBox(width: 10),
-            const Icon(Icons.star_border, color: AppColors.textSecondary,
-                size: 13),
+            const Icon(Icons.star_border,
+                color: AppColors.textSecondary, size: 13),
             const SizedBox(width: 3),
             Text(
               '${game.voteAverage!.toStringAsFixed(1)}/10',
@@ -904,8 +920,8 @@ class _RatingRow extends StatelessWidget {
           ),
           if (game.voteAverage != null) ...[
             const SizedBox(width: 10),
-            const Icon(Icons.star_border, color: AppColors.textSecondary,
-                size: 13),
+            const Icon(Icons.star_border,
+                color: AppColors.textSecondary, size: 13),
             const SizedBox(width: 3),
             Text(
               '${game.voteAverage!.toStringAsFixed(1)}/10',
@@ -923,8 +939,8 @@ class _RatingRow extends StatelessWidget {
     return Row(
       children: [
         if (game.voteAverage != null && game.voteAverage! > 0) ...[
-          const Icon(Icons.star_border, color: AppColors.textSecondary,
-              size: 13),
+          const Icon(Icons.star_border,
+              color: AppColors.textSecondary, size: 13),
           const SizedBox(width: 3),
           Text(
             '${game.voteAverage!.toStringAsFixed(1)}/10',
@@ -937,8 +953,8 @@ class _RatingRow extends StatelessWidget {
         if (game.playtime != null && game.playtime! > 0) ...[
           if (game.voteAverage != null && game.voteAverage! > 0)
             const SizedBox(width: 10),
-          const Icon(Icons.timer_outlined, color: AppColors.textSecondary,
-              size: 13),
+          const Icon(Icons.timer_outlined,
+              color: AppColors.textSecondary, size: 13),
           const SizedBox(width: 3),
           Text(
             '~${game.playtime}h',
@@ -1004,8 +1020,7 @@ class _ActionButton extends StatelessWidget {
           shape: BoxShape.circle,
           color: _bgColor,
           border: (!isPlayed && !isDropped && !isLoading)
-              ? Border.all(color: AppColors.accent.withAlpha(120),
-                  width: 1.5)
+              ? Border.all(color: AppColors.accent.withAlpha(120), width: 1.5)
               : null,
         ),
         child: Center(child: _icon),
@@ -1028,7 +1043,7 @@ class _Cover extends StatelessWidget {
         width: 96,
         height: 80,
         child: url != null
-            ? CachedNetworkImage(
+            ? MediaImage(
                 imageUrl: url!,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>
@@ -1083,8 +1098,8 @@ class _RatingSheetState extends State<_RatingSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPad =
-        MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom;
+    final bottomPad = MediaQuery.of(context).viewInsets.bottom +
+        MediaQuery.of(context).padding.bottom;
 
     return Container(
       decoration: const BoxDecoration(
@@ -1118,7 +1133,8 @@ class _RatingSheetState extends State<_RatingSheet> {
           const SizedBox(height: 4),
           Text(
             widget.gameName,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -1153,7 +1169,8 @@ class _RatingSheetState extends State<_RatingSheet> {
                     child: Text(
                       '$n',
                       style: TextStyle(
-                        color: selected ? Colors.black : AppColors.textSecondary,
+                        color:
+                            selected ? Colors.black : AppColors.textSecondary,
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
                       ),
@@ -1199,7 +1216,8 @@ class _RatingSheetState extends State<_RatingSheet> {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFF44336).withAlpha(100)),
+                border:
+                    Border.all(color: const Color(0xFFF44336).withAlpha(100)),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1282,8 +1300,8 @@ class _HalfToggle extends StatelessWidget {
         decoration: BoxDecoration(
           color: active ? AppColors.accent : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: active ? AppColors.accent : AppColors.divider),
+          border:
+              Border.all(color: active ? AppColors.accent : AppColors.divider),
         ),
         child: Text(
           label,

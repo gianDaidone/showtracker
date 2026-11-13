@@ -82,6 +82,23 @@ void main() {
   });
 
   group('resolveHasAired', () {
+    test('cached midnight verdict cannot override future stored airing time',
+        () {
+      expect(
+          resolveHasAired(
+            show: _show(
+                nextEpisodeSeason: 1,
+                nextEpisodeNumber: 1,
+                nextEpisodeAirDate: DateTime(2050, 1, 2, 9)),
+            dbSeasonCounts: {1: 12},
+            season: 1,
+            episode: 1,
+            airedPerTmdb: true,
+            now: DateTime(2050, 1, 2, 8),
+          ),
+          isFalse);
+    });
+
     test('TMDB dice che il prossimo episodio non è ancora uscito', () {
       // Il caso del bug: il puntatore in DB è rimasto sull'episodio appena
       // visto (5), quindi da solo il DB direbbe "esiste, mostralo". La data di
@@ -250,11 +267,36 @@ void main() {
         isFalse); // Un puntatore senza data non prova la messa in onda.
   });
 
-  test('cache senza episodio/data valida si astiene, airingAt preciso prevale',
+  test('episodio cache senza data non diventa disponibile dai soli totali', () {
+    for (final date in [null, '', 'invalid']) {
+      final verdict = airedPerCachedEpisodes([_cached(1, 1, date)], 1);
+      expect(verdict, isFalse);
+      expect(
+          resolveHasAired(
+              show: _show(),
+              dbSeasonCounts: {1: 10},
+              season: 1,
+              episode: 1,
+              airedPerTmdb: verdict),
+          isFalse);
+    }
+    // Missing cache is still unknown and allows the existing offline fallback.
+    expect(airedPerCachedEpisodes([], 1), isNull);
+    expect(
+        resolveHasAired(
+            show: _show(),
+            dbSeasonCounts: {1: 10},
+            season: 1,
+            episode: 1,
+            airedPerTmdb: airedPerCachedEpisodes([], 1)),
+        isTrue);
+  });
+
+  test('cache assente si astiene, data mancante nasconde, airingAt prevale',
       () {
     expect(airedPerCachedEpisodes([], 1), isNull);
-    expect(airedPerCachedEpisodes([_cached(1, 1, 'invalid')], 1), isNull);
-    expect(airedPerCachedEpisodes([_cached(1, 1, null)], 1), isNull);
+    expect(airedPerCachedEpisodes([_cached(1, 1, 'invalid')], 1), isFalse);
+    expect(airedPerCachedEpisodes([_cached(1, 1, null)], 1), isFalse);
     final episode = CachedEpisode(
         id: 1,
         tmdbShowId: 100,

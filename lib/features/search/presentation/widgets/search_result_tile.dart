@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -164,7 +164,10 @@ class SearchResultThumbnail extends StatelessWidget {
         width: width,
         height: height,
         child: url != null
-            ? CachedNetworkImage(
+            ? MediaImage(
+                source: type == SearchResultType.game
+                    ? MediaImageSource.generic
+                    : MediaImageSource.tmdbPoster,
                 imageUrl: url!,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>

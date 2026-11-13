@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,7 +32,8 @@ class UpcomingEpisodeCard extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<UpcomingEpisodeCard> createState() => _UpcomingEpisodeCardState();
+  ConsumerState<UpcomingEpisodeCard> createState() =>
+      _UpcomingEpisodeCardState();
 }
 
 class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
@@ -51,7 +52,8 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
   String get _airDateLabel {
     final today = DateTime.now();
     final todayMid = DateTime(today.year, today.month, today.day);
-    final airMid = DateTime(widget.airDate.year, widget.airDate.month, widget.airDate.day);
+    final airMid =
+        DateTime(widget.airDate.year, widget.airDate.month, widget.airDate.day);
     final diff = airMid.difference(todayMid).inDays;
 
     // Precise time suffix for anime
@@ -67,17 +69,29 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
     if (diff <= 7) return 'Tra $diff giorni$timeSuffix';
 
     const months = [
-      'gen', 'feb', 'mar', 'apr', 'mag', 'giu',
-      'lug', 'ago', 'set', 'ott', 'nov', 'dic',
+      'gen',
+      'feb',
+      'mar',
+      'apr',
+      'mag',
+      'giu',
+      'lug',
+      'ago',
+      'set',
+      'ott',
+      'nov',
+      'dic',
     ];
-    final suffix = widget.airDate.year != today.year ? ' ${widget.airDate.year}' : '';
+    final suffix =
+        widget.airDate.year != today.year ? ' ${widget.airDate.year}' : '';
     return '${widget.airDate.day} ${months[widget.airDate.month - 1]}$suffix$timeSuffix';
   }
 
   Color get _badgeColor {
     final today = DateTime.now();
     final todayMid = DateTime(today.year, today.month, today.day);
-    final airMid = DateTime(widget.airDate.year, widget.airDate.month, widget.airDate.day);
+    final airMid =
+        DateTime(widget.airDate.year, widget.airDate.month, widget.airDate.day);
     final diff = airMid.difference(todayMid).inDays;
     if (diff == 0) return const Color(0xFF4CAF50);
     if (diff <= 2) return AppColors.accent;
@@ -89,11 +103,14 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
   String get _imageBadgeLabel {
     final today = DateTime.now();
     final todayMid = DateTime(today.year, today.month, today.day);
-    final airMid = DateTime(widget.airDate.year, widget.airDate.month, widget.airDate.day);
+    final airMid =
+        DateTime(widget.airDate.year, widget.airDate.month, widget.airDate.day);
     final diff = airMid.difference(todayMid).inDays;
 
     if (diff == 0) {
-      final time = widget.preciseAirTime ?? DateTime(widget.airDate.year, widget.airDate.month, widget.airDate.day, 9, 0);
+      final time = widget.preciseAirTime ??
+          DateTime(widget.airDate.year, widget.airDate.month,
+              widget.airDate.day, 9, 0);
       final h = time.hour.toString().padLeft(2, '0');
       final m = time.minute.toString().padLeft(2, '0');
       return '$h:$m';
@@ -101,10 +118,21 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
     if (diff == 1) return 'Domani';
 
     const months = [
-      'gen', 'feb', 'mar', 'apr', 'mag', 'giu',
-      'lug', 'ago', 'set', 'ott', 'nov', 'dic',
+      'gen',
+      'feb',
+      'mar',
+      'apr',
+      'mag',
+      'giu',
+      'lug',
+      'ago',
+      'set',
+      'ott',
+      'nov',
+      'dic',
     ];
-    final suffix = widget.airDate.year != today.year ? ' ${widget.airDate.year}' : '';
+    final suffix =
+        widget.airDate.year != today.year ? ' ${widget.airDate.year}' : '';
     return '${widget.airDate.day} ${months[widget.airDate.month - 1]}$suffix';
   }
 
@@ -112,7 +140,8 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
     if (widget.isFarFuture) return const Color(0xFF424242);
     final today = DateTime.now();
     final todayMid = DateTime(today.year, today.month, today.day);
-    final airMid = DateTime(widget.airDate.year, widget.airDate.month, widget.airDate.day);
+    final airMid =
+        DateTime(widget.airDate.year, widget.airDate.month, widget.airDate.day);
     final diff = airMid.difference(todayMid).inDays;
     if (diff == 0) return const Color(0xFF4CAF50);
     return AppColors.accent;
@@ -130,19 +159,22 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
         .firstOrNull;
 
     final episodeName = fullEpisode?.name ?? widget.episode.name;
-    final displayTitle = episodeName.isNotEmpty ? episodeName : 'Titolo non disponibile';
+    final displayTitle =
+        episodeName.isNotEmpty ? episodeName : 'Titolo non disponibile';
 
     final stillPath = fullEpisode?.stillPath ?? widget.episode.stillPath;
     final imageUrl = _getImageUrl(stillPath);
     final hasImage = imageUrl.isNotEmpty;
-    
+
     String pad(int n) => n.toString().padLeft(2, '0');
 
     final hasAdditional = widget.additionalEpisodes.isNotEmpty;
 
     const topRadius = Radius.circular(14);
-    final bottomRadius = hasAdditional ? Radius.zero : const Radius.circular(14);
-    final mainCardRadius = BorderRadius.vertical(top: topRadius, bottom: bottomRadius);
+    final bottomRadius =
+        hasAdditional ? Radius.zero : const Radius.circular(14);
+    final mainCardRadius =
+        BorderRadius.vertical(top: topRadius, bottom: bottomRadius);
 
     final mainCard = Card(
       margin: EdgeInsets.only(
@@ -181,7 +213,10 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
                     fit: StackFit.expand,
                     children: [
                       hasImage
-                          ? CachedNetworkImage(
+                          ? MediaImage(
+                              source: stillPath != null
+                                  ? MediaImageSource.tmdbStill
+                                  : MediaImageSource.tmdbPoster,
                               imageUrl: imageUrl,
                               fit: BoxFit.cover,
                               placeholder: (_, __) =>
@@ -252,16 +287,28 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
                               String label;
                               if (widget.seasonName != null) {
                                 // Extract base name (remove " · Winter 2024" etc)
-                                final baseName = widget.seasonName!.split(' · ').first.trim();
-                                var abbr = baseName.replaceAll(RegExp(r'^(Stagione|Season)\s*', caseSensitive: false), 'S');
-                                abbr = abbr.replaceAll(RegExp(r'\s*Parte\s*', caseSensitive: false), ' P');
+                                final baseName = widget.seasonName!
+                                    .split(' · ')
+                                    .first
+                                    .trim();
+                                var abbr = baseName.replaceAll(
+                                    RegExp(r'^(Stagione|Season)\s*',
+                                        caseSensitive: false),
+                                    'S');
+                                abbr = abbr.replaceAll(
+                                    RegExp(r'\s*Parte\s*',
+                                        caseSensitive: false),
+                                    ' P');
                                 // Aggiungi padding alla stagione se a una sola cifra (S1 -> S01)
-                                abbr = abbr.replaceAllMapped(RegExp(r'(S)(\d)(?!\d)'), (match) {
+                                abbr = abbr.replaceAllMapped(
+                                    RegExp(r'(S)(\d)(?!\d)'), (match) {
                                   return '${match.group(1)}0${match.group(2)}';
                                 });
-                                label = '$abbr E${pad(widget.episode.episodeNumber)}';
+                                label =
+                                    '$abbr E${pad(widget.episode.episodeNumber)}';
                               } else {
-                                label = 'S${pad(widget.episode.seasonNumber)} E${pad(widget.episode.episodeNumber)}';
+                                label =
+                                    'S${pad(widget.episode.seasonNumber)} E${pad(widget.episode.episodeNumber)}';
                               }
 
                               return Text(
@@ -316,7 +363,7 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
         ),
       ),
     );
-    
+
     if (!hasAdditional) return mainCard;
 
     return Column(
@@ -335,11 +382,13 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
           margin: const EdgeInsets.only(left: 16, right: 16, bottom: 8, top: 0),
           color: AppColors.surface,
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.zero, bottom: Radius.circular(14)),
+            borderRadius: BorderRadius.vertical(
+                top: Radius.zero, bottom: Radius.circular(14)),
           ),
           child: InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: const BorderRadius.vertical(top: Radius.zero, bottom: Radius.circular(14)),
+            borderRadius: const BorderRadius.vertical(
+                top: Radius.zero, bottom: Radius.circular(14)),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
               child: Row(
@@ -357,7 +406,9 @@ class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
                   ),
                   const SizedBox(width: 4),
                   Icon(
-                    _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
                     color: AppColors.accent,
                     size: 20,
                   ),
@@ -387,7 +438,7 @@ class _SubEpisodeCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     String pad(int n) => n.toString().padLeft(2, '0');
-    
+
     final seasonAsync = ref.watch(seasonDetailProvider(
       showId: show.tmdbId,
       seasonNumber: seasonNumber,
@@ -398,7 +449,8 @@ class _SubEpisodeCard extends ConsumerWidget {
         .firstOrNull;
 
     final episodeName = fullEpisode?.name ?? episode.name;
-    final displayTitle = episodeName.isNotEmpty ? episodeName : 'Titolo non disponibile';
+    final displayTitle =
+        episodeName.isNotEmpty ? episodeName : 'Titolo non disponibile';
 
     final stillPath = fullEpisode?.stillPath ?? episode.stillPath;
     final imageUrl = stillPath != null
@@ -435,10 +487,14 @@ class _SubEpisodeCard extends ConsumerWidget {
                   width: 96,
                   height: 80,
                   child: imageUrl != null
-                      ? CachedNetworkImage(
+                      ? MediaImage(
+                          source: stillPath != null
+                              ? MediaImageSource.tmdbStill
+                              : MediaImageSource.tmdbPoster,
                           imageUrl: imageUrl,
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => const ColoredBox(color: AppColors.divider),
+                          placeholder: (_, __) =>
+                              const ColoredBox(color: AppColors.divider),
                           errorWidget: (_, __, ___) => const _ImageFallback(),
                         )
                       : const _ImageFallback(),
@@ -451,7 +507,8 @@ class _SubEpisodeCard extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: AppColors.divider.withAlpha(80),
                         borderRadius: BorderRadius.circular(4),
@@ -460,15 +517,23 @@ class _SubEpisodeCard extends ConsumerWidget {
                         builder: (context) {
                           String label;
                           if (seasonName != null) {
-                            final baseName = seasonName!.split(' · ').first.trim();
-                            var abbr = baseName.replaceAll(RegExp(r'^(Stagione|Season)\s*', caseSensitive: false), 'S');
-                            abbr = abbr.replaceAll(RegExp(r'\s*Parte\s*', caseSensitive: false), ' P');
-                            abbr = abbr.replaceAllMapped(RegExp(r'(S)(\d)(?!\d)'), (match) {
+                            final baseName =
+                                seasonName!.split(' · ').first.trim();
+                            var abbr = baseName.replaceAll(
+                                RegExp(r'^(Stagione|Season)\s*',
+                                    caseSensitive: false),
+                                'S');
+                            abbr = abbr.replaceAll(
+                                RegExp(r'\s*Parte\s*', caseSensitive: false),
+                                ' P');
+                            abbr = abbr.replaceAllMapped(
+                                RegExp(r'(S)(\d)(?!\d)'), (match) {
                               return '${match.group(1)}0${match.group(2)}';
                             });
                             label = '$abbr E${pad(episode.episodeNumber)}';
                           } else {
-                            label = 'S${pad(seasonNumber)} E${pad(episode.episodeNumber)}';
+                            label =
+                                'S${pad(seasonNumber)} E${pad(episode.episodeNumber)}';
                           }
                           return Text(
                             label,
@@ -497,7 +562,8 @@ class _SubEpisodeCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.chevron_right, color: AppColors.accent, size: 22),
+              const Icon(Icons.chevron_right,
+                  color: AppColors.accent, size: 22),
             ],
           ),
         ),

@@ -1,4 +1,6 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
+
+import '../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/movies_providers.dart';
+import '../../sync/providers/metadata_recovery_provider.dart';
 
 class MoviesListScreen extends ConsumerStatefulWidget {
   const MoviesListScreen({super.key});
@@ -19,6 +22,16 @@ class _MoviesListScreenState extends ConsumerState<MoviesListScreen> {
   final _controller = TextEditingController();
   String _query = '';
   MediaStatus? _selectedStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(ref.read(metadataRecoveryProvider).recoverMovies());
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -79,8 +92,8 @@ class _MoviesListScreenState extends ConsumerState<MoviesListScreen> {
         ],
       ),
       body: moviesAsync.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator(color: AppColors.accent)),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.accent)),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -96,12 +109,13 @@ class _MoviesListScreenState extends ConsumerState<MoviesListScreen> {
 
           var filtered = movies;
           if (_selectedStatus != null) {
-            filtered = filtered.where((m) => m.status == _selectedStatus).toList();
+            filtered =
+                filtered.where((m) => m.status == _selectedStatus).toList();
           }
           if (_query.isNotEmpty) {
             filtered = filtered
-                .where((m) =>
-                    m.title.toLowerCase().contains(_query.toLowerCase()))
+                .where(
+                    (m) => m.title.toLowerCase().contains(_query.toLowerCase()))
                 .toList();
           }
 
@@ -120,7 +134,8 @@ class _MoviesListScreenState extends ConsumerState<MoviesListScreen> {
             children: [
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
                     _FilterChip(
@@ -137,7 +152,8 @@ class _MoviesListScreenState extends ConsumerState<MoviesListScreen> {
                           child: _FilterChip(
                             label: status.label,
                             isSelected: _selectedStatus == status,
-                            onTap: () => setState(() => _selectedStatus = status),
+                            onTap: () =>
+                                setState(() => _selectedStatus = status),
                           ),
                         )),
                   ],
@@ -166,10 +182,13 @@ class _NoResults extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.search_off, size: 56, color: AppColors.textSecondary),
+            const Icon(Icons.search_off,
+                size: 56, color: AppColors.textSecondary),
             const SizedBox(height: 16),
             Text(
-              query.isNotEmpty ? 'Nessun film trovato\nper "$query"' : 'Nessun film in questo stato',
+              query.isNotEmpty
+                  ? 'Nessun film trovato\nper "$query"'
+                  : 'Nessun film in questo stato',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.textPrimary,
@@ -223,7 +242,8 @@ class _MovieCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     _StatusChip(status: movie.status),
-                    if (movie.releaseYear != null || movie.userRating != null) ...[
+                    if (movie.releaseYear != null ||
+                        movie.userRating != null) ...[
                       const SizedBox(height: 10),
                       Row(
                         children: [
@@ -236,13 +256,18 @@ class _MovieCard extends StatelessWidget {
                               ),
                             ),
                           ],
-                          if (movie.releaseYear != null && movie.userRating != null)
+                          if (movie.releaseYear != null &&
+                              movie.userRating != null)
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 6),
-                              child: Text('•', style: TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+                              child: Text('•',
+                                  style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 10)),
                             ),
                           if (movie.userRating != null) ...[
-                            const Icon(Icons.star, color: AppColors.accent, size: 14),
+                            const Icon(Icons.star,
+                                color: AppColors.accent, size: 14),
                             const SizedBox(width: 4),
                             Text(
                               movie.userRating!.toStringAsFixed(1),
@@ -282,7 +307,8 @@ class _Poster extends StatelessWidget {
         width: 60,
         height: 90,
         child: url != null
-            ? CachedNetworkImage(
+            ? MediaImage(
+                source: MediaImageSource.tmdbPoster,
                 imageUrl: url,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>

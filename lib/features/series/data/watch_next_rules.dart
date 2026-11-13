@@ -1,5 +1,6 @@
 import '../../../core/database/app_database.dart';
 import 'models/normalized_anime_season.dart';
+import 'models/tmdb_episode.dart';
 
 /// Regole condivise per decidere **quale** episodio l'utente deve guardare e
 /// **se quell'episodio è già andato in onda**.
@@ -72,7 +73,8 @@ bool? anilistHasAired(
   int season,
   int episode,
 ) {
-  final s = animeSeasonsData?.where((x) => x.seasonNumber == season).firstOrNull;
+  final s =
+      animeSeasonsData?.where((x) => x.seasonNumber == season).firstOrNull;
   if (s == null) return null;
 
   final next = s.nextAiringEpisode;
@@ -125,25 +127,65 @@ bool resolveHasAired({
   required int episode,
   List<NormalizedAnimeSeason>? animeSeasonsData,
   bool? airedPerTmdb,
+  DateTime? now,
 }) {
+  // Solo il giorno corrente: una data cache più vecchia può correggere un
+  // puntatore remoto futuro obsoleto e deve continuare a prevalere.
+  final current = now ?? DateTime.now();
+  final pointerAt = show.nextEpisodeAirDate;
+  if (!show.isAnime &&
+      show.nextEpisodeSeason == season &&
+      show.nextEpisodeNumber == episode &&
+      pointerAt != null &&
+      pointerAt.year == current.year &&
+      pointerAt.month == current.month &&
+      pointerAt.day == current.day &&
+      pointerAt.isAfter(current)) {
+    return false;
+  }
   final airedPerAniList = anilistHasAired(animeSeasonsData, season, episode);
   if (airedPerAniList == true || airedPerTmdb == true) return true;
   if (airedPerAniList == false || airedPerTmdb == false) return false;
   return existsPerDatabase(show, dbSeasonCounts, season, episode);
 }
 
+/// Mantiene le 09:00 della serie normale anche nelle viste locali/stale.
+TmdbEpisode withStoredAiringTime(
+    TmdbEpisode episode, TrackedShow? show, int seasonNumber) {
+  if (show == null ||
+      show.isAnime ||
+      episode.airingAt != null ||
+      show.nextEpisodeSeason != seasonNumber ||
+      show.nextEpisodeNumber != episode.episodeNumber ||
+      show.nextEpisodeAirDate == null) {
+    return episode;
+  }
+  return TmdbEpisode(
+    episodeNumber: episode.episodeNumber,
+    name: episode.name,
+    overview: episode.overview,
+    stillPath: episode.stillPath,
+    airDate: episode.airDate,
+    voteAverage: episode.voteAverage,
+    absoluteEpisodeNumber: episode.absoluteEpisodeNumber,
+    airingAt: show.nextEpisodeAirDate,
+  );
+}
+
 /// Verdetto di TMDB ricavato dagli episodi in cache: true = già uscito,
-/// false = non ancora, null = episodio assente dalla cache o senza data.
+/// false = non ancora o senza data, null = episodio assente dalla cache.
 ///
 /// Replica la semantica di `TmdbEpisode.hasAired`, che è ciò che usa la card
 /// quando gli episodi arrivano dal provider `seasonDetail` (di norma servito
 /// dalla stessa cache).
 bool? airedPerCachedEpisodes(List<CachedEpisode> cached, int episodeNumber) {
-  final ep =
-      cached.where((e) => e.episodeNumber == episodeNumber).firstOrNull;
+  final ep = cached.where((e) => e.episodeNumber == episodeNumber).firstOrNull;
   if (ep == null) return null;
   final at = ep.airingAt ?? DateTime.tryParse(ep.airDate ?? '');
-  if (at == null) return null;
+  // Una riga TMDB senza data è un episodio annunciato, non prova di uscita.
+  // Deve coincidere con TmdbEpisode.hasAired usato dalla card; null farebbe
+  // ripiegare il conteggio sui totali DB e conterebbe una card che si nasconde.
+  if (at == null) return false;
   return at.isBefore(DateTime.now());
 }
 

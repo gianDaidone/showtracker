@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -189,7 +189,8 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                 child: Container(
                   decoration: const BoxDecoration(
-                    border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+                    border: Border(
+                        left: BorderSide(color: Colors.orange, width: 4)),
                   ),
                   padding: const EdgeInsets.only(left: 8),
                   child: Text(
@@ -263,7 +264,9 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
         final inArrivo = <TrackedMovy>[];
 
         for (final movie in movies) {
-          if (movie.releaseDate != null && (movie.releaseDate!.isAfter(threshold) || movie.releaseDate!.isAtSameMomentAs(threshold))) {
+          if (movie.releaseDate != null &&
+              (movie.releaseDate!.isAfter(threshold) ||
+                  movie.releaseDate!.isAtSameMomentAs(threshold))) {
             inArrivo.add(movie);
           } else {
             prossimamente.add(movie);
@@ -279,7 +282,8 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                   child: Container(
                     decoration: const BoxDecoration(
-                      border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+                      border: Border(
+                          left: BorderSide(color: Colors.orange, width: 4)),
                     ),
                     padding: const EdgeInsets.only(left: 8),
                     child: Text(
@@ -310,7 +314,8 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                   child: Container(
                     decoration: const BoxDecoration(
-                      border: Border(left: BorderSide(color: Colors.grey, width: 4)),
+                      border: Border(
+                          left: BorderSide(color: Colors.grey, width: 4)),
                     ),
                     padding: const EdgeInsets.only(left: 8),
                     child: Text(
@@ -443,7 +448,8 @@ class _WatchlistMovieCardState extends ConsumerState<_WatchlistMovieCard> {
 class _UpcomingMovieCard extends StatelessWidget {
   final TrackedMovy movie;
   final bool isFarFuture;
-  const _UpcomingMovieCard({super.key, required this.movie, this.isFarFuture = false});
+  const _UpcomingMovieCard(
+      {super.key, required this.movie, this.isFarFuture = false});
 
   @override
   Widget build(BuildContext context) {
@@ -477,7 +483,8 @@ class _UpcomingMovieCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     if (movie.releaseDate != null)
-                      _ReleaseDateBadge(date: movie.releaseDate!, isFarFuture: isFarFuture),
+                      _ReleaseDateBadge(
+                          date: movie.releaseDate!, isFarFuture: isFarFuture),
                   ],
                 ),
               ),
@@ -498,8 +505,18 @@ class _ReleaseDateBadge extends StatelessWidget {
   const _ReleaseDateBadge({required this.date, this.isFarFuture = false});
 
   static const _months = [
-    'gen', 'feb', 'mar', 'apr', 'mag', 'giu',
-    'lug', 'ago', 'set', 'ott', 'nov', 'dic',
+    'gen',
+    'feb',
+    'mar',
+    'apr',
+    'mag',
+    'giu',
+    'lug',
+    'ago',
+    'set',
+    'ott',
+    'nov',
+    'dic',
   ];
 
   String get _formatted =>
@@ -600,15 +617,15 @@ class _Poster extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url =
-        path != null ? 'https://image.tmdb.org/t/p/w185$path' : null;
+    final url = path != null ? 'https://image.tmdb.org/t/p/w185$path' : null;
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: SizedBox(
         width: 60,
         height: 90,
         child: url != null
-            ? CachedNetworkImage(
+            ? MediaImage(
+                source: MediaImageSource.tmdbPoster,
                 imageUrl: url,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>

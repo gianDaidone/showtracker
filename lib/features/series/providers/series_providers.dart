@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart'
-    show AsyncNotifierProvider, FutureProvider;
+    show AsyncNotifierProvider, FutureProvider, StreamProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/network/tmdb_http_client.dart';
@@ -18,6 +18,7 @@ import '../data/anilist_service.dart';
 import '../data/anime_data_merger.dart';
 import '../data/tmdb_service.dart';
 import '../data/watch_next_rules.dart';
+import '../data/local_show_snapshot.dart';
 import '../data/yuna_service.dart';
 import '../data/models/anilist_media.dart';
 import '../data/models/normalized_anime_season.dart';
@@ -142,7 +143,6 @@ Future<List<NormalizedAnimeSeason>?> _fetchAnimeSeasons(
   int tmdbId,
 ) async {
   final animeCacheDao = ref.read(animeCacheDaoProvider);
-  final tmdbSvc = ref.read(tmdbServiceProvider);
   final yunaSvc = ref.read(yunaServiceProvider);
   final anilistSvc = ref.read(anilistServiceProvider);
 
@@ -150,7 +150,7 @@ Future<List<NormalizedAnimeSeason>?> _fetchAnimeSeasons(
   // richieste HTTP (it-IT + en-US): memoizziamo la Future così ne parte una sola.
   Future<TmdbShowDetail>? detailFuture;
   Future<TmdbShowDetail> showDetails() =>
-      detailFuture ??= tmdbSvc.getShowDetails(tmdbId);
+      detailFuture ??= ref.readFuture(rawShowDetailProvider(tmdbId).future);
 
   // 2a. Yuna mapping: TMDB ID → AniList IDs
   var anilistIds = await animeCacheDao.getYunaIds(tmdbId);
@@ -204,8 +204,8 @@ Future<List<NormalizedAnimeSeason>?> _fetchAnimeSeasons(
   // iniziata resta un segnaposto TMDB (niente etichetta del cour, niente
   // orario preciso). Le cerchiamo per titolo e data di uscita della stagione.
   try {
-    final extra = await _searchUnmappedSeasons(
-        anilistSvc, detail, seasons, anilistMedia);
+    final extra =
+        await _searchUnmappedSeasons(anilistSvc, detail, seasons, anilistMedia);
     if (extra.isNotEmpty) {
       seasons = AnimeDataMerger.merge(
         tmdbSeasons: detail.seasons,
@@ -355,8 +355,11 @@ DateTime? _tmdbStartDate(TmdbShowDetail detail) {
 /// episodi inferiore al reale perché raggruppa più cours in una singola stagione.
 /// Per le serie non-anime, restituisce il valore TMDB grezzo.
 int? _effectiveTotalEpisodes(TmdbShowDetail detail) {
-  if (detail.isAnime && detail.animeSeasonsData != null && detail.animeSeasonsData!.isNotEmpty) {
-    final sum = detail.animeSeasonsData!.fold<int>(0, (acc, s) => acc + s.episodeCount);
+  if (detail.isAnime &&
+      detail.animeSeasonsData != null &&
+      detail.animeSeasonsData!.isNotEmpty) {
+    final sum =
+        detail.animeSeasonsData!.fold<int>(0, (acc, s) => acc + s.episodeCount);
     // Usa il totale AniList solo se è maggiore di zero per evitare di
     // sovrascrivere un valore TMDB valido con 0 (anime non ancora uscito).
     return sum > 0 ? sum : detail.numberOfEpisodes;
@@ -382,35 +385,75 @@ class _NextEpisodeInfo {
   bool get isKnown => season != null && episode != null;
 }
 
+// Il dettaglio grezzo è condiviso con il merge anime: niente seconda coppia
+// di richieste bilingui per lo stesso show durante l'arricchimento.
+final rawShowDetailProvider =
+    FutureProvider.autoDispose.family<TmdbShowDetail, int>((ref, tmdbId) async {
+  Timer? timer;
+  final link = ref.keepAlive();
+  ref.onDispose(() => timer?.cancel());
+  try {
+    final detail = await ref.watch(tmdbServiceProvider).getShowDetails(tmdbId);
+    timer = Timer(const Duration(seconds: 30), link.close);
+    return detail;
+  } catch (error) {
+    link.close();
+    if (isRecoverableSeriesError(error)) {
+      final dao = ref.read(showsDaoProvider);
+      final tracked = await dao.getByTmdbId(tmdbId);
+      if (tracked != null) {
+        final counts = await dao.getSeasonCounts(tracked.id);
+        return localShowSnapshot(tracked, counts);
+      }
+    }
+    rethrow;
+  }
+});
+
 // ── Show detail (enriched with AniList for anime) ─────────────────────────────
 
 @riverpod
 Future<TmdbShowDetail> showDetail(Ref ref, int tmdbId) async {
+  Timer? timer;
   final link = ref.keepAlive();
-  final timer = Timer(const Duration(seconds: 30), () {
-    link.close();
-  });
-  ref.onDispose(() => timer.cancel());
+  ref.onDispose(() => timer?.cancel());
 
-  final detail = await ref.watch(tmdbServiceProvider).getShowDetails(tmdbId);
+  final TmdbShowDetail detail;
+  try {
+    detail = await ref.watch(rawShowDetailProvider(tmdbId).future);
+  } catch (_) {
+    link.close();
+    rethrow;
+  }
+  if (detail.isLocalSnapshot) {
+    link.close();
+  } else {
+    timer = Timer(const Duration(seconds: 30), link.close);
+  }
 
   if (!detail.isAnime) return detail;
 
-  // Enrich anime with AniList data
-  final animeSeasonsData =
-      await ref.watch(animeDataProvider(tmdbId).future);
+  // Il fallback locale non deve passare da Yuna/AniList: senza rete i cour
+  // persistiti sono già l'unica numerazione compatibile con i progressi.
+  final animeSeasonsData = detail.isLocalSnapshot
+      ? await ref.read(animeCacheDaoProvider).getStaleAnimeSeasons(tmdbId)
+      : await ref.watch(animeDataProvider(tmdbId).future);
 
   if (animeSeasonsData == null || animeSeasonsData.isEmpty) return detail;
+  return _withAnimeSeasons(detail, animeSeasonsData);
+}
 
+TmdbShowDetail _withAnimeSeasons(
+    TmdbShowDetail detail, List<NormalizedAnimeSeason> animeSeasonsData) {
   // Build synthetic TmdbSeason list from AniList season metadata
   // so existing UI (SeasonSection) works without changes.
-  
+
   final tmdbSeasonCounts = <int, int>{};
   for (final as_ in animeSeasonsData) {
-    tmdbSeasonCounts[as_.tmdbSeasonNumber] = 
+    tmdbSeasonCounts[as_.tmdbSeasonNumber] =
         (tmdbSeasonCounts[as_.tmdbSeasonNumber] ?? 0) + 1;
   }
-  
+
   final currentPart = <int, int>{};
 
   final syntheticSeasons = animeSeasonsData.map((as_) {
@@ -422,8 +465,9 @@ Future<TmdbShowDetail> showDetail(Ref ref, int tmdbId) async {
         .map((s) => s.name)
         .firstOrNull;
 
-    final isGenericName = tmdbName == null || 
-        RegExp(r'^(Stagione|Season)\s*\d+$', caseSensitive: false).hasMatch(tmdbName.trim());
+    final isGenericName = tmdbName == null ||
+        RegExp(r'^(Stagione|Season)\s*\d+$', caseSensitive: false)
+            .hasMatch(tmdbName.trim());
 
     String baseName = isGenericName ? 'Stagione $tmdbNum' : tmdbName;
 
@@ -439,6 +483,7 @@ Future<TmdbShowDetail> showDetail(Ref ref, int tmdbId) async {
       seasonNumber: as_.seasonNumber,
       episodeCount: as_.episodeCount,
       name: name,
+      isLocalSnapshot: detail.isLocalSnapshot,
     );
   }).toList();
 
@@ -448,7 +493,8 @@ Future<TmdbShowDetail> showDetail(Ref ref, int tmdbId) async {
   // titolo hanno il nome della stagione, quindi le saltiamo.
   String? anilistName;
   if (detail.name == detail.originalName) {
-    final matched = animeSeasonsData.where((s) => s.anilistId != -1).firstOrNull;
+    final matched =
+        animeSeasonsData.where((s) => s.anilistId != -1).firstOrNull;
     final title = matched?.titleEnglish ?? matched?.titleRomaji;
     if (title != null && title.isNotEmpty) anilistName = title;
   }
@@ -471,6 +517,41 @@ Duration _seasonCacheTtl(
   return isCurrentSeason ? const Duration(days: 1) : const Duration(days: 7);
 }
 
+// Un miss su due cour dello stesso anime deve ridistribuire e salvare una
+// sola volta tutte le stagioni sorgenti, non una volta per chiave di cour.
+final redistributedAnimeEpisodesProvider = FutureProvider.autoDispose
+    .family<Map<int, List<TmdbEpisode>>, int>((ref, showId) async {
+  final detail = await ref.watch(showDetailProvider(showId).future);
+  final seasons = detail.animeSeasonsData;
+  if (seasons == null) return {};
+  final redistributed = await ref
+      .watch(tmdbServiceProvider)
+      .getAnimeEpisodesBySeason(showId, seasons);
+  final now = DateTime.now();
+  final cache = ref.read(cacheDaoProvider);
+  for (final entry in redistributed.entries) {
+    // Uno zero può essere un fetch sorgente fallito, non una cancellazione.
+    if (entry.value.isEmpty) continue;
+    await cache.replaceSeasonEpisodes(showId, entry.key, [
+      for (final ep in entry.value)
+        CachedEpisodesCompanion(
+          tmdbShowId: Value(showId),
+          seasonNumber: Value(entry.key),
+          episodeNumber: Value(ep.episodeNumber),
+          name: Value(ep.name),
+          overview: Value(ep.overview),
+          stillPath: Value(ep.stillPath),
+          airDate: Value(ep.airDate),
+          voteAverage: Value(ep.voteAverage),
+          absoluteEpisodeNumber: Value(ep.absoluteEpisodeNumber),
+          airingAt: Value(ep.airingAt),
+          cachedAt: Value(now),
+        ),
+    ]);
+  }
+  return redistributed;
+});
+
 @riverpod
 Future<TmdbSeason> seasonDetail(
   Ref ref, {
@@ -482,6 +563,19 @@ Future<TmdbSeason> seasonDetail(
 
   // ── Anime path ─────────────────────────────────────────────────────────────
   final detail = await ref.watch(showDetailProvider(showId).future);
+  final localName = detail.seasons
+      .where((s) => s.seasonNumber == seasonNumber)
+      .firstOrNull
+      ?.name;
+  Future<TmdbSeason> localSeason() async => cachedSeasonSnapshot(
+        seasonNumber,
+        await cacheDao.getSeasonEpisodesIgnoringTtl(showId, seasonNumber),
+        name: localName,
+        isLocalSnapshot: true,
+        show: show,
+      );
+  if (detail.isLocalSnapshot) return localSeason();
+
   if (detail.isAnime && detail.animeSeasonsData != null) {
     final animeSeasonsData = detail.animeSeasonsData!;
     final animeSeason = animeSeasonsData
@@ -498,53 +592,14 @@ Future<TmdbSeason> seasonDetail(
         ttl: animeTtl,
       );
       if (cached.isNotEmpty) {
-        return TmdbSeason(
-          seasonNumber: seasonNumber,
-          episodeCount: cached.length,
-          episodes: cached
-              .map((e) => TmdbEpisode(
-                    episodeNumber: e.episodeNumber,
-                    name: e.name,
-                    overview: e.overview,
-                    stillPath: e.stillPath,
-                    airDate: e.airDate,
-                    voteAverage: e.voteAverage,
-                    absoluteEpisodeNumber: e.absoluteEpisodeNumber,
-                    airingAt: e.airingAt,
-                  ))
-              .toList(),
-        );
+        return cachedSeasonSnapshot(seasonNumber, cached, name: localName);
       }
 
       // Cache miss: redistribute all seasons from TMDB at once
       final redistributed = await ref
-          .read(tmdbServiceProvider)
-          .getAnimeEpisodesBySeason(showId, animeSeasonsData);
+          .readFuture(redistributedAnimeEpisodesProvider(showId).future);
 
       if (redistributed.isNotEmpty) {
-        // Cache only non-empty seasons (empty ones will be retried next time)
-        final now = DateTime.now();
-        for (final entry in redistributed.entries) {
-          final sNum = entry.key;
-          final eps = entry.value;
-          if (eps.isEmpty) continue;
-          await cacheDao.saveSeasonEpisodes(eps
-              .map((e) => CachedEpisodesCompanion(
-                    tmdbShowId: Value(showId),
-                    seasonNumber: Value(sNum),
-                    episodeNumber: Value(e.episodeNumber),
-                    name: Value(e.name),
-                    overview: Value(e.overview),
-                    stillPath: Value(e.stillPath),
-                    airDate: Value(e.airDate),
-                    voteAverage: Value(e.voteAverage),
-                    absoluteEpisodeNumber: Value(e.absoluteEpisodeNumber),
-                    airingAt: Value(e.airingAt),
-                    cachedAt: Value(now),
-                  ))
-              .toList());
-        }
-
         final eps = redistributed[seasonNumber] ?? [];
         if (eps.isNotEmpty) {
           return TmdbSeason(
@@ -555,26 +610,36 @@ Future<TmdbSeason> seasonDetail(
         }
       }
 
-      // Redistribution gave 0 episodes for this season (TMDB doesn't have the
-      // data yet, or they were all consumed by a previous cour).
+      // La redistribuzione tollera errori sorgente: uno zero non autorizza
+      // a scartare la sola copia scaduta disponibile offline.
+      final stale =
+          await cacheDao.getSeasonEpisodesIgnoringTtl(showId, seasonNumber);
+      if (stale.isNotEmpty) {
+        return cachedSeasonSnapshot(seasonNumber, stale,
+            name: localName, isLocalSnapshot: true);
+      }
       return TmdbSeason(seasonNumber: seasonNumber, episodeCount: 0);
     }
   }
 
   // ── Standard TMDB path ─────────────────────────────────────────────────────
 
-  // Per gli anime i numeri di stagione sono cours sintetici (1..N) che non
-  // corrispondono alle stagioni TMDB. Se arriviamo qui con un anime significa
-  // che l'arricchimento AniList non è disponibile: chiedere a TMDB una stagione
-  // che non esiste (es. la 5 quando TMDB ne ha 3) risponde 404, il provider
-  // finisce in errore e la card mostra un episodio senza titolo né immagine.
-  // Meglio dichiarare la stagione vuota e riprovare al prossimo refresh.
-  if (detail.isAnime &&
-      !detail.seasons.any((s) => s.seasonNumber == seasonNumber)) {
-    return TmdbSeason(seasonNumber: seasonNumber, episodeCount: 0);
+  // Anche se il numero del cour coincide con una stagione TMDB, le sue
+  // coordinate non sono intercambiabili. Senza mappatura non scaricare/salvare
+  // episodi grezzi nella cache normalizzata: conservare solo la copia locale.
+  if (detail.isAnime) {
+    final stale =
+        await cacheDao.getSeasonEpisodesIgnoringTtl(showId, seasonNumber);
+    if (stale.isNotEmpty) {
+      return cachedSeasonSnapshot(seasonNumber, stale,
+          name: localName, isLocalSnapshot: true);
+    }
+    return TmdbSeason(
+        seasonNumber: seasonNumber, episodeCount: 0, isLocalSnapshot: true);
   }
 
-  final ttl = _seasonCacheTtl(show?.tmdbStatus, seasonNumber, show?.totalSeasons);
+  final ttl =
+      _seasonCacheTtl(show?.tmdbStatus, seasonNumber, show?.totalSeasons);
 
   // Compute 09:00 airingAt for the next airing episode of this season.
   // Evaluated fresh each time (not cached) so it stays accurate as episodes air.
@@ -614,27 +679,32 @@ Future<TmdbSeason> seasonDetail(
     return TmdbSeason(
       seasonNumber: seasonNumber,
       episodeCount: cached.length,
-      episodes: cached
-          .map((e) => injectAt(TmdbEpisode(
-                episodeNumber: e.episodeNumber,
-                name: e.name,
-                overview: e.overview,
-                stillPath: e.stillPath,
-                airDate: e.airDate,
-                voteAverage: e.voteAverage,
-                absoluteEpisodeNumber: e.absoluteEpisodeNumber,
-                airingAt: e.airingAt,
-              )))
+      episodes: cachedSeasonSnapshot(seasonNumber, cached)
+          .episodes!
+          .map(injectAt)
           .toList(),
     );
   }
 
-  final season =
-      await ref.read(tmdbServiceProvider).getSeasonDetails(showId, seasonNumber);
+  final TmdbSeason season;
+  try {
+    season = await ref
+        .read(tmdbServiceProvider)
+        .getSeasonDetails(showId, seasonNumber);
+  } catch (error) {
+    if (!isRecoverableSeriesError(error)) rethrow;
+    final stale =
+        await cacheDao.getSeasonEpisodesIgnoringTtl(showId, seasonNumber);
+    if (stale.isEmpty) rethrow;
+    return cachedSeasonSnapshot(seasonNumber, stale,
+        name: localName, isLocalSnapshot: true, show: show);
+  }
 
   if (season.episodes?.isNotEmpty ?? false) {
     final now = DateTime.now();
-    await cacheDao.saveSeasonEpisodes(
+    await cacheDao.replaceSeasonEpisodes(
+      showId,
+      seasonNumber,
       season.episodes!
           .map((e) => CachedEpisodesCompanion(
                 tmdbShowId: Value(showId),
@@ -688,10 +758,12 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
     // (TMDB raggruppa più cours in meno stagioni).
     if (detail.isAnime && detail.animeSeasonsData == null) {
       try {
-        final anilistSeasons = await ref.readFuture(animeDataProvider(detail.id).future);
+        final anilistSeasons =
+            await ref.readFuture(animeDataProvider(detail.id).future);
         if (anilistSeasons != null && anilistSeasons.isNotEmpty) {
           // Ricarica il detail arricchito con i dati AniList appena ottenuti
-          effectiveDetail = await ref.read(showDetailProvider(detail.id).future);
+          effectiveDetail =
+              await ref.readFuture(showDetailProvider(detail.id).future);
         }
       } catch (_) {
         // In caso di errore, usiamo il detail originale (TMDB grezzo).
@@ -701,9 +773,10 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
     }
 
     final effectiveTotal = _effectiveTotalEpisodes(effectiveDetail);
-    final effectiveSeasons = effectiveDetail.isAnime && effectiveDetail.animeSeasonsData != null
-        ? effectiveDetail.animeSeasonsData!.length
-        : effectiveDetail.numberOfSeasons;
+    final effectiveSeasons =
+        effectiveDetail.isAnime && effectiveDetail.animeSeasonsData != null
+            ? effectiveDetail.animeSeasonsData!.length
+            : effectiveDetail.numberOfSeasons;
 
     final next = await _resolveNextEpisode(effectiveDetail);
 
@@ -712,7 +785,9 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
             tmdbId: Value(effectiveDetail.id),
             title: Value(effectiveDetail.name),
             overview: Value(
-              (effectiveDetail.overview?.isNotEmpty ?? false) ? effectiveDetail.overview : null,
+              (effectiveDetail.overview?.isNotEmpty ?? false)
+                  ? effectiveDetail.overview
+                  : null,
             ),
             posterPath: Value(effectiveDetail.posterPath),
             status: const Value(MediaStatus.watching),
@@ -727,7 +802,9 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
             nextEpisodeAirDate: Value(next.airDate),
           ),
         );
-    final counts = {for (final s in effectiveDetail.seasons) s.seasonNumber: s.episodeCount};
+    final counts = {
+      for (final s in effectiveDetail.seasons) s.seasonNumber: s.episodeCount
+    };
     await ref.read(showsDaoProvider).insertSeasons(dbId, counts);
 
     // Pianifica notifica con orario preciso per anime, 09:00 per serie normali.
@@ -750,7 +827,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
     } else {
       try {
         final detail =
-            await ref.read(showDetailProvider(show.tmdbId).future);
+            await ref.readFuture(showDetailProvider(show.tmdbId).future);
         await _scheduleNotification(detail);
       } catch (_) {
         AppToast.show('Impossibile aggiornare la notifica per ${show.title}');
@@ -767,6 +844,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
   /// quindi pagare un fetch completo (Yuna + N query AniList + stagioni TMDB)
   /// al successivo accesso alla lista.
   Future<void> syncMetadata(TmdbShowDetail detail, int dbId) async {
+    if (detail.isLocalSnapshot) return;
     final show = await ref.read(showsDaoProvider).getById(dbId);
     if (show == null) return;
 
@@ -784,7 +862,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
     final effectiveSeasons = detail.isAnime && detail.animeSeasonsData != null
         ? detail.animeSeasonsData!.length
         : detail.numberOfSeasons;
-        
+
     final next = await _resolveNextEpisode(detail);
 
     // Il titolo è un metadato TMDB come gli altri: va riallineato quando
@@ -801,20 +879,23 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
         show.nextEpisodeName != next.name ||
         show.nextEpisodeAirDate != next.airDate) {
       await ref.read(showsDaoProvider).updateShowMetadata(
-        dbId,
-        effectiveTotal,
-        effectiveSeasons,
-        detail.status,
-        title: Value(title),
-        nextEpisodeNumber: Value(next.episode),
-        nextEpisodeSeason: Value(next.season),
-        nextEpisodeName: Value(next.name),
-        nextEpisodeAirDate: Value(next.airDate),
-      );
+            dbId,
+            effectiveTotal,
+            effectiveSeasons,
+            detail.status,
+            title: Value(title),
+            nextEpisodeNumber: Value(next.episode),
+            nextEpisodeSeason: Value(next.season),
+            nextEpisodeName: Value(next.name),
+            nextEpisodeAirDate: Value(next.airDate),
+          );
     }
 
-    final counts = {for (final s in detail.seasons) s.seasonNumber: s.episodeCount};
-    final currentCounts = await ref.read(showsDaoProvider).getSeasonCounts(dbId);
+    final counts = {
+      for (final s in detail.seasons) s.seasonNumber: s.episodeCount
+    };
+    final currentCounts =
+        await ref.read(showsDaoProvider).getSeasonCounts(dbId);
     bool countsChanged = counts.length != currentCounts.length;
     if (!countsChanged) {
       for (final s in counts.keys) {
@@ -847,11 +928,13 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
           await animeCacheDao.getFreshAnimeSeasons(tmdbId) == null) {
         // Un provider già completato può essere ancora fermo all'episodio
         // appena uscito: rivaluta la TTL senza cancellare il fallback offline.
+        ref.invalidate(rawShowDetailProvider(tmdbId));
         ref.invalidate(animeDataProvider(tmdbId));
         ref.invalidate(showDetailProvider(tmdbId));
       }
 
       final detail = await ref.readFuture(showDetailProvider(tmdbId).future);
+      if (detail.isLocalSnapshot) return;
       if (detail.isAnime &&
           (detail.animeSeasonsData == null ||
               await animeCacheDao.getFreshAnimeSeasons(tmdbId) == null)) {
@@ -864,7 +947,8 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
       await syncMetadata(detail, show.id);
       await _scheduleNotification(detail);
     } catch (e) {
-      debugPrint('rescheduleNotificationById($tmdbId): aggiornamento fallito: $e');
+      debugPrint(
+          'rescheduleNotificationById($tmdbId): aggiornamento fallito: $e');
     }
   }
 
@@ -872,23 +956,33 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
   /// safety net on app startup: if a previous schedule attempt silently
   /// skipped because TMDB's `next_episode_to_air` was still pointing at the
   /// just-aired episode, this re-runs the logic with now-current data.
-  Future<void> rescheduleAllNotifications() async {
-    // Questa funzione ora funge anche da background worker per aggiornare 
+  Future<void>? _rescheduleInFlight;
+
+  Future<void> rescheduleAllNotifications() =>
+      _rescheduleInFlight ??= _rescheduleOnce().whenComplete(() {
+        _rescheduleInFlight = null;
+      });
+
+  Future<void> _rescheduleOnce() async {
+    // Questa funzione ora funge anche da background worker per aggiornare
     // il database locale (architettura offline-first).
     final shows = await ref.read(showsDaoProvider).getAll();
-    final eligibleShows = shows.where((s) => 
-        s.status != MediaStatus.completed && s.status != MediaStatus.dropped
-    ).toList();
+    final eligibleShows = shows
+        .where((s) =>
+            s.status != MediaStatus.completed &&
+            s.status != MediaStatus.dropped)
+        .toList();
 
     for (int i = 0; i < eligibleShows.length; i++) {
       final show = eligibleShows[i];
       try {
-        final detail = await ref.read(showDetailProvider(show.tmdbId).future);
+        final detail =
+            await ref.readFuture(showDetailProvider(show.tmdbId).future);
         // Aggiorna anche il database con il prossimo episodio, ma non cancellare la cache!
         await syncMetadata(detail, show.id);
         await _scheduleNotification(detail);
       } catch (_) {}
-      
+
       // Attendi 2 secondi tra una serie e l'altra per non saturare la connessione
       // e non bloccare l'app se l'utente naviga nel frattempo.
       if (i < eligibleShows.length - 1) {
@@ -949,7 +1043,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
     }
 
     try {
-      final season = await ref.read(seasonDetailProvider(
+      final season = await ref.readFuture(seasonDetailProvider(
         showId: detail.id,
         seasonNumber: tmdbNext.seasonNumber,
       ).future);
@@ -984,6 +1078,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
   }
 
   Future<void> _scheduleNotification(TmdbShowDetail detail) async {
+    if (detail.isLocalSnapshot) return;
     final next = await _resolveNextEpisode(detail);
     if (!next.isKnown || next.airDate == null) return;
 
@@ -1035,17 +1130,22 @@ Stream<int> watchedCount(Ref ref, int dbShowId) {
       .map((eps) => eps.where((e) => e.watched).length);
 }
 
+final allSeasonEpisodeCountsProvider =
+    StreamProvider.autoDispose<Map<int, Map<int, int>>>((ref) {
+  return ref.watch(showsDaoProvider).watchSeasonCounts();
+});
+
 @riverpod
 Future<Map<int, int>> seasonEpisodeCounts(
   Ref ref,
   int dbShowId,
-) {
-  return ref.watch(showsDaoProvider).getSeasonCounts(dbShowId);
+) async {
+  final counts = await ref.watch(allSeasonEpisodeCountsProvider.future);
+  return counts[dbShowId] ?? {};
 }
 
 @riverpod
-Stream<List<ShowWithWatchedEpisodes>> watchingShowsWithEpisodes(
-    Ref ref) {
+Stream<List<ShowWithWatchedEpisodes>> watchingShowsWithEpisodes(Ref ref) {
   return ref.watch(showsDaoProvider).watchWatchingShowsWithEpisodes();
 }
 
@@ -1061,41 +1161,64 @@ Stream<List<ShowWithWatchedEpisodes>> watchingShowsWithEpisodes(
 ///
 /// Lavora solo su dati locali — DB, cache episodi TMDB, cache AniList — così la
 /// lista compare anche offline e non paghiamo richieste di rete per contarla.
+// Le letture bulk sono one-shot, ma il refresh della cache deve far rivalutare
+// la lista anche quando i campi denormalizzati della serie non cambiano.
+final watchNextCacheRevisionProvider =
+    StreamProvider.autoDispose<int>((ref) async* {
+  final db = ref.watch(databaseProvider);
+  var revision = 0;
+  yield revision;
+  await for (final _ in db.tableUpdates(TableUpdateQuery.onAllTables([
+    db.cachedEpisodes,
+    db.animeSeasonCache,
+  ]))) {
+    yield ++revision;
+  }
+});
+
 final visibleWatchingShowsProvider =
     FutureProvider.autoDispose<List<ShowWithWatchedEpisodes>>((ref) async {
+  await ref.watch(watchNextCacheRevisionProvider.future);
   final watching = await ref.watch(watchingShowsWithEpisodesProvider.future);
   if (watching.isEmpty) return [];
 
   final cacheDao = ref.read(cacheDaoProvider);
-  final animeCacheDao = ref.read(animeCacheDaoProvider);
-
+  final countsByShow = await ref.watch(allSeasonEpisodeCountsProvider.future);
+  final animeByShow = await ref
+      .read(animeCacheDaoProvider)
+      .getStaleAnimeSeasonsForShows(
+          watching.where((s) => s.show.isAnime).map((s) => s.show.tmdbId));
+  final targets = <int, (int, int)>{};
+  for (final data in watching) {
+    final anime = animeByShow[data.show.tmdbId];
+    targets[data.show.id] = computeNextToWatch(
+      data.watchedBySeason,
+      countsByShow[data.show.id] ?? {},
+      animeSeasonsData: anime == null || anime.isEmpty ? null : anime,
+    );
+  }
+  final summaries = await cacheDao.getEpisodeSummaries([
+    for (final data in watching)
+      (data.show.tmdbId, targets[data.show.id]!.$1, targets[data.show.id]!.$2),
+  ]);
   final visible = <ShowWithWatchedEpisodes>[];
 
   for (final showData in watching) {
     final show = showData.show;
     final watched = showData.watchedBySeason;
     final watchedCount = showData.watchedCount;
-    final seasonCounts =
-        await ref.watch(seasonEpisodeCountsProvider(show.id).future);
+    final seasonCounts = countsByShow[show.id] ?? <int, int>{};
 
-    // Dati AniList dalla sola cache (fresca o stantia): un fetch qui
-    // bloccherebbe l'intera lista dietro Yuna + AniList per ogni serie.
-    final animeSeasonsData = show.isAnime
-        ? await animeCacheDao.getFreshAnimeSeasons(show.tmdbId) ??
-            await animeCacheDao.getStaleAnimeSeasons(show.tmdbId)
-        : null;
-
-    final (nextSeason, nextEp) = computeNextToWatch(
-      watched,
-      seasonCounts,
-      animeSeasonsData: animeSeasonsData,
-    );
+    // Tutte le cour, anche scadute: nessuna degradazione alla numerazione TMDB.
+    final anime = animeByShow[show.tmdbId];
+    final animeSeasonsData = anime == null || anime.isEmpty ? null : anime;
+    final (nextSeason, nextEp) = targets[show.id]!;
 
     // L'episodio successivo è già andato in onda? Stessa precedenza di fonti
     // della card (AniList → TMDB → soli dati locali). Il verdetto TMDB arriva
     // dagli episodi in cache, che è ciò che la card stessa vedrà.
-    final cachedEpisodes =
-        await cacheDao.getSeasonEpisodesIgnoringTtl(show.tmdbId, nextSeason);
+    final summary = summaries[(show.tmdbId, nextSeason, nextEp)]!;
+    final cachedEpisodes = summary.targetEpisodes;
     final hasAired = resolveHasAired(
       show: show,
       dbSeasonCounts: seasonCounts,
@@ -1111,7 +1234,7 @@ final visibleWatchingShowsProvider =
     final lastWatchedSeason =
         watched.keys.isEmpty ? 0 : watched.keys.reduce((a, b) => a > b ? a : b);
     final isCompleted = animeSeasonsData != null
-        ? (cachedEpisodes.isEmpty &&
+        ? (!summary.hasSeason &&
             !hasLaterUpcomingAnimeSeason(animeSeasonsData, lastWatchedSeason))
         : (show.totalEpisodes != null && watchedCount >= show.totalEpisodes!);
 
@@ -1136,27 +1259,26 @@ final visibleWatchingShowsProvider =
 // ── Prossimi episodi in uscita ────────────────────────────────────────────────
 
 @riverpod
-Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
-    Ref ref) async {
+Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(Ref ref) async {
   final shows = await ref.watch(trackedShowsProvider.future);
 
   final today = DateTime.now();
   final todayMidnight = DateTime(today.year, today.month, today.day);
-  
-  final watchingShows = shows.where((s) => s.status == MediaStatus.watching).toList();
-  
+
+  final watchingShows =
+      shows.where((s) => s.status == MediaStatus.watching).toList();
+
   final results = <UpcomingEpisodeInfo>[];
 
   for (final show in watchingShows) {
-    if (show.nextEpisodeAirDate == null || show.nextEpisodeSeason == null || show.nextEpisodeNumber == null) {
+    if (show.nextEpisodeAirDate == null ||
+        show.nextEpisodeSeason == null ||
+        show.nextEpisodeNumber == null) {
       continue;
     }
 
-    final airMidnight = DateTime(
-      show.nextEpisodeAirDate!.year, 
-      show.nextEpisodeAirDate!.month, 
-      show.nextEpisodeAirDate!.day
-    );
+    final airMidnight = DateTime(show.nextEpisodeAirDate!.year,
+        show.nextEpisodeAirDate!.month, show.nextEpisodeAirDate!.day);
 
     if (airMidnight.isBefore(todayMidnight)) {
       continue;
@@ -1173,7 +1295,7 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(
       airDate: airMidnight,
       preciseAirTime: show.isAnime ? show.nextEpisodeAirDate : null,
       seasonName: null,
-      additionalEpisodes: const [], 
+      additionalEpisodes: const [],
     ));
   }
 

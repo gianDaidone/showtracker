@@ -27,7 +27,8 @@ class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTab);
+    _tabController =
+        TabController(length: 2, vsync: this, initialIndex: widget.initialTab);
     _tabController.addListener(_onTabChanged);
   }
 
@@ -49,7 +50,8 @@ class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
   @override
   void didUpdateWidget(NextEpisodesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialTab != oldWidget.initialTab && widget.initialTab != _tabController.index) {
+    if (widget.initialTab != oldWidget.initialTab &&
+        widget.initialTab != _tabController.index) {
       _tabController.animateTo(widget.initialTab);
     }
   }
@@ -68,7 +70,8 @@ class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
             // ── Header ────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
-              child: _SeriesHeader(totalCount: totalCount, isLoading: isLoading),
+              child:
+                  _SeriesHeader(totalCount: totalCount, isLoading: isLoading),
             ),
 
             // ── TabBar ────────────────────────────────────────────────
@@ -180,7 +183,8 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
       ),
       data: (shows) {
         // We still need to know if they have ANY shows tracked to show the right empty state
-        final watchingRaw = ref.read(watchingShowsWithEpisodesProvider).value ?? [];
+        final watchingRaw =
+            ref.read(watchingShowsWithEpisodesProvider).value ?? [];
         if (watchingRaw.isEmpty && shows.isEmpty) {
           return _EmptyWatching(totalCount: totalCount);
         }
@@ -234,16 +238,25 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
           }
         }
 
+        final daVedereIndices = {
+          for (var i = 0; i < daVedere.length; i++) daVedere[i].show.id: i,
+        };
+        final nonVistiIndices = {
+          for (var i = 0; i < nonVisti.length; i++) nonVisti[i].show.id: i,
+        };
+
         return CustomScrollView(
           slivers: [
             const SliverPadding(padding: EdgeInsets.only(top: 12)),
             if (daVedere.isNotEmpty) ...[
               SliverToBoxAdapter(
+                key: const ValueKey('watching-header'),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                   child: Container(
                     decoration: const BoxDecoration(
-                      border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+                      border: Border(
+                          left: BorderSide(color: Colors.orange, width: 4)),
                     ),
                     padding: const EdgeInsets.only(left: 8),
                     child: Text(
@@ -258,22 +271,29 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
                 ),
               ),
               SliverList(
+                key: const ValueKey('watching-list'),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => NextEpisodeCard(
                     key: ValueKey(daVedere[index].show.id),
                     showData: daVedere[index],
                   ),
+                  // Una rimozione sposta gli indici: la sola ValueKey non
+                  // permette al delegate lazy di ritrovare gli elementi vivi.
+                  findChildIndexCallback: (key) =>
+                      key is ValueKey<int> ? daVedereIndices[key.value] : null,
                   childCount: daVedere.length,
                 ),
               ),
             ],
             if (nonVisti.isNotEmpty) ...[
               SliverToBoxAdapter(
+                key: const ValueKey('inactive-header'),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                   child: Container(
                     decoration: const BoxDecoration(
-                      border: Border(left: BorderSide(color: Colors.grey, width: 4)),
+                      border: Border(
+                          left: BorderSide(color: Colors.grey, width: 4)),
                     ),
                     padding: const EdgeInsets.only(left: 8),
                     child: Text(
@@ -288,11 +308,14 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
                 ),
               ),
               SliverList(
+                key: const ValueKey('inactive-list'),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => NextEpisodeCard(
                     key: ValueKey(nonVisti[index].show.id),
                     showData: nonVisti[index],
                   ),
+                  findChildIndexCallback: (key) =>
+                      key is ValueKey<int> ? nonVistiIndices[key.value] : null,
                   childCount: nonVisti.length,
                 ),
               ),
@@ -352,7 +375,8 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
         final inArrivo = <UpcomingEpisodeInfo>[];
 
         for (final info in items) {
-          if (info.airDate.isAfter(threshold) || info.airDate.isAtSameMomentAs(threshold)) {
+          if (info.airDate.isAfter(threshold) ||
+              info.airDate.isAtSameMomentAs(threshold)) {
             inArrivo.add(info);
           } else {
             prossimamente.add(info);
@@ -368,7 +392,8 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                   child: Container(
                     decoration: const BoxDecoration(
-                      border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+                      border: Border(
+                          left: BorderSide(color: Colors.orange, width: 4)),
                     ),
                     padding: const EdgeInsets.only(left: 8),
                     child: Text(
@@ -387,7 +412,8 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                   (context, index) {
                     final info = prossimamente[index];
                     return UpcomingEpisodeCard(
-                      key: ValueKey('${info.show.id}_${info.episode.seasonNumber}_${info.episode.episodeNumber}'),
+                      key: ValueKey(
+                          '${info.show.id}_${info.episode.seasonNumber}_${info.episode.episodeNumber}'),
                       show: info.show,
                       episode: info.episode,
                       airDate: info.airDate,
@@ -407,7 +433,8 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                   child: Container(
                     decoration: const BoxDecoration(
-                      border: Border(left: BorderSide(color: Colors.grey, width: 4)),
+                      border: Border(
+                          left: BorderSide(color: Colors.grey, width: 4)),
                     ),
                     padding: const EdgeInsets.only(left: 8),
                     child: Text(
@@ -426,7 +453,8 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
                   (context, index) {
                     final info = inArrivo[index];
                     return UpcomingEpisodeCard(
-                      key: ValueKey('${info.show.id}_${info.episode.seasonNumber}_${info.episode.episodeNumber}'),
+                      key: ValueKey(
+                          '${info.show.id}_${info.episode.seasonNumber}_${info.episode.episodeNumber}'),
                       show: info.show,
                       episode: info.episode,
                       airDate: info.airDate,

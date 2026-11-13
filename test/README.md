@@ -33,7 +33,7 @@ la libreria SQLite del runner può restare bloccata da un altro processo.
 
 | Area | File principali | Contratti verificati |
 | --- | --- | --- |
-| Avvio | `widget_test.dart`, `support/app_test_harness.dart` | App/router reali, schermata autenticata vuota, rescheduling di avvio sul DB vuoto, teardown senza timer pendenti |
+| Avvio | `widget_test.dart`, `core/startup_coordinator_test.dart`, `support/app_test_harness.dart` | App/router reali, bootstrap post-frame idempotente, prompt indipendente dai widget, worker dopo auth, rescheduling sul DB vuoto, teardown senza timer pendenti |
 | Auth e routing | `core/auth/`, `core/router/` | Ripristino/precedenza sessione e chiave, login/logout, errore storage, route protette, tab, privacy/ritorno, conteggi Profilo senza controllo aggiornamenti automatico, onboarding scorrevole |
 | Persistenza | `core/database/` | CRUD, duplicati, stati/voti/timestamp, stream e conteggi, watched/unwatched, episodi precedenti, assente/null, cancellazione serie e figli con/senza foreign key, rollback atomico |
 | Migrazioni | `core/database/migrations_test.dart` | Schema v14 e upgrade reali v12→14 e v13→14 con dati: backfill timestamp e normalizzazione stato film, progressi/cache preservati, integrità e scritture successive |
@@ -83,6 +83,44 @@ v8). Non inventare una fixture per far risultare verde quel percorso.
 9. Nessun edit manuale ai file generati. Per modifiche annotate usare
    `dart run build_runner build`.
 
+## Contratti prestazionali
+
+Le nuove suite `core/database/pipeline_performance_test.dart`,
+`features/series/visibility_performance_test.dart`,
+`features/series/pipeline_coordination_test.dart`, `core/media_image_test.dart`,
+`core/coalescing_refresh_test.dart`, `widgets_manager_test.dart` e
+`features/series/presentation/season_virtualization_test.dart` verificano
+conteggi query/dispatch, coalescing, reattività cache-only, fetch anime condivisi,
+decode aspect-preserving e tile montate su stagioni 200/500 episodi.
+`support/query_counter.dart` intercetta l'executor Drift: una submission batch
+non equivale a una sola scrittura SQL. Queste prove non misurano FPS, RSS o
+cold startup su Android. Protocollo e limiti in `docs/performance-audit.md`.
+
+`features/series/{offline_transport,cold_offline}_test.dart` e
+`features/series/presentation/cold_offline_screen_test.dart` verificano il
+cold offline con provider reali e solo trasporto DNS/Socket simulato: dati
+salvati accessibili, label cour invariate, cache scaduta ancora leggibile,
+nessuna scrittura passiva di metadata/progressi, refresh fallito non distruttivo,
+recovery online ed errori HTTP non mascherati. Gli override riusciti di
+showDetail/seasonDetail non sono sufficienti a verificare questo percorso.
+
+Le suite sync `hydration_safety_test.dart`, `metadata_recovery_test.dart` e
+`metadata_recovery_screen_test.dart` coprono recupero placeholder dopo chiave
+inserita successivamente, credenziali ripristinate, RAWG/TMDB isolati, cambio
+chiave in volo, retry offline e aggiornamento delle librerie giochi/film.
+Verificano mapping rating/piattaforme e conservazione di stati, voti personali,
+note, playtime esistente, ID e timestamp LWW anche con modifiche concorrenti.
+I test lifecycle mantengono auth/interceptor reali con storage e HTTP simulati.
+
+La revisione pre-commit aggiunge regressioni per stagione cache13→12 con
+rollback, anime senza mapping anche su numeri coincidenti con TMDB, orario
+09:00 preservato offline e notifiche widget su aggiornamenti della sola cache.
+
+`native_widget_metadata_test.dart` controlla etichette/descrizioni dei receiver,
+layout di anteprima e fallback PNG dei widget. La build Android valida le
+risorse XML; il test non prova il rendering dei diversi launcher. Verificare
+manualmente il selettore dopo un aggiornamento APK, senza disinstallare l’app.
+
 ## Confini e checklist nativa
 
 La suite e la CI verificano la logica e l'interfaccia sul computer. I mock dei
@@ -107,11 +145,14 @@ Prima di una release restano prove manuali su un dispositivo di test:
 - Immagini/API reali, offline effettivo e comportamento con testo ingrandito.
 
 Restano inoltre rami UI non esercitati o solo montati indirettamente, in
-particolare i dettagli completi serie/giochi, sezioni stagioni, card In Uscita,
-schermata QR e dialog dell'aggiornamento. Le liste film/giochi non hanno tutte le
+particolare i dettagli completi giochi, card In Uscita, schermata QR e dialog
+dell'aggiornamento. Le sezioni stagioni e le loro azioni hanno ora test dedicati,
+ma non ogni combinazione del dettaglio serie è coperta. Le liste film/giochi non hanno tutte le
 combinazioni di filtri/transizioni coperte a livello widget (DAO e notifier hanno
 verifiche separate). Il report non comprende necessariamente file mai caricati,
-come il bootstrap `main.dart` e il gestore dei widget home.
+come il bootstrap nativo completo di `main.dart`. Il coordinatore e il gestore
+dei widget home hanno test Dart/canali simulati, non una prova del rendering
+Android o del callback con DB singleton.
 
 La suite è una protezione ampia delle regressioni principali, non una prova di
 ogni schermata, plugin, versione Android o combinazione possibile di dati.

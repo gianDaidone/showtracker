@@ -4,15 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
 import 'core/services/notification_service.dart';
-import 'widgets_manager.dart';
-import 'features/series/providers/series_providers.dart';
+import 'core/services/startup_coordinator.dart';
 import 'core/constants/api_keys.dart';
 import 'core/riverpod_utils.dart';
 
 void main() async {
   runZoned(() async {
     WidgetsFlutterBinding.ensureInitialized();
-    
+
     if (kReleaseMode) {
       debugPrint = (String? message, {int? wrapWidth}) {};
     }
@@ -33,33 +32,10 @@ void main() async {
     // Crea un container globale per poterlo passare ai widget
     final container = ProviderContainer(retry: noProviderRetry);
 
-    // Inizializza i widget nativi e le callback di background
-    await ShowTrackerWidgetsManager.setup();
-    
-    // Popola i widget all'avvio dell'app usando il container (così non viene chiuso il DB)
-    // Rimosso await per non bloccare il caricamento dell'interfaccia con richieste di rete
-    ShowTrackerWidgetsManager.updateWidgets(container: container);
-    
-    // Mantieni i widget aggiornati in tempo reale quando il DB cambia
-    container.listen(
-      watchingShowsWithEpisodesProvider,
-      (previous, next) {
-        // Ignora gli stati di caricamento temporanei per evitare chiamate multiple
-        if (!next.isLoading && next.hasValue) {
-          ShowTrackerWidgetsManager.updateWidgets(container: container, watchingList: next.value);
-        }
-      },
-    );
-    container.listen(
-      upcomingEpisodesProvider,
-      (previous, next) {
-        if (!next.isLoading && next.hasValue) {
-          ShowTrackerWidgetsManager.updateWidgets(container: container);
-        }
-      },
-    );
-    // Avvia la sincronizzazione in background in modo silente (Offline-First sync)
-    unawaited(container.read(trackedShowsProvider.notifier).rescheduleAllNotifications());
+    final startup = StartupCoordinator(container);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(startup.start());
+    });
 
     runApp(
       UncontrolledProviderScope(

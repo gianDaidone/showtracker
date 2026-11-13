@@ -40,6 +40,10 @@ class NotificationService {
         android: AndroidInitializationSettings('@drawable/ic_notification'),
       ),
     );
+  }
+
+  /// Il prompt non deve trattenere il primo frame dell'app.
+  static Future<void> requestPermission() async {
     await _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
@@ -162,7 +166,8 @@ class NotificationService {
       id: 99999,
       title: title,
       body: body,
-      scheduledDate: tz.TZDateTime.now(tz.local).add(Duration(seconds: seconds)),
+      scheduledDate:
+          tz.TZDateTime.now(tz.local).add(Duration(seconds: seconds)),
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,

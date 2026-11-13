@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -76,9 +76,7 @@ class _Poster extends StatelessWidget {
   Widget build(BuildContext context) {
     const w = 60.0;
     const h = 90.0;
-    final url = path != null
-        ? 'https://image.tmdb.org/t/p/w185$path'
-        : null;
+    final url = path != null ? 'https://image.tmdb.org/t/p/w185$path' : null;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
@@ -86,7 +84,8 @@ class _Poster extends StatelessWidget {
         width: w,
         height: h,
         child: url != null
-            ? CachedNetworkImage(
+            ? MediaImage(
+                source: MediaImageSource.tmdbPoster,
                 imageUrl: url,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>
@@ -133,7 +132,8 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         status.label,
-        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+            color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }

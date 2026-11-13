@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_watching_name">Da Vedere</string>
+    <string name="widget_watching_description">Riprendi le serie che stai seguendo.</string>
+    <string name="widget_upcoming_name">In Uscita</string>
+    <string name="widget_upcoming_description">Tieni d’occhio i prossimi episodi.</string>
+
+    <!-- Contenuti dimostrativi del selettore widget, mai dati della libreria. -->
+    <string name="widget_preview_first_title">Serie di esempio</string>
+    <string name="widget_preview_second_title">Una nuova avventura</string>
+    <string name="widget_preview_watching_episode">S01 E03</string>
+    <string name="widget_preview_upcoming_first_episode">S01 E04</string>
+    <string name="widget_preview_upcoming_second_episode">S02 E01</string>
+    <string name="widget_preview_first_date">12 nov</string>
+    <string name="widget_preview_second_date">14 nov</string>
+    <string name="widget_preview_first_countdown">Domani</string>
+    <string name="widget_preview_second_countdown">Tra 3 giorni</string>
+</resources>

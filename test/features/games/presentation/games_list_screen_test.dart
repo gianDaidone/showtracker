@@ -30,10 +30,11 @@ void main() {
     app.container.listen(trackedGamesProvider, (_, __) {});
     await tester
         .runAsync(() => app.container.read(trackedGamesProvider.future));
-    await tester.pumpWidget(UncontrolledProviderScope(
-      container: app.container,
-      child: MaterialApp(theme: AppTheme.dark(), home: const GamesListScreen()),
-    ));
+    await tester.runAsync(() => tester.pumpWidget(UncontrolledProviderScope(
+          container: app.container,
+          child: MaterialApp(
+              theme: AppTheme.dark(), home: const GamesListScreen()),
+        )));
     await app.flush(tester);
     expect(find.text('Portal'), findsOneWidget);
     expect(find.text('Celeste'), findsOneWidget);

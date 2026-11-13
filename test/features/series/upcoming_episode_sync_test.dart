@@ -498,6 +498,17 @@ void main() {
     expect(await db.animeCacheDao.getStaleAnimeSeasons(100), isNull);
   });
 
+  test('anime senza mapping non scarica stagione grezza con numero coincidente',
+      () async {
+    anilist.offline = true;
+    final result = await container.readFuture(
+      seasonDetailProvider(showId: 100, seasonNumber: 1).future,
+    );
+    expect(result.isLocalSnapshot, isTrue);
+    expect(tmdbRequests.every((u) => u.path == '/3/tv/100'), isTrue);
+    expect(await db.cacheDao.getSeasonEpisodesIgnoringTtl(100, 1), isEmpty);
+  });
+
   test('seasonDetail senza anime cache non chiede cour sintetici a TMDB',
       () async {
     anilist.offline = true;

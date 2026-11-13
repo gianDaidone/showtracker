@@ -1,13 +1,15 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/riverpod_utils.dart';
 import '../../../core/services/app_toast.dart';
 import '../../../core/widgets/animated_refresh_button.dart';
 import '../../../core/theme/app_theme.dart';
+import '../data/local_show_snapshot.dart';
 import '../data/models/tmdb_show_detail.dart';
 import '../data/tmdb_service.dart';
 import '../providers/series_providers.dart';
@@ -65,9 +67,10 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
+      if (!mounted || widget.detail.isLocalSnapshot) return;
       final trackedList = ref.read(trackedShowsProvider).value ?? [];
-      final trackedShow = trackedList.where((s) => s.tmdbId == widget.detail.id).firstOrNull;
+      final trackedShow =
+          trackedList.where((s) => s.tmdbId == widget.detail.id).firstOrNull;
       if (trackedShow != null) {
         // Reschedule anime notification once when the detail page opens so that
         // stale cached nextAiringEpisode data doesn't block scheduling.
@@ -76,7 +79,9 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
               .read(trackedShowsProvider.notifier)
               .rescheduleNotification(widget.detail);
         }
-        await ref.read(trackedShowsProvider.notifier).syncMetadata(widget.detail, trackedShow.id);
+        await ref
+            .read(trackedShowsProvider.notifier)
+            .syncMetadata(widget.detail, trackedShow.id);
       }
     });
   }
@@ -84,15 +89,17 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   @override
   void didUpdateWidget(_DetailBody oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.detail.isLocalSnapshot) return;
     final wasMissing = oldWidget.detail.animeSeasonsData == null;
     final isPresent = widget.detail.animeSeasonsData != null;
     final shouldReschedule = widget.detail.isAnime && wasMissing && isPresent;
 
     if (shouldReschedule || oldWidget.detail != widget.detail) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted) return;
+        if (!mounted || widget.detail.isLocalSnapshot) return;
         final trackedList = ref.read(trackedShowsProvider).value ?? [];
-        final trackedShow = trackedList.where((s) => s.tmdbId == widget.detail.id).firstOrNull;
+        final trackedShow =
+            trackedList.where((s) => s.tmdbId == widget.detail.id).firstOrNull;
         if (trackedShow != null) {
           if (shouldReschedule) {
             // Quando i dati anime arrivano per la prima volta dopo un refresh
@@ -103,7 +110,9 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 .rescheduleNotification(widget.detail);
           }
           if (oldWidget.detail != widget.detail) {
-            await ref.read(trackedShowsProvider.notifier).syncMetadata(widget.detail, trackedShow.id);
+            await ref
+                .read(trackedShowsProvider.notifier)
+                .syncMetadata(widget.detail, trackedShow.id);
           }
         }
       });
@@ -113,8 +122,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   @override
   Widget build(BuildContext context) {
     final detail = widget.detail;
-    final trackedList =
-        ref.watch(trackedShowsProvider).value ?? [];
+    final trackedList = ref.watch(trackedShowsProvider).value ?? [];
     final TrackedShow? trackedShow =
         trackedList.where((s) => s.tmdbId == detail.id).firstOrNull;
 
@@ -137,8 +145,17 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 const SizedBox(height: 24),
                 _InfoBox(detail: detail),
                 const SizedBox(height: 24),
+                if (detail.isLocalSnapshot) ...[
+                  const _DetailWarningBanner(
+                    message: 'Modalità offline: dati salvati sul dispositivo. '
+                        'Alcune informazioni potrebbero essere incomplete.',
+                  ),
+                  const SizedBox(height: 24),
+                ],
                 if (detail.isAnime && detail.animeSeasonsData == null) ...[
-                  const _AnimeDataUnavailableBanner(),
+                  _AnimeDataUnavailableBanner(
+                    isLocalSnapshot: detail.isLocalSnapshot,
+                  ),
                   const SizedBox(height: 24),
                 ],
                 if (detail.overview?.isNotEmpty == true) ...[
@@ -178,14 +195,22 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             ),
           )
         else
-          SliverList.builder(
-            itemCount: detail.seasons.length,
-            itemBuilder: (_, i) => SeasonSection(
+          for (final season in detail.seasons)
+            SeasonSection(
+              // Synthetic anime seasons share a TMDB season: retain each
+              // cour's expansion independently, never by list position.
+              key: ValueKey((
+                detail.id,
+                season.seasonNumber,
+                detail.animeSeasonsData
+                    ?.where((cour) => cour.seasonNumber == season.seasonNumber)
+                    .firstOrNull
+                    ?.anilistId,
+              )),
               detail: detail,
-              season: detail.seasons[i],
+              season: season,
               trackedShow: trackedShow,
             ),
-          ),
         if (trackedShow != null)
           SliverToBoxAdapter(
             child: Padding(
@@ -202,13 +227,29 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
 
 // ── Avviso: dati AniList non disponibili ──────────────────────────────────────
 
-/// Mostrato quando un anime non ha dati AniList: le stagioni visualizzate sono
-/// quelle grezze di TMDB, che raggruppa più cours e usa quindi una numerazione
-/// diversa da quella con cui sono stati salvati gli episodi visti. Senza questo
-/// avviso l'utente vede sparire "Stagione 1 Parte 1 · Fall 2017", trova
-/// conteggi che non tornano e non ha modo di capire perché.
+/// Senza la mappatura cour le coordinate TMDB non sono sicure per i progressi.
 class _AnimeDataUnavailableBanner extends StatelessWidget {
-  const _AnimeDataUnavailableBanner();
+  final bool isLocalSnapshot;
+  const _AnimeDataUnavailableBanner({required this.isLocalSnapshot});
+
+  @override
+  Widget build(BuildContext context) {
+    return _DetailWarningBanner(
+      message: isLocalSnapshot
+          ? 'Dati anime incompleti: la suddivisione in parti non è salvata sul '
+              'dispositivo. Non è possibile segnare episodi finché i dati '
+              'non vengono aggiornati online.'
+          : 'Dati AniList non disponibili. Le stagioni qui sotto sono quelle '
+              'grezze di TMDB: nomi, suddivisione in parti e conteggi possono '
+              'non corrispondere. Non è possibile segnare episodi finché i '
+              'dati anime non tornano disponibili.',
+    );
+  }
+}
+
+class _DetailWarningBanner extends StatelessWidget {
+  final String message;
+  const _DetailWarningBanner({required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -219,18 +260,16 @@ class _AnimeDataUnavailableBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.accent.withAlpha(90)),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.cloud_off_rounded, color: AppColors.accent, size: 20),
-          SizedBox(width: 10),
+          const Icon(Icons.cloud_off_rounded,
+              color: AppColors.accent, size: 20),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Dati AniList non disponibili. Le stagioni qui sotto sono quelle '
-              'grezze di TMDB: nomi, suddivisione in parti e conteggi possono '
-              'non corrispondere. Meglio non segnare episodi finché il servizio '
-              'non torna disponibile.',
-              style: TextStyle(
+              message,
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
                 height: 1.35,
@@ -265,10 +304,12 @@ class _BackdropAppBar extends StatelessWidget {
       ],
       flexibleSpace: FlexibleSpaceBar(
         background: detail.backdropUrl != null
-            ? CachedNetworkImage(
+            ? MediaImage(
+                source: MediaImageSource.tmdbBackdrop,
                 imageUrl: detail.backdropUrl!,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => const ColoredBox(color: AppColors.surface),
+                placeholder: (_, __) =>
+                    const ColoredBox(color: AppColors.surface),
                 errorWidget: (_, __, ___) =>
                     const ColoredBox(color: AppColors.surface),
                 imageBuilder: (_, img) => DecoratedBox(
@@ -310,39 +351,41 @@ class _RefreshButtonState extends ConsumerState<_RefreshButton> {
   Future<void> _refresh() async {
     if (_state != RefreshState.idle) return;
     setState(() => _state = RefreshState.refreshing);
+    final container = ProviderScope.containerOf(context, listen: false);
 
     var ok = true;
     try {
-      // La cache episodi TMDB si può cancellare: TMDB è affidabile e i dati si
-      // riscaricano subito.
-      await ref.read(cacheDaoProvider).clearCacheForShow(widget.tmdbId);
+      // Un refresh fallito non deve cancellare l'unica copia disponibile offline.
+      await container.read(cacheDaoProvider).expireCacheForShow(widget.tmdbId);
 
       if (widget.isAnime) {
-        // La cache anime NO: la marchiamo solo come scaduta. Cancellarla
-        // significa che, se AniList non risponde, non resta nessun fallback e
-        // la serie degrada alle stagioni TMDB grezze — perdendo cours,
-        // etichette e conteggi proprio mentre l'utente cerca di aggiornarla.
-        await ref
+        await container
             .read(animeCacheDaoProvider)
             .expireAnimeCacheForShow(widget.tmdbId);
-        ref.invalidate(animeDataProvider(widget.tmdbId));
+        container.invalidate(animeDataProvider(widget.tmdbId));
       }
-      ref.invalidate(showDetailProvider(widget.tmdbId));
+      container.invalidate(rawShowDetailProvider(widget.tmdbId));
+      container.invalidate(showDetailProvider(widget.tmdbId));
 
-      // Aspettiamo davvero i dati nuovi prima di dichiarare il successo: prima
-      // il pulsante mostrava la spunta verde dopo 1,5 s qualunque cosa fosse
-      // andata storta.
-      final detailFuture = ref.read(showDetailProvider(widget.tmdbId).future);
+      // Il listener temporaneo mantiene vivo il provider anche se si esce
+      // dalla pagina prima che termini la richiesta (Riverpod 3).
+      final detail = await container.readFuture(
+        showDetailProvider(widget.tmdbId).future,
+      );
       await Future.delayed(const Duration(milliseconds: 1200));
-      final detail = await detailFuture;
 
-      if (detail.isAnime && detail.animeSeasonsData == null) {
+      if (detail.isLocalSnapshot) {
+        ok = false;
+        AppToast.show(
+          'Aggiornamento non riuscito: sono mostrati i dati salvati sul dispositivo. Riprova quando la connessione è disponibile.',
+        );
+      } else if (detail.isAnime && detail.animeSeasonsData == null) {
         ok = false;
         AppToast.show(
           'AniList non raggiungibile: stagioni e conteggi anime non aggiornati.',
         );
       } else if (detail.isAnime &&
-          await ref
+          await container
                   .read(animeCacheDaoProvider)
                   .getFreshAnimeSeasons(widget.tmdbId) ==
               null) {
@@ -355,8 +398,13 @@ class _RefreshButtonState extends ConsumerState<_RefreshButton> {
           'Aggiornamento da AniList non riuscito: stagioni e conteggi sono quelli salvati in precedenza.',
         );
       }
-    } catch (_) {
+    } catch (error) {
       ok = false;
+      AppToast.show(
+        isRecoverableSeriesError(error)
+            ? 'Connessione non disponibile: aggiornamento non riuscito. Riprova più tardi.'
+            : 'Impossibile aggiornare i dati della serie. Riprova più tardi.',
+      );
     }
 
     if (!mounted) return;
@@ -392,7 +440,8 @@ class _Header extends StatelessWidget {
             width: 90,
             height: 135,
             child: detail.posterUrl != null
-                ? CachedNetworkImage(
+                ? MediaImage(
+                    source: MediaImageSource.tmdbPoster,
                     imageUrl: detail.posterUrl!,
                     fit: BoxFit.cover,
                     placeholder: (_, __) =>
@@ -400,7 +449,8 @@ class _Header extends StatelessWidget {
                   )
                 : const ColoredBox(
                     color: AppColors.divider,
-                    child: Icon(Icons.tv, color: AppColors.textSecondary, size: 36),
+                    child: Icon(Icons.tv,
+                        color: AppColors.textSecondary, size: 36),
                   ),
           ),
         ),
@@ -428,7 +478,8 @@ class _Header extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.star, color: AppColors.accent, size: 16),
+                        const Icon(Icons.star,
+                            color: AppColors.accent, size: 16),
                         const SizedBox(width: 4),
                         Text(
                           detail.voteAverage!.toStringAsFixed(1),
@@ -454,8 +505,8 @@ class _Header extends StatelessWidget {
                           horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
                         color: AppColors.accent.withAlpha(30),
-                        border: Border.all(
-                            color: AppColors.accent.withAlpha(150)),
+                        border:
+                            Border.all(color: AppColors.accent.withAlpha(150)),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text(
@@ -475,21 +526,24 @@ class _Header extends StatelessWidget {
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: detail.genres.map((g) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.divider.withAlpha(80),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      g,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  )).toList(),
+                  children: detail.genres
+                      .map((g) => Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.divider.withAlpha(80),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              g,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ))
+                      .toList(),
                 ),
               ],
             ],
@@ -499,8 +553,6 @@ class _Header extends StatelessWidget {
     );
   }
 }
-
-
 
 // ── Overview ──────────────────────────────────────────────────────────────────
 
@@ -590,9 +642,7 @@ class _TrackButtonState extends ConsumerState<_TrackButton> {
   Future<void> _add() async {
     setState(() => _loading = true);
     try {
-      await ref
-          .read(trackedShowsProvider.notifier)
-          .addShow(widget.detail);
+      await ref.read(trackedShowsProvider.notifier).addShow(widget.detail);
     } catch (e) {
       AppToast.show('Impossibile aggiungere "${widget.detail.name}"');
     } finally {
@@ -657,7 +707,8 @@ class _RemoveShowButtonState extends ConsumerState<_RemoveShowButton> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Rimuovi', style: TextStyle(color: Colors.redAccent)),
+            child: const Text('Rimuovi',
+                style: TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -699,9 +750,13 @@ class _StatusSelector extends ConsumerWidget {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: selected ? AppColors.divider.withAlpha(120) : Colors.transparent,
+                color: selected
+                    ? AppColors.divider.withAlpha(120)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
-                border: selected ? null : Border.all(color: AppColors.divider.withAlpha(50)),
+                border: selected
+                    ? null
+                    : Border.all(color: AppColors.divider.withAlpha(50)),
               ),
               child: Text(
                 s.label,
@@ -732,8 +787,7 @@ class _ErrorBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final trackedList =
-        ref.watch(trackedShowsProvider).value ?? [];
+    final trackedList = ref.watch(trackedShowsProvider).value ?? [];
     final TrackedShow? trackedShow =
         trackedList.where((s) => s.tmdbId == tmdbId).firstOrNull;
     final error = this.error;
@@ -748,6 +802,10 @@ class _ErrorBody extends ConsumerWidget {
               'seguire quella.'
           : 'Questa serie non esiste più su TMDB: potrebbe essere stata '
               "eliminata o unita a un'altra voce.";
+    } else if (isRecoverableSeriesError(error)) {
+      message =
+          'Impossibile collegarsi al servizio. Controlla la connessione e '
+          'riprova: non ci sono dati salvati sufficienti per mostrare questa serie.';
     } else {
       message = error.toString();
     }
@@ -799,8 +857,10 @@ class _ErrorBody extends ConsumerWidget {
                     // Anche un 404 può essere transitorio (cache TMDB in
                     // aggiornamento), quindi il tentativo resta sempre possibile.
                     TextButton.icon(
-                      onPressed: () =>
-                          ref.invalidate(showDetailProvider(tmdbId)),
+                      onPressed: () {
+                        ref.invalidate(rawShowDetailProvider(tmdbId));
+                        ref.invalidate(showDetailProvider(tmdbId));
+                      },
                       icon: const Icon(Icons.refresh, size: 18),
                       label: const Text('Riprova'),
                       style: TextButton.styleFrom(
@@ -838,11 +898,17 @@ class _InfoBox extends StatelessWidget {
   Widget build(BuildContext context) {
     Color statusColor;
     final s = detail.statusLabel.toLowerCase();
-    if (s.contains('corso') || s.contains('returning') || s.contains('airing')) {
+    if (s.contains('corso') ||
+        s.contains('returning') ||
+        s.contains('airing')) {
       statusColor = Colors.greenAccent;
-    } else if (s.contains('terminat') || s.contains('ended') || s.contains('completa')) {
+    } else if (s.contains('terminat') ||
+        s.contains('ended') ||
+        s.contains('completa')) {
       statusColor = Colors.blueAccent;
-    } else if (s.contains('cancellat') || s.contains('eliminat') || s.contains('canceled')) {
+    } else if (s.contains('cancellat') ||
+        s.contains('eliminat') ||
+        s.contains('canceled')) {
       statusColor = Colors.redAccent;
     } else {
       statusColor = Colors.orangeAccent;
