@@ -1,5 +1,9 @@
 # Test di ShowTracker
 
+Indice tecnico: [docs/README.md](../docs/README.md). Setup, codegen e CI:
+[regole di sviluppo](../docs/06-development-rules.md). Questo file mantiene
+la mappa delle verifiche, le convenzioni delle fixture e i limiti dei test nativi.
+
 ## Comandi
 
 SDK verificato: **Flutter 3.47.6 / Dart 3.13.5**.
@@ -138,7 +142,11 @@ Prima di una release restano prove manuali su un dispositivo di test:
 - Login nel browser e ritorno reale con deep link `showtracker://auth`.
 - Ripristino credenziali e libreria dopo chiusura/riapertura dell'app.
 - Ricezione notifica con app chiusa, permessi/orari e tap sulla notifica.
-- Widget home Maratona/Prossimamente e tap "visto" nel background isolate.
+- Widget home "Da Vedere"/"In Uscita" (Maratona/Prossimamente), anteprime del
+  selettore e tap di apertura app. Il callback Dart `mark_watched` esiste, ma il
+  widget Kotlin corrente non collega il controllo all'URI salvato: non considerare
+  disponibile/verificato il tap "visto" in background. Contratto in
+  [integrazioni Android](../docs/11-android-integrations.md).
 - Sync tra due dispositivi: fotocamera/QR, IP e connettività LAN reali.
 - "Installa app sconosciute", ritorno dalle impostazioni, download e installer
   con APK firmato correttamente e build number maggiore, solo su device di test.

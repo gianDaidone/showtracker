@@ -3,8 +3,9 @@
 App Android per tenere traccia di **serie TV, film, anime e videogiochi**, scritta in Flutter.
 
 È *local-first*: tutto quello che segni (episodi visti, liste, stati) resta in un database
-SQLite sul telefono. I servizi esterni forniscono solo i metadati (copertine, trame, date di
-uscita) e non ricevono nessun dato sulle tue visioni.
+SQLite sul telefono. I servizi esterni forniscono metadati (copertine, trame, date di
+uscita); l'app non vi sincronizza i progressi personali. I consigli usano gli ID dei
+titoli seme per richiedere raccomandazioni.
 
 ## Funzionalità
 
@@ -12,11 +13,13 @@ uscita) e non ricevono nessun dato sulle tue visioni.
   schermata "In Uscita" con le date dei nuovi episodi.
 - **Anime** — episodi, cour e orari di uscita precisi presi da AniList, anche quando TMDB
   raggruppa più cour in una sola stagione.
-- **Film** e **Videogiochi** — liste per stato: da vedere, in visione, in pausa, completato,
-  abbandonato (per i giochi: backlog, in gioco, giocato…).
-- **Notifiche** all'uscita di un nuovo episodio (per gli anime all'orario reale di messa in onda).
-- **Widget per la home** di Android: "Prossimamente" e "Maratona".
-- **Sincronizzazione tra due dispositivi** sulla stessa rete Wi-Fi tramite QR code, senza server.
+- **Film** — da vedere, completati o abbandonati; **Videogiochi** — backlog, in gioco,
+  in pausa, giocati o abbandonati.
+- **Notifiche** programmate per l'uscita di un nuovo episodio, usando per gli anime
+  l'orario AniList; la consegna effettiva dipende dalla pianificazione Android.
+- **Widget per la home** di Android: "Da Vedere" e "In Uscita" (componenti Maratona/Prossimamente).
+- **Sincronizzazione tra due dispositivi** sulla stessa rete Wi-Fi tramite QR code,
+  senza backend esterno, con un server temporaneo sul dispositivo mittente.
 - **Aggiornamento in-app**: dal tab Profilo, "Cerca aggiornamenti" scarica e installa l'ultima
   release pubblicata su GitHub.
 - Interfaccia in italiano, solo tema scuro.
@@ -70,7 +73,7 @@ dart run build_runner build
 I test unitari, provider e widget girano sul computer, senza installare o
 disinstallare l'app su emulatori/dispositivi. Usano database SQLite in memoria,
 credenziali fittizie e HTTP simulato: non servono API key e non toccano la libreria
-personale. La CI esegue analisi e suite con ordine casuale a ogni push/PR,
+personale. La CI esegue analisi e suite con ordine randomizzato e seed fisso a ogni push/PR,
 salvando la coverage come artefatto.
 
 Non sono previsti test automatici su Android. Prima delle release, le funzioni
@@ -81,9 +84,17 @@ per le fixture e checklist manuale sono in [test/README.md](test/README.md).
 ### Struttura
 
 Il codice è in `lib/features/` (`series`, `movies`, `games`, `search`, `settings`,
-`onboarding`, `sync`, `update`), ognuna divisa in `data/` → `providers/` → `presentation/`.
-Stato con Riverpod, database con Drift, navigazione con GoRouter. Più dettagli in
-[CLAUDE.md](CLAUDE.md).
+`onboarding`, `sync`, `update`, `debug`). I domini principali seguono
+`data/` → `providers/` → `presentation/`; le altre feature adattano i livelli alle proprie responsabilità.
+Stato con Riverpod, database con Drift, navigazione con GoRouter.
+
+### Documentazione tecnica e assistenti IA
+
+Partire da [docs/README.md](docs/README.md): l'indice associa ogni tipo di task
+alle guide su architettura, dati, API, UI, anime, sync e integrazioni Android.
+Le regole essenziali per gli assistenti sono in [AGENTS.md](AGENTS.md).
+I test hanno una [guida dedicata](test/README.md); misure e profiling precedenti
+sono conservati nell'[audit prestazionale](docs/performance-audit.md).
 
 ## Pubblicare una nuova versione
 

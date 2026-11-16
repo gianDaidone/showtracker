@@ -1,5 +1,11 @@
 # Audit prestazionale sistemico
 
+Documento storico: misure, conteggi test e verifiche sotto si riferiscono alle
+revisioni descritte, non certificano lo stato corrente. Per i contratti operativi
+consultare l'[indice tecnico](README.md), in particolare
+[stato e UI](05-ui-state-management.md), [dati locali](03-data-local-storage.md)
+e [integrazioni Android](11-android-integrations.md).
+
 Branch: `perf/process-optimizations` · baseline codice: `66e630c` · 2026-11-13.
 SDK: Flutter 3.47.6 / Dart 3.13.5, Windows 11.
 
