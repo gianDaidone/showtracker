@@ -155,7 +155,6 @@ class ShowsDao extends DatabaseAccessor<AppDatabase> with _$ShowsDaoMixin {
         nextEpisodeSeason: nextEpisodeSeason,
         nextEpisodeName: nextEpisodeName,
         nextEpisodeAirDate: nextEpisodeAirDate,
-        updatedAt: Value(DateTime.now()),
       ),
     );
   }

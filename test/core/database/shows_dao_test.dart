@@ -92,7 +92,8 @@ void main() {
     expect(show.nextEpisodeSeason, 2);
     expect(show.nextEpisodeName, 'Il ritorno');
     expect(show.nextEpisodeAirDate!.isAtSameMomentAs(airDate), isTrue);
-    expect(show.updatedAt!.isAfter(old), isTrue);
+    expect(show.updatedAt!.isAtSameMomentAs(old),
+        isTrue); // Metadati senza mutazioni LWW.
     await db.showsDao.updateShowMetadata(showId, null, null, null,
         nextEpisodeNumber: const Value(null),
         nextEpisodeSeason: const Value(null),
