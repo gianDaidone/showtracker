@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import '../../../core/network/api_request.dart';
 
 class YunaService {
   static const _base = 'https://relations.yuna.moe/api/v2/themoviedb';
@@ -9,12 +10,15 @@ class YunaService {
   /// Returns an empty list if no mapping is found.
   Future<List<int>> getAniListIds(int tmdbId) async {
     http.Response response;
+    final client = http.Client();
     try {
-      response = await http
-          .get(Uri.parse('$_base/?id=$tmdbId'))
-          .timeout(const Duration(seconds: 10));
+      response = await apiRequest(
+          client, 'GET', Uri.parse('$_base/?id=$tmdbId'),
+          timeout: const Duration(seconds: 10));
     } catch (_) {
       return [];
+    } finally {
+      client.close();
     }
 
     if (response.statusCode == 404 || response.statusCode == 204) return [];

@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 import 'core/auth/auth_state.dart';
+import 'core/network/api_request.dart';
 import 'core/database/database_provider.dart';
 import 'core/database/daos/shows_dao.dart';
 import 'core/riverpod_utils.dart';
@@ -108,8 +109,8 @@ class ShowTrackerWidgetsManager {
       // Conserva la cache file esistente: nessuna cancellazione automatica.
       if (await file.exists()) return file.path;
 
-      final response =
-          await client.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      final response = await apiRequest(client, 'GET', Uri.parse(url),
+          timeout: const Duration(seconds: 10), maxBytes: 8 * 1024 * 1024);
       if (response.statusCode == 200) {
         await file.writeAsBytes(response.bodyBytes, flush: true);
         return file.path;

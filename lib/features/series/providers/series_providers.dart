@@ -116,7 +116,8 @@ Future<List<NormalizedAnimeSeason>?> animeData(
   } catch (e) {
     // Gestito dal fallback qui sotto, ma va loggato: il fallback rende
     // l'errore invisibile all'utente (vede solo dati vecchi).
-    debugPrint('animeData($tmdbId): refresh fallito, uso la cache scaduta: $e');
+    debugPrint(
+        'animeData($tmdbId): refresh fallito, uso la cache scaduta: ${e.runtimeType}');
   }
 
   // 3. Fallback: la cache è scaduta ma il refresh non ha prodotto nulla (rete
@@ -215,7 +216,8 @@ Future<List<NormalizedAnimeSeason>?> _fetchAnimeSeasons(
   } catch (e) {
     // Senza la ricerca supplementare il risultato resta valido: si tiene il
     // segnaposto TMDB, come prima.
-    debugPrint('animeData($tmdbId): ricerca stagioni non mappate fallita: $e');
+    debugPrint(
+        'animeData($tmdbId): ricerca stagioni non mappate fallita: ${e.runtimeType}');
   }
 
   return seasons.isEmpty ? null : seasons;
@@ -772,11 +774,16 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
       }
     }
 
-    final effectiveTotal = _effectiveTotalEpisodes(effectiveDetail);
+    final hasAnimeMapping = !effectiveDetail.isAnime ||
+        (effectiveDetail.animeSeasonsData?.isNotEmpty ?? false);
+    final effectiveTotal =
+        hasAnimeMapping ? _effectiveTotalEpisodes(effectiveDetail) : 0;
     final effectiveSeasons =
         effectiveDetail.isAnime && effectiveDetail.animeSeasonsData != null
             ? effectiveDetail.animeSeasonsData!.length
-            : effectiveDetail.numberOfSeasons;
+            : hasAnimeMapping
+                ? effectiveDetail.numberOfSeasons
+                : 0;
 
     final next = await _resolveNextEpisode(effectiveDetail);
 
@@ -803,7 +810,8 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
           ),
         );
     final counts = {
-      for (final s in effectiveDetail.seasons) s.seasonNumber: s.episodeCount
+      if (hasAnimeMapping)
+        for (final s in effectiveDetail.seasons) s.seasonNumber: s.episodeCount
     };
     await ref.read(showsDaoProvider).insertSeasons(dbId, counts);
 
@@ -948,7 +956,7 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
       await _scheduleNotification(detail);
     } catch (e) {
       debugPrint(
-          'rescheduleNotificationById($tmdbId): aggiornamento fallito: $e');
+          'rescheduleNotificationById($tmdbId): aggiornamento fallito: ${e.runtimeType}');
     }
   }
 

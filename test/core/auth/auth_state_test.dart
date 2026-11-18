@@ -125,4 +125,41 @@ void main() {
         isA<RawgUnauthenticated>());
     expect(broken.reads, 2);
   });
+
+  test(
+      'login concorrenti seguiti da logout non ripristinano credenziali obsolete',
+      () async {
+    await container.read(authControllerProvider.future);
+    final notifier = container.read(authControllerProvider.notifier);
+    final transitions = <AuthState>[];
+    container.listen(authControllerProvider, (_, next) {
+      if (next.value != null) transitions.add(next.value!);
+    });
+    await Future.wait([
+      notifier.loginWithSession('fixture-session'),
+      notifier.loginWithManualKey('fixture-key'),
+      notifier.logout()
+    ]);
+    expect(await storage.read(key: 'tmdb_session_id'), isNull);
+    expect(await storage.read(key: 'tmdb_manual_key'), isNull);
+    expect(transitions.where((value) => value is! Unauthenticated), isEmpty);
+  });
+
+  test(
+      'ultima richiesta RAWG vince e nessuna chiave obsoleta viene ripubblicata',
+      () async {
+    await container.read(rawgAuthControllerProvider.future);
+    final notifier = container.read(rawgAuthControllerProvider.notifier);
+    await Future.wait([
+      notifier.loginWithKey('first-fixture'),
+      notifier.logout(),
+      notifier.loginWithKey('last-fixture')
+    ]);
+    expect(await storage.read(key: 'rawg_api_key'), 'last-fixture');
+    expect(
+        (container.read(rawgAuthControllerProvider).requireValue
+                as RawgAuthenticated)
+            .apiKey,
+        'last-fixture');
+  });
 }

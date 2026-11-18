@@ -23,6 +23,7 @@ dependencies:
 
   # HTTP & API
   http: ^1.2.2
+  cryptography: ^2.9.0
   cached_network_image: ^3.4.1
   octo_image: ^2.1.0
 
@@ -65,8 +66,7 @@ dev_dependencies:
   drift_dev: ^2.35.1
   riverpod_generator: ^4.0.9
 
-# Copia locale di home_widget 0.10.0 con una riga del build.gradle riscritta
-# per togliere un falso avviso KGP — vedi third_party/README.md.
+# Patch locale home_widget: vedi third_party/README.md.
 dependency_overrides:
   home_widget:
     path: third_party/home_widget

@@ -108,6 +108,82 @@ void main() {
     });
   });
 
+  for (final header in [
+    '61',
+    '120',
+    '-1',
+    'invalid',
+    '',
+    '999999999999999999999'
+  ]) {
+    test('429 con retry-after "$header" termina senza retry anticipati', () {
+      fakeAsync((time) {
+        var requests = 0;
+        final service = AniListService(client: MockClient((_) async {
+          requests++;
+          return http.Response('', 429, headers: {'retry-after': header});
+        }));
+        var completed = false;
+        service.fetchById(1).then((media) {
+          expect(media, isNull);
+          completed = true;
+        });
+        time.flushMicrotasks();
+        expect(completed, isTrue);
+        expect(requests, 1);
+        // The old clamp retried at 60 s; neither that retry nor a later one is valid.
+        time.elapse(const Duration(seconds: 60));
+        expect(requests, 1);
+        time.elapse(const Duration(minutes: 5));
+        expect(requests, 1);
+        service.dispose();
+        expect(time.periodicTimerCount, 0);
+        expect(time.nonPeriodicTimerCount, 0);
+      });
+    });
+  }
+
+  test('429 al limite di 60 secondi rispetta tutta l’attesa e recupera', () {
+    fakeAsync((time) {
+      var requests = 0;
+      final service = AniListService(client: MockClient((_) async {
+        return ++requests == 1
+            ? http.Response('', 429, headers: {'retry-after': '60'})
+            : _media(7);
+      }));
+      int? id;
+      service.fetchById(7).then((media) => id = media?.id);
+      time.flushMicrotasks();
+      time.elapse(const Duration(seconds: 59));
+      expect(requests, 1);
+      expect(id, isNull);
+      time.elapse(const Duration(seconds: 1));
+      expect(requests, 2);
+      expect(id, 7);
+      service.dispose();
+    });
+  });
+
+  test('ricerca con retry-after oltre budget usa il fallback vuoto', () {
+    fakeAsync((time) {
+      var requests = 0;
+      final service = AniListService(client: MockClient((_) async {
+        requests++;
+        return http.Response('', 429, headers: {'retry-after': '120'});
+      }));
+      var completed = false;
+      service.searchByTitle('Anime seguito').then((media) {
+        expect(media, isEmpty);
+        completed = true;
+      });
+      time.flushMicrotasks();
+      expect(completed, isTrue);
+      time.elapse(const Duration(minutes: 3));
+      expect(requests, 1);
+      service.dispose();
+    });
+  });
+
   test('errori trasporto, HTTP, JSON e GraphQL non producono media fittizi',
       () async {
     for (final response in [

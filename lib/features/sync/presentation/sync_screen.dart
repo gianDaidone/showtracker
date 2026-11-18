@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:http/http.dart' as http;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/app_toast.dart';
 import '../services/sync_service.dart';
 import '../providers/metadata_recovery_provider.dart';
 import '../services/local_sync_server.dart';
+import '../services/sync_receiver.dart';
 import '../utils/sync_compressor.dart';
 import '../domain/models/sync_payload.dart';
 
@@ -21,8 +21,8 @@ class SyncScreen extends ConsumerStatefulWidget {
 }
 
 class _SyncScreenState extends ConsumerState<SyncScreen>
-    with SingleTickerProviderStateMixin {
-  final _localServer = LocalSyncServer();
+    with TickerProviderStateMixin {
+  late final LocalSyncServer _localServer;
 
   bool _isLoading = true;
   String? _qrData;
@@ -33,13 +33,51 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
 
   late final MobileScannerController _scannerController;
   late final AnimationController _scanAnimController;
+  late final TabController _tabs;
+  late final AppLifecycleListener _lifecycle;
+  Future<void> _cameraOperation = Future.value();
+  bool _foreground = true;
+
+  void _updateCamera() {
+    _cameraOperation = _cameraOperation.then((_) async {
+      if (!mounted) return;
+      try {
+        if (_tabs.index == 1 && _foreground && !_isProcessingScan) {
+          await _scannerController.start();
+        } else {
+          await _scannerController.stop();
+        }
+      } catch (_) {/* Il widget scanner mostra il rifiuto/errore. */}
+    });
+  }
 
   @override
   void initState() {
     super.initState();
+    _localServer = LocalSyncServer(onExpired: () {
+      if (!mounted) return;
+      setState(() {
+        _qrData = null;
+        _isLocalServerActive = false;
+      });
+      AppToast.show('QR scaduto. Genera un nuovo codice per continuare.');
+    });
     _scannerController = MobileScannerController(
+      autoStart: false,
+      formats: const [BarcodeFormat.qrCode],
       detectionSpeed: DetectionSpeed.noDuplicates,
       facing: CameraFacing.back,
+    );
+    _tabs = TabController(length: 2, vsync: this)..addListener(_updateCamera);
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        _foreground = true;
+        _updateCamera();
+      },
+      onInactive: () {
+        _foreground = false;
+        _updateCamera();
+      },
     );
     _scanAnimController = AnimationController(
       vsync: this,
@@ -51,6 +89,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
 
   @override
   void dispose() {
+    _lifecycle.dispose();
+    _tabs.removeListener(_updateCamera);
+    _tabs.dispose();
     _scanAnimController.dispose();
     _scannerController.dispose();
     _localServer.stop();
@@ -58,13 +99,24 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
   }
 
   Future<void> _prepareExportData() async {
+    if (!mounted) return;
     try {
-      final syncService = ref.read(syncServiceProvider);
-      final payload = await syncService.exportData();
+      final subscription = ref.listenManual(syncServiceProvider, (_, __) {});
+      final SyncPayload payload;
+      try {
+        payload = await subscription.read().exportData();
+      } finally {
+        subscription.close();
+      }
+      if (!mounted) return;
       final base64String = SyncCompressor.compressPayload(payload.toJson());
 
       if (base64String.length > 2000) {
         final uri = await _localServer.start(base64String);
+        if (!mounted) {
+          await _localServer.stop();
+          return;
+        }
         if (uri != null) {
           setState(() {
             _qrData = uri;
@@ -73,6 +125,8 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
           });
           return;
         }
+        throw const FormatException(
+            'Per questa libreria serve una rete Wi-Fi privata disponibile. Controlla la connessione e riprova.');
       }
 
       setState(() {
@@ -82,7 +136,10 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
       });
     } catch (e) {
       if (mounted) {
-        AppToast.show('Errore durante l\'esportazione: $e',
+        AppToast.show(
+            e is FormatException
+                ? e.message.toString()
+                : 'Esportazione non riuscita. Riprova.',
             type: ToastType.error);
         setState(() => _isLoading = false);
       }
@@ -90,27 +147,15 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
   }
 
   Future<void> _processScannedData(String data) async {
-    if (_isProcessingScan) return;
+    if (!mounted || _isProcessingScan) return;
     setState(() => _isProcessingScan = true);
     AppToast.show('Sincronizzazione in corso...', type: ToastType.info);
     final container = ProviderScope.containerOf(context, listen: false);
+    var completed = false;
 
     try {
-      String base64String = data;
-
-      if (data.startsWith('http://')) {
-        final response = await http.get(Uri.parse(data)).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () => throw Exception(
-                  'Connessione scaduta. Assicurati che i due dispositivi siano sulla stessa rete Wi-Fi e riprova.'),
-            );
-        if (response.statusCode == 200) {
-          base64String = response.body;
-        } else {
-          throw Exception(
-              'Errore ${response.statusCode} dal dispositivo mittente. Riprova.');
-        }
-      }
+      final base64String = await SyncReceiver().read(data);
+      if (!mounted) return;
 
       final jsonMap = SyncCompressor.decompressPayload(base64String);
       final payload = SyncPayload.fromJson(jsonMap);
@@ -127,18 +172,22 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
       unawaited(container.read(metadataRecoveryProvider).recoverAfterImport());
 
       if (mounted) {
+        completed = true;
         AppToast.show('Sincronizzazione completata!', type: ToastType.success);
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
-        AppToast.show(e.toString().replaceAll('Exception: ', ''),
+        AppToast.show(
+            e is FormatException
+                ? e.message.toString()
+                : 'Trasferimento non riuscito. Controlla la rete Wi-Fi e riprova.',
             type: ToastType.error);
       }
     } finally {
       if (mounted) {
         setState(() => _isProcessingScan = false);
-        _scannerController.start();
+        if (!completed) _updateCamera();
       }
     }
   }
@@ -155,6 +204,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
               style: TextStyle(fontWeight: FontWeight.w600)),
           centerTitle: true,
           bottom: TabBar(
+            controller: _tabs,
             tabs: const [
               Tab(text: 'Mostra QR', icon: Icon(Icons.qr_code_rounded)),
               Tab(
@@ -170,6 +220,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
           ),
         ),
         body: TabBarView(
+          controller: _tabs,
           children: [
             _buildExportTab(),
             _buildImportTab(),
@@ -198,6 +249,8 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
               'Impossibile generare il codice.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
+            TextButton(
+                onPressed: _prepareExportData, child: const Text('Genera QR')),
           ],
         ),
       );
@@ -219,7 +272,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
           ),
           const SizedBox(height: 12),
           const Text(
-            'Tutto il tuo storico visioni e giochi verrà trasferito offline istantaneamente.',
+            'Trasferisci stati e progressi di serie, film e giochi. Note e voti personali non sono inclusi. La LAN è cifrata: aggiorna entrambi i dispositivi e condividi il QR solo con il destinatario fidato.',
             textAlign: TextAlign.center,
             style: TextStyle(
                 color: AppColors.textSecondary, fontSize: 14, height: 1.5),
@@ -319,6 +372,16 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
       children: [
         MobileScanner(
           controller: _scannerController,
+          errorBuilder: (_, error) => Center(
+              child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text(
+                  'Fotocamera non disponibile. Controlla il permesso nelle impostazioni Android.'),
+              TextButton(
+                  onPressed: _updateCamera, child: const Text('Riprova')),
+            ]),
+          )),
           onDetect: (capture) {
             final List<Barcode> barcodes = capture.barcodes;
             for (final barcode in barcodes) {

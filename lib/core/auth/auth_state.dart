@@ -30,6 +30,29 @@ class AuthenticatedWithManualKey extends AuthState {
 // il dispose lanciano UnmountedRefException).
 @Riverpod(keepAlive: true)
 class AuthController extends _$AuthController {
+  Future<void> _pendingWrite = Future.value();
+  int _credentialGeneration = 0;
+
+  Future<void> _mutate(Future<void> Function() write, AuthState next) {
+    final generation = ++_credentialGeneration;
+    state = const AsyncLoading();
+    final task = _pendingWrite.then((_) async {
+      try {
+        await write();
+        if (ref.mounted && generation == _credentialGeneration) {
+          state = AsyncData(next);
+        }
+      } catch (_) {
+        if (ref.mounted && generation == _credentialGeneration) {
+          state = const AsyncData(Unauthenticated());
+        }
+        rethrow;
+      }
+    });
+    _pendingWrite = task.catchError((Object _) {});
+    return task;
+  }
+
   @override
   Future<AuthState> build() async {
     return _loadInitialState();
@@ -54,20 +77,27 @@ class AuthController extends _$AuthController {
   }
 
   Future<void> loginWithSession(String sessionId) async {
-    await _storage.write(key: _sessionKey, value: sessionId);
-    await _storage.delete(key: _manualKey);
-    state = AsyncValue.data(AuthenticatedWithSession(sessionId));
+    if (sessionId.trim().isEmpty) {
+      throw const FormatException('Sessione vuota.');
+    }
+    await _mutate(() async {
+      await _storage.write(key: _sessionKey, value: sessionId);
+      await _storage.delete(key: _manualKey);
+    }, AuthenticatedWithSession(sessionId));
   }
 
   Future<void> loginWithManualKey(String apiKey) async {
-    await _storage.write(key: _manualKey, value: apiKey);
-    await _storage.delete(key: _sessionKey);
-    state = AsyncValue.data(AuthenticatedWithManualKey(apiKey));
+    if (apiKey.trim().isEmpty) throw const FormatException('Chiave vuota.');
+    await _mutate(() async {
+      await _storage.write(key: _manualKey, value: apiKey);
+      await _storage.delete(key: _sessionKey);
+    }, AuthenticatedWithManualKey(apiKey));
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: _sessionKey);
-    await _storage.delete(key: _manualKey);
-    state = const AsyncValue.data(Unauthenticated());
+    await _mutate(() async {
+      await _storage.delete(key: _sessionKey);
+      await _storage.delete(key: _manualKey);
+    }, const Unauthenticated());
   }
 }

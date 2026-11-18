@@ -10,7 +10,9 @@ import 'package:showtracker/features/games/data/rawg_service.dart';
 import 'package:showtracker/features/series/data/tmdb_service.dart';
 import 'package:showtracker/features/sync/domain/models/sync_payload.dart';
 import 'package:showtracker/features/sync/services/sync_service.dart';
+import 'package:showtracker/features/sync/services/sync_receiver.dart';
 import 'package:showtracker/features/sync/utils/sync_compressor.dart';
+import 'package:showtracker/features/sync/utils/sync_encryption.dart';
 
 final _date = DateTime.utc(2026, 10, 1, 12);
 int get _timestamp => _date.millisecondsSinceEpoch ~/ 1000;
@@ -133,6 +135,51 @@ void main() {
     expect(requests, 0);
   });
 
+  test('LAN incompatibile o alterata non modifica alcun dato locale', () async {
+    await _seed(target);
+    final before = [
+      await target.select(target.trackedShows).get(),
+      await target.select(target.trackedGames).get(),
+      await target.select(target.trackedMovies).get(),
+      await target.select(target.trackedEpisodes).get(),
+    ];
+    const token = 'abcdefghijklmnopqrstuv';
+    const endpoint = 'http://192.168.1.2:8080/sync?token=$token';
+    final plain = SyncCompressor.compressPayload(_payload().toJson());
+    final encrypted = await SyncEncryption.encrypt(plain, token);
+    final bytes =
+        base64Decode(encrypted.body.substring(SyncEncryption.prefix.length));
+    final altered = [...bytes]..[bytes.length - 1] ^= 1;
+    for (final body in [
+      plain,
+      encrypted.body.replaceFirst('STSYNC2:', 'STSYNC3:'),
+      SyncEncryption.prefix + base64Encode(altered),
+    ]) {
+      final transport = MockClient((_) async => http.Response(body, 200));
+      addTearDown(transport.close);
+      Future<void> receiveAndImport() async {
+        final data = await SyncReceiver(createClient: () => transport)
+            .read('$endpoint#k=${encrypted.key}');
+        await receiver.importData(
+            SyncPayload.fromJson(SyncCompressor.decompressPayload(data)));
+      }
+
+      await expectLater(
+          receiveAndImport(),
+          throwsA(isA<FormatException>().having(
+              (error) => error.message,
+              'messaggio aggiornamento',
+              contains('Aggiorna ShowTracker su entrambi i dispositivi'))));
+      expect([
+        await target.select(target.trackedShows).get(),
+        await target.select(target.trackedGames).get(),
+        await target.select(target.trackedMovies).get(),
+        await target.select(target.trackedEpisodes).get(),
+      ], before);
+    }
+    expect(requests, 0);
+  });
+
   for (final offset in [60, -60, 0]) {
     test(
         'conflitto timestamp ${offset > 0 ? 'newer' : offset < 0 ? 'older' : 'equal'} in tutti i domini',
@@ -237,8 +284,7 @@ void main() {
         MediaStatus.planToWatch);
   });
 
-  test(
-      'identificatori non numerici vengono ignorati senza perdere righe valide',
+  test('identificatori corrotti rifiutano tutto prima di modificare il DB',
       () async {
     final payload = _payload();
     payload.shows['invalid'] =
@@ -248,11 +294,11 @@ void main() {
         GameSyncData(status: 'watching', updatedAt: _timestamp);
     payload.movies['invalid'] =
         MovieSyncData(status: 'completed', updatedAt: _timestamp);
-    await receiver.importData(payload);
-    expect(await target.showsDao.getAll(), hasLength(1));
-    expect(await target.gamesDao.watchAll().first, hasLength(1));
-    expect(await target.moviesDao.watchAll().first, hasLength(1));
-    expect(await target.select(target.trackedEpisodes).get(), hasLength(3));
+    await expectLater(receiver.importData(payload), throwsFormatException);
+    expect(await target.showsDao.getAll(), isEmpty);
+    expect(await target.gamesDao.watchAll().first, isEmpty);
+    expect(await target.moviesDao.watchAll().first, isEmpty);
+    expect(await target.select(target.trackedEpisodes).get(), isEmpty);
   });
 
   test(

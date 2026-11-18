@@ -15,10 +15,11 @@ void main() {
       expect(RangeUtils.compactListToRange([1]), '1');
     });
 
-    test('espande estremi inclusivi e ignora frammenti non validi', () {
+    test('espande estremi inclusivi e rifiuta frammenti non validi', () {
       expect(RangeUtils.expandRangeToList('1-3,5,8-9'), [1, 2, 3, 5, 8, 9]);
       expect(RangeUtils.expandRangeToList('  '), isEmpty);
-      expect(RangeUtils.expandRangeToList('x,4-2,1-2-3,7,9-a'), [7]);
+      expect(() => RangeUtils.expandRangeToList('x,4-2,1-2-3,7,9-a'),
+          throwsFormatException);
     });
 
     test('round-trip di insiemi di episodi sparsi e consecutivi', () {
@@ -121,7 +122,7 @@ void main() {
           }
         },
       ]) {
-        expect(() => SyncPayload.fromJson(json), throwsA(isA<TypeError>()));
+        expect(() => SyncPayload.fromJson(json), throwsFormatException);
       }
     });
 

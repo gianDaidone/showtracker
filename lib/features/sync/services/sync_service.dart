@@ -95,6 +95,7 @@ class SyncService {
   }
 
   Future<void> importData(SyncPayload payload) async {
+    payload = SyncPayload.fromJson(payload.toJson());
     await _db.transaction(() async {
       // Import Shows
       for (final entry in payload.shows.entries) {
@@ -283,20 +284,31 @@ class SyncService {
             }
 
             await (_db.update(_db.trackedShows)
-                  ..where((t) => t.id.equals(show.id)))
+                  ..where((t) =>
+                      t.id.equals(show.id) &
+                      t.tmdbId.equals(show.tmdbId) &
+                      t.title.equals('Sconosciuto')))
                 .write(
               TrackedShowsCompanion(
                 title: Value(title),
                 posterPath: Value(details.posterPath),
                 overview: Value(details.overview),
-                totalSeasons: Value(details.numberOfSeasons),
-                totalEpisodes: Value(details.numberOfEpisodes),
+                totalSeasons: details.isAnime
+                    ? const Value.absent()
+                    : Value(details.numberOfSeasons),
+                totalEpisodes: details.isAnime
+                    ? const Value.absent()
+                    : Value(details.numberOfEpisodes),
                 tmdbStatus: Value(details.status),
                 isAnime: Value(details.isAnime),
-                nextEpisodeNumber: Value(nextEpisode),
-                nextEpisodeSeason: Value(nextSeason),
-                nextEpisodeName: Value(nextName),
-                nextEpisodeAirDate: Value(nextDate),
+                nextEpisodeNumber:
+                    details.isAnime ? const Value.absent() : Value(nextEpisode),
+                nextEpisodeSeason:
+                    details.isAnime ? const Value.absent() : Value(nextSeason),
+                nextEpisodeName:
+                    details.isAnime ? const Value.absent() : Value(nextName),
+                nextEpisodeAirDate:
+                    details.isAnime ? const Value.absent() : Value(nextDate),
               ),
             );
           } catch (_) {

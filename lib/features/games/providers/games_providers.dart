@@ -85,13 +85,13 @@ Future<List<GameTrailer>> gameTrailers(Ref ref, int rawgId) async {
       if (trailers.isNotEmpty) return trailers;
     }
   } catch (e) {
-    debugPrint('Trailer Steam non disponibili per il gioco $rawgId: $e');
+    debugPrint('Trailer Steam non disponibili per il gioco $rawgId: ${e.runtimeType}');
   }
 
   try {
     return await rawg.getTrailers(rawgId);
   } catch (e) {
-    debugPrint('Trailer RAWG non disponibili per il gioco $rawgId: $e');
+    debugPrint('Trailer RAWG non disponibili per il gioco $rawgId: ${e.runtimeType}');
     return [];
   }
 }

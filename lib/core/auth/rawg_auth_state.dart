@@ -24,6 +24,29 @@ class RawgAuthenticated extends RawgAuthState {
 // il dispose lanciano UnmountedRefException).
 @Riverpod(keepAlive: true)
 class RawgAuthController extends _$RawgAuthController {
+  Future<void> _pendingWrite = Future.value();
+  int _credentialGeneration = 0;
+
+  Future<void> _mutate(Future<void> Function() write, RawgAuthState next) {
+    final generation = ++_credentialGeneration;
+    state = const AsyncLoading();
+    final task = _pendingWrite.then((_) async {
+      try {
+        await write();
+        if (ref.mounted && generation == _credentialGeneration) {
+          state = AsyncData(next);
+        }
+      } catch (_) {
+        if (ref.mounted && generation == _credentialGeneration) {
+          state = const AsyncData(RawgUnauthenticated());
+        }
+        rethrow;
+      }
+    });
+    _pendingWrite = task.catchError((Object _) {});
+    return task;
+  }
+
   @override
   Future<RawgAuthState> build() async {
     return _loadInitialState();
@@ -40,12 +63,15 @@ class RawgAuthController extends _$RawgAuthController {
   }
 
   Future<void> loginWithKey(String apiKey) async {
-    await _storage.write(key: _rawgKey, value: apiKey);
-    state = AsyncValue.data(RawgAuthenticated(apiKey));
+    if (apiKey.trim().isEmpty) throw const FormatException('Chiave vuota.');
+    await _mutate(() async {
+      await _storage.write(key: _rawgKey, value: apiKey);
+    }, RawgAuthenticated(apiKey));
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: _rawgKey);
-    state = const AsyncValue.data(RawgUnauthenticated());
+    await _mutate(() async {
+      await _storage.delete(key: _rawgKey);
+    }, const RawgUnauthenticated());
   }
 }

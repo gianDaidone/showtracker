@@ -58,13 +58,13 @@ class StartupCoordinator {
       }, fireImmediately: true);
       // Le prime emissioni avviano il refresh. Niente terzo passaggio esplicito.
     } catch (error) {
-      debugPrint('Bootstrap widget non disponibile: $error');
+      debugPrint('Bootstrap widget non disponibile: ${error.runtimeType}');
     }
   }
 
   void _queueWidgets() {
     unawaited(_refreshWidgets().catchError((Object error) {
-      debugPrint('Aggiornamento widget fallito: $error');
+      debugPrint('Aggiornamento widget fallito: ${error.runtimeType}');
     }));
   }
 
@@ -72,7 +72,7 @@ class StartupCoordinator {
     try {
       await _requestPermission();
     } catch (error) {
-      debugPrint('Richiesta permesso notifiche fallita: $error');
+      debugPrint('Richiesta permesso notifiche fallita: ${error.runtimeType}');
     }
     // Anche un primo login dopo onboarding deve avviare la manutenzione, ma
     // nessuna richiesta di metadata deve anticipare il ripristino credenziali.
@@ -81,7 +81,7 @@ class StartupCoordinator {
       if (!_metadataStarted && auth != null && auth is! Unauthenticated) {
         _metadataStarted = true;
         unawaited(_refreshMetadata().catchError((Object error) {
-          debugPrint('Manutenzione di avvio fallita: $error');
+          debugPrint('Manutenzione di avvio fallita: ${error.runtimeType}');
         }));
       }
     }, fireImmediately: true);

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart' show debugPrint;
@@ -6,18 +7,37 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
 import 'package:network_info_plus/network_info_plus.dart';
+import '../utils/sync_limits.dart';
+import '../utils/sync_encryption.dart';
+import 'sync_receiver.dart';
 
 /// Handler separato dal socket per verificare il protocollo senza usare la LAN.
 Handler createSyncHandler(
-    {required String token, required String base64Payload}) {
+    {required String token,
+    required String base64Payload,
+    DateTime? expiresAt,
+    DateTime Function()? clock}) {
+  final now = clock ?? DateTime.now;
+  final deadline = expiresAt ?? now().add(SyncLimits.sessionDuration);
   final router = Router();
   router.get('/sync', (Request request) {
-    if (request.url.queryParameters['token'] != token) {
+    final Map<String, List<String>> query;
+    try {
+      query = request.url.queryParametersAll;
+    } on FormatException {
+      return Response.forbidden('Invalid token');
+    }
+    if (!now().isBefore(deadline) ||
+        request.headers.containsKey('origin') ||
+        query.length != 1 ||
+        query['token']?.length != 1 ||
+        query['token']?.single != token) {
       return Response.forbidden('Invalid token');
     }
     return Response.ok(base64Payload, headers: {
       'Content-Type': 'text/plain',
-      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
     });
   });
   return router.call;
@@ -25,47 +45,79 @@ Handler createSyncHandler(
 
 class LocalSyncServer {
   HttpServer? _server;
-  String? _token;
-  String? _payloadBase64;
+  Timer? _expiry;
+  int _generation = 0;
+  final void Function()? onExpired;
+  final Future<String?> Function()? _resolveAddress;
+  final Future<HttpServer> Function(Handler, InternetAddress, int) _bind;
+  LocalSyncServer({
+    this.onExpired,
+    Future<String?> Function()? resolveAddress,
+    Future<HttpServer> Function(Handler, InternetAddress, int)? bind,
+  })  : _resolveAddress = resolveAddress,
+        _bind = bind ?? io.serve;
 
   bool get isRunning => _server != null;
 
   /// Starts the server and returns the endpoint URI (e.g. http://192.168.1.5:8080/sync?token=XYZ).
   /// If it cannot determine the IP, returns null.
   Future<String?> start(String base64Payload) async {
-    await stop();
-
-    _payloadBase64 = base64Payload;
-    _token = _generateToken();
-
-    final handler = const Pipeline()
-        .addMiddleware(logRequests())
-        .addHandler(createSyncHandler(
-          token: _token!,
-          base64Payload: _payloadBase64!,
-        ));
-
+    final generation = ++_generation;
+    await _close();
+    if (generation != _generation) return null;
+    if (base64Payload.length > SyncLimits.encodedBytes) {
+      throw const FormatException('Trasferimento troppo grande.');
+    }
     try {
-      _server = await io.serve(handler, InternetAddress.anyIPv4, 8080);
-
-      final ip = await _getWifiIP();
-      if (ip == null) {
-        await stop();
+      final ip = await (_resolveAddress ?? _getWifiIP)();
+      if (generation != _generation ||
+          ip == null ||
+          !isPrivateSyncAddress(ip)) {
         return null;
       }
-
-      return 'http://$ip:${_server!.port}/sync?token=$_token';
-    } catch (e) {
-      debugPrint('Failed to start local sync server: $e');
+      final token = _generateToken();
+      final encrypted = await SyncEncryption.encrypt(base64Payload, token);
+      if (generation != _generation) return null;
+      final server = await _bind(
+          createSyncHandler(token: token, base64Payload: encrypted.body),
+          InternetAddress(ip),
+          8080);
+      if (generation != _generation) {
+        await server.close(force: true);
+        return null;
+      }
+      server.idleTimeout = const Duration(seconds: 15);
+      _server = server;
+      _expiry = Timer(SyncLimits.sessionDuration, () {
+        unawaited(stop());
+        onExpired?.call();
+      });
+      return Uri(
+              scheme: 'http',
+              host: ip,
+              port: server.port,
+              path: '/sync',
+              queryParameters: {'token': token},
+              fragment: 'k=${encrypted.key}')
+          .toString();
+    } catch (_) {
+      if (generation == _generation) await _close();
+      debugPrint('Avvio server sync non riuscito.');
       return null;
     }
   }
 
   Future<void> stop() async {
-    await _server?.close(force: true);
+    _generation++;
+    await _close();
+  }
+
+  Future<void> _close() async {
+    _expiry?.cancel();
+    _expiry = null;
+    final server = _server;
     _server = null;
-    _token = null;
-    _payloadBase64 = null;
+    await server?.close(force: true);
   }
 
   String _generateToken() {
@@ -80,15 +132,16 @@ class LocalSyncServer {
       var ip = await info.getWifiIP();
 
       // Fallback per simulatori o casi particolari
-      if (ip == null || ip == '127.0.0.1') {
+      if (ip == null || !isPrivateSyncAddress(ip)) {
         final interfaces = await NetworkInterface.list(
           type: InternetAddressType.IPv4,
         );
         for (final interface in interfaces) {
           if (interface.name.contains('wlan') ||
               interface.name.contains('en')) {
-            ip = interface.addresses.first.address;
-            break;
+            for (final address in interface.addresses) {
+              if (isPrivateSyncAddress(address.address)) return address.address;
+            }
           }
         }
       }

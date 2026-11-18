@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 
 import '../../../core/paged_search.dart';
+import '../../../core/network/api_request.dart';
 import 'models/tmdb_show.dart';
 import 'models/tmdb_show_detail.dart';
 import 'models/tmdb_season.dart';
@@ -26,31 +27,32 @@ class TmdbService {
   }
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
-    final response = await _client.get(uri);
-    
+    final response = await apiRequest(_client, 'GET', uri);
+
     if (response.statusCode >= 500) {
       throw TmdbException(
         'Il servizio TMDB è temporaneamente non disponibile (Errore ${response.statusCode}). Riprova più tardi.',
         statusCode: response.statusCode,
       );
     }
-    
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       // Il corpo spiega il motivo (`status_message`, es. chiave non valida o
       // sessione scaduta) e non contiene credenziali: l'URL sì, quindi solo il path.
-      debugPrint('TMDB ${response.statusCode} su ${uri.path}: ${response.body}');
+      debugPrint('TMDB HTTP ${response.statusCode}');
       throw TmdbException(
         'Errore TMDB ${response.statusCode}: ${response.reasonPhrase ?? ""}',
         statusCode: response.statusCode,
       );
     }
-    
+
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
   Future<SearchPage<TmdbShow>> searchShows(String query, {int page = 1}) async {
     final data = await _get(
-      _uri('/search/tv', {'query': query, 'language': 'it-IT', 'page': '$page'}),
+      _uri(
+          '/search/tv', {'query': query, 'language': 'it-IT', 'page': '$page'}),
     );
     return _searchPage(data, TmdbShow.fromJson);
   }
@@ -175,15 +177,15 @@ class TmdbService {
 
     // 1. Fetch TMDB seasons
     final tmdbSeasonsMap = <int, List<TmdbEpisode>>{};
-    final tmdbSeasonsToFetch = animeSeasonsData.map((s) => s.tmdbSeasonNumber).toSet();
-    
+    final tmdbSeasonsToFetch =
+        animeSeasonsData.map((s) => s.tmdbSeasonNumber).toSet();
+
     await Future.wait(tmdbSeasonsToFetch.map((tmdbSeasonNum) async {
       try {
         final season = await getSeasonDetails(tmdbId, tmdbSeasonNum);
         if (season.episodes != null) {
-          tmdbSeasonsMap[tmdbSeasonNum] = season.episodes!
-              .where((e) => e.episodeNumber > 0)
-              .toList();
+          tmdbSeasonsMap[tmdbSeasonNum] =
+              season.episodes!.where((e) => e.episodeNumber > 0).toList();
         }
       } catch (_) {}
     }));
@@ -205,7 +207,7 @@ class TmdbService {
 
     // 3. Smart group AniList seasons to TMDB seasons to handle OVA discrepancies
     final adjustedCounts = <int, int>{};
-    
+
     // Group AniList seasons by tmdbSeasonNumber
     final groupedAniSeasons = <int, List<NormalizedAnimeSeason>>{};
     for (final s in animeSeasonsData) {
@@ -216,9 +218,9 @@ class TmdbService {
       final tmdbSeasonNum = entry.key;
       final aniGroup = entry.value;
       final tmdbEpsCount = tmdbSeasonsMap[tmdbSeasonNum]?.length ?? 0;
-      
+
       int groupSum = aniGroup.fold(0, (sum, s) => sum + s.episodeCount);
-      
+
       if (tmdbEpsCount > 0 && groupSum > 0) {
         if (groupSum == tmdbEpsCount || (groupSum - tmdbEpsCount).abs() <= 2) {
           int diff = tmdbEpsCount - groupSum;
@@ -233,7 +235,7 @@ class TmdbService {
           continue;
         }
       }
-      
+
       for (final s in aniGroup) {
         adjustedCounts[s.seasonNumber] = s.episodeCount;
       }
@@ -247,24 +249,25 @@ class TmdbService {
       final tmdbSeasonNum = entry.key;
       final aniSeasons = entry.value;
       final tmdbEpisodes = tmdbSeasonsMap[tmdbSeasonNum] ?? <TmdbEpisode>[];
-      
+
       var offset = 0;
       for (var i = 0; i < aniSeasons.length; i++) {
         final animeSeason = aniSeasons[i];
-        int count = adjustedCounts[animeSeason.seasonNumber] ?? animeSeason.episodeCount;
-        
-        // Se non conosciamo la durata (0) o se è l'ultimo cour del gruppo, 
+        int count = adjustedCounts[animeSeason.seasonNumber] ??
+            animeSeason.episodeCount;
+
+        // Se non conosciamo la durata (0) o se è l'ultimo cour del gruppo,
         // assegniamo tutti gli episodi rimanenti.
         if (count == 0 || i == aniSeasons.length - 1) {
           count = tmdbEpisodes.length - offset;
         }
-        
+
         // Se abbiamo bisogno di più episodi di quelli disponibili, prendiamo solo il rimanente.
         if (count < 0) count = 0;
-        final actualTake = (offset + count <= tmdbEpisodes.length) 
-            ? count 
+        final actualTake = (offset + count <= tmdbEpisodes.length)
+            ? count
             : tmdbEpisodes.length - offset;
-            
+
         final slice = tmdbEpisodes.skip(offset).take(actualTake).toList();
         final episodes = <TmdbEpisode>[];
 
@@ -296,7 +299,7 @@ class TmdbService {
             absoluteEpisodeNumber: absoluteIdx,
             airingAt: airingAt,
           ));
-          
+
           absoluteIdx++;
         }
 
@@ -331,7 +334,8 @@ class TmdbService {
 
   // ── Film ──────────────────────────────────────────────────────────────────
 
-  Future<SearchPage<TmdbMovie>> searchMovies(String query, {int page = 1}) async {
+  Future<SearchPage<TmdbMovie>> searchMovies(String query,
+      {int page = 1}) async {
     final data = await _get(
       _uri('/search/movie', {
         'query': query,

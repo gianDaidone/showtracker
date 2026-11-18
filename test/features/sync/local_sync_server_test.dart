@@ -13,7 +13,8 @@ void main() {
     expect(response.statusCode, 200);
     expect(await response.readAsString(), 'compressed-test-payload');
     expect(response.headers['content-type'], startsWith('text/plain'));
-    expect(response.headers['access-control-allow-origin'], '*');
+    expect(response.headers['access-control-allow-origin'], isNull);
+    expect(response.headers['cache-control'], 'no-store');
   });
 
   test('token mancante o errato non espone il payload', () async {

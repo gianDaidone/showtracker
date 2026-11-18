@@ -4,38 +4,50 @@ import '../auth/rawg_auth_state.dart';
 import '../constants/api_keys.dart';
 
 class AppInterceptor extends http.BaseClient {
+  bool _closed = false;
   final http.Client _inner;
   final AuthState? _tmdbAuthState;
   final RawgAuthState? _rawgAuthState;
 
-  AppInterceptor(this._inner, {AuthState? tmdbAuthState, RawgAuthState? rawgAuthState})
+  AppInterceptor(this._inner,
+      {AuthState? tmdbAuthState, RawgAuthState? rawgAuthState})
       : _tmdbAuthState = tmdbAuthState,
         _rawgAuthState = rawgAuthState;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
+    if (_closed) throw http.ClientException('Client credenziali disattivato.');
+    if ({'api.themoviedb.org', 'api.rawg.io'}.contains(request.url.host)) {
+      if (request.url.scheme != 'https' ||
+          request.url.port != 443 ||
+          request.url.userInfo.isNotEmpty) {
+        throw const FormatException('Destinazione API non sicura.');
+      }
+      request.followRedirects = false;
+      request.maxRedirects = 0;
+    }
     if (request.url.host == 'api.themoviedb.org' && _tmdbAuthState != null) {
       final queryParams = Map<String, String>.from(request.url.queryParameters);
-      
+
       switch (_tmdbAuthState) {
         case AuthenticatedWithManualKey(:final apiKey):
           queryParams['api_key'] = apiKey;
           break;
         case AuthenticatedWithSession(:final sessionId):
-          queryParams['api_key'] = ApiKeys.tmdb; 
+          queryParams['api_key'] = ApiKeys.tmdb;
           queryParams['session_id'] = sessionId;
           break;
         case Unauthenticated():
-          queryParams['api_key'] = ApiKeys.tmdb; 
+          queryParams['api_key'] = ApiKeys.tmdb;
           break;
       }
 
       return _sendReplaced(request, queryParams);
     }
-    
+
     if (request.url.host == 'api.rawg.io' && _rawgAuthState != null) {
       final queryParams = Map<String, String>.from(request.url.queryParameters);
-      
+
       switch (_rawgAuthState) {
         case RawgAuthenticated(:final apiKey):
           queryParams['key'] = apiKey;
@@ -47,21 +59,34 @@ class AppInterceptor extends http.BaseClient {
 
       return _sendReplaced(request, queryParams);
     }
-    
+
     return _inner.send(request);
   }
 
-  Future<http.StreamedResponse> _sendReplaced(http.BaseRequest request, Map<String, String> queryParams) {
+  Future<http.StreamedResponse> _sendReplaced(
+      http.BaseRequest request, Map<String, String> queryParams) {
     final newUrl = request.url.replace(queryParameters: queryParams);
-      
+
     if (request is http.Request) {
-      final newRequest = http.Request(request.method, newUrl)
+      final newRequest = (request is http.AbortableRequest
+          ? http.AbortableRequest(request.method, newUrl,
+              abortTrigger: request.abortTrigger)
+          : http.Request(request.method, newUrl))
+        ..followRedirects = false
+        ..maxRedirects = 0
         ..headers.addAll(request.headers)
         ..bodyBytes = request.bodyBytes
         ..encoding = request.encoding;
       return _inner.send(newRequest);
     }
-    
+
     return _inner.send(request);
+  }
+
+  @override
+  void close() {
+    if (_closed) return;
+    _closed = true;
+    _inner.close();
   }
 }

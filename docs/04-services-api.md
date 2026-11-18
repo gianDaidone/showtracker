@@ -67,17 +67,24 @@ dei fornitori né le loro quote aggiornate.
 
 | Confine | Comportamento attuale |
 | --- | --- |
-| TMDB | Non-2xx → `TmdbException` con status; 5xx messaggio di indisponibilità; nessun timeout/retry generale esplicito in `_get` |
-| RAWG | Non-2xx → `RawgException`; nessun timeout/retry generale esplicito in `_get` |
+| TMDB | Non-2xx → `TmdbException` con status; 5xx messaggio di indisponibilità; apiRequest: timeout/abort 20 s, 4 MiB, no redirect; nessun retry |
+| RAWG | Non-2xx → `RawgException`; apiRequest: timeout/abort 20 s, 4 MiB, no redirect; nessun retry |
 | Yuna | Timeout 10 s; rete/status non utile/JSON inatteso → lista vuota |
-| AniList | Errori trasporto/non-2xx/JSON → null; ricerca converte assenza in lista vuota; 429 fino a due retry, `retry-after` intero o 10 s |
-| Steam | Non-200 → `SteamException`; fallback trailer gestito dal provider; nessun timeout generale esplicito |
+| AniList | Errori trasporto/non-2xx/JSON → null; ricerca converte assenza in lista vuota; deadline 20 s/4 MiB per tentativo; 429 fino a due retry solo se l’attesa richiesta è interpretabile e rientra nel budget di 60 s |
+| Steam | Non-200 → `SteamException`; fallback trailer gestito dal provider; apiRequest: timeout/abort 20 s, 4 MiB, no redirect |
 | GitHub | Timeout 15 s; errori di trasporto → `UpdateNoConnection`; 404 → `UpdateNoReleases`; rate limit → `UpdateRateLimited`; formato inatteso → eccezione update tipizzata |
 | Download immagini widget | Timeout 10 s e condivisione Future per URL; errore → nessun nuovo file |
-| Ricezione sync HTTP | Timeout 10 s; non-200 fallisce prima di decompressione/import |
+| Ricezione sync HTTP | Solo endpoint RFC1918 validato, no redirect, 10 s/2 MiB; non-200 fallisce prima dell'import |
 
 - AniList passa da `AniListQueue`: 12 token/10 s, massimo tre lavori concorrenti.
   I retry 429 sono interni al lavoro già accodato, non nuove enqueue indipendenti.
+- Su 429, `Retry-After` espresso come intero da 0 a 60 secondi viene rispettato
+  integralmente: non viene troncato. Se supera 60 secondi, è negativo o non è
+  interpretabile come numero di secondi, il tentativo termina senza retry,
+  restituendo il fallback null/vuoto già previsto. Questo include formati non
+  supportati e numeri fuori intervallo, senza attese illimitate. Soltanto in
+  assenza dell’header resta l’attesa predefinita di 10 secondi. Non vengono
+  introdotti coordinamenti o retry esterni a `AniListQueue`.
 - Riverpod non ritenta automaticamente: `noProviderRetry` è obbligatorio.
 - Non generalizzare “ogni errore produce un'eccezione”: Yuna/AniList e contenuti
   opzionali hanno contratti null/vuoto propri.
@@ -102,3 +109,7 @@ dei fornitori né le loro quote aggiornate.
 `test/features/series/{tmdb_service,anilist_service,anilist_queue,yuna_service}_test.dart`,
 `test/features/games/rawg_service_test.dart`, `test/features/update/github_release_service_test.dart`.
 Usare client simulati; non servono richieste reali per verificare questi contratti.
+
+Le risposte/URL e le eccezioni grezze non vengono loggati. AppInterceptor.close
+chiude il client sottostante e rifiuta nuovi invii dopo la chiusura. I client
+auth richiedono HTTPS/443 anche se usati fuori da apiRequest.

@@ -101,6 +101,95 @@ Future<void> _hydrateDomain(
     );
 
 void main() {
+  test('hydration anime non scrive totali o coordinate TMDB grezze', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    final id = await database.showsDao.insertShow(TrackedShowsCompanion(
+      tmdbId: const Value(50),
+      title: const Value('Sconosciuto'),
+      status: const Value(MediaStatus.paused),
+      addedAt: Value(_addedAt),
+      updatedAt: Value(_updatedAt),
+      totalSeasons: const Value(4),
+      totalEpisodes: const Value(48),
+      nextEpisodeSeason: const Value(4),
+      nextEpisodeNumber: const Value(10),
+      userNotes: const Value('note locali'),
+    ));
+    final client = MockClient((_) async => http.Response(
+        jsonEncode({
+          'id': 50,
+          'name': 'Anime remoto',
+          'genres': [
+            {'name': 'Animation'}
+          ],
+          'origin_country': ['JP'],
+          'number_of_seasons': 1,
+          'number_of_episodes': 12,
+          'next_episode_to_air': {'season_number': 1, 'episode_number': 11},
+        }),
+        200));
+    addTearDown(client.close);
+    await _service(database, client)
+        .hydrateUnknownMedia(movies: false, games: false);
+    final result = (await database.showsDao.getById(id))!;
+    expect(result.title, 'Anime remoto');
+    expect(result.isAnime, isTrue);
+    expect([
+      result.totalSeasons,
+      result.totalEpisodes,
+      result.nextEpisodeSeason,
+      result.nextEpisodeNumber
+    ], [
+      4,
+      48,
+      4,
+      10
+    ]);
+    expect(result.updatedAt!.toUtc(), _updatedAt);
+    expect(result.userNotes, 'note locali');
+  });
+
+  for (final remove in [true, false]) {
+    test(
+        'hydration serie non ripristina righe rimosse o sovrascrive modifiche concorrenti: $remove',
+        () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      final id = await database.showsDao.insertShow(TrackedShowsCompanion(
+          tmdbId: const Value(50),
+          title: const Value('Sconosciuto'),
+          status: const Value(MediaStatus.paused),
+          addedAt: Value(_addedAt)));
+      final requested = Completer<void>();
+      final release = Completer<void>();
+      final client = MockClient((_) async {
+        if (!requested.isCompleted) requested.complete();
+        await release.future;
+        return http.Response(jsonEncode({'id': 50, 'name': 'Remoto'}), 200);
+      });
+      addTearDown(client.close);
+      final pending = _service(database, client)
+          .hydrateUnknownMedia(movies: false, games: false);
+      await requested.future;
+      if (remove) {
+        await database.showsDao.deleteShow(id);
+      } else {
+        await (database.update(database.trackedShows)
+              ..where((t) => t.id.equals(id)))
+            .write(
+                const TrackedShowsCompanion(title: Value('Modifica locale')));
+      }
+      release.complete();
+      await pending;
+      final row = await database.showsDao.getById(id);
+      if (remove) {
+        expect(row, isNull);
+      } else {
+        expect(row!.title, 'Modifica locale');
+      }
+    });
+  }
   late AppDatabase db;
 
   setUp(() {

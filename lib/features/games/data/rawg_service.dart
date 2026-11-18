@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../core/paged_search.dart';
+import '../../../core/network/api_request.dart';
+import '../../../core/network/media_uri.dart';
 import 'game_search_ranking.dart';
 import 'models/game_trailer.dart';
 import 'models/rawg_game.dart';
@@ -20,16 +22,18 @@ class RawgService {
   }
 
   Future<Map<String, dynamic>> _get(Uri uri) async {
-    final response = await _client.get(uri);
-    
+    final response = await apiRequest(_client, 'GET', uri);
+
     if (response.statusCode >= 500) {
-      throw RawgException('Il servizio RAWG è temporaneamente non disponibile (Errore ${response.statusCode}). Riprova più tardi.');
+      throw RawgException(
+          'Il servizio RAWG è temporaneamente non disponibile (Errore ${response.statusCode}). Riprova più tardi.');
     }
-    
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw RawgException('Errore RAWG ${response.statusCode}: ${response.reasonPhrase ?? ""}');
+      throw RawgException(
+          'Errore RAWG ${response.statusCode}: ${response.reasonPhrase ?? ""}');
     }
-    
+
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
@@ -115,7 +119,8 @@ class RawgService {
       final data = await _get(_uri('/games/$id/screenshots'));
       return ((data['results'] as List<dynamic>?) ?? [])
           .map((s) => s['image'] as String)
-          .where((url) => url.isNotEmpty)
+          .map(secureMediaUrl)
+          .whereType<String>()
           .toList();
     } catch (_) {
       return [];
@@ -142,8 +147,7 @@ class RawgService {
     return null;
   }
 
-  static final _steamAppUrl =
-      RegExp(r'store\.steampowered\.com/app/(\d+)');
+  static final _steamAppUrl = RegExp(r'store\.steampowered\.com/app/(\d+)');
 }
 
 class RawgException implements Exception {

@@ -9,6 +9,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/auth/rawg_auth_state.dart';
 import '../../../core/constants/api_keys.dart';
+import '../../../core/auth/tmdb_login_attempt.dart';
+import '../../../core/network/api_request.dart';
+import '../../../core/widgets/secret_key_dialog.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -21,6 +24,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   late final AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
   bool _isLoading = false;
+  final _loginAttempt = TmdbLoginAttempt();
+  final _authClient = http.Client();
+  int _loginGeneration = 0;
 
   @override
   void initState() {
@@ -32,43 +38,60 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _appLinks = AppLinks();
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
       _handleAuthRedirect(uri);
+    }, onError: (Object _) {
+      /* Callback non interpretabile: ignorare senza log dell'URI. */
     });
   }
 
   @override
   void dispose() {
     _linkSubscription?.cancel();
+    _loginGeneration++;
+    _loginAttempt.cancel();
+    _authClient.close();
     super.dispose();
   }
 
   Future<void> _startLoginFlow() async {
+    if (_isLoading) return;
+    final generation = ++_loginGeneration;
+    _loginAttempt.cancel();
     setState(() => _isLoading = true);
     try {
       final requestToken = await _createRequestToken();
+      if (!mounted || generation != _loginGeneration) return;
+      _loginAttempt.begin(requestToken);
       final authUrl = Uri.parse(
           'https://www.themoviedb.org/authenticate/$requestToken?redirect_to=showtracker://auth');
 
       if (!await launchUrl(authUrl, mode: LaunchMode.externalApplication)) {
         throw Exception('Could not launch browser');
       }
-    } catch (e) {
+    } catch (_) {
+      _loginAttempt.cancel();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Errore di connessione: $e')),
+          const SnackBar(
+              content: Text(
+                  'Accesso non riuscito. Controlla la connessione e la configurazione TMDB.')),
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<String> _createRequestToken() async {
     final url = Uri.parse(
         'https://api.themoviedb.org/3/authentication/token/new?api_key=${ApiKeys.tmdb}');
-    final response = await http.get(url);
+    final response = await apiRequest(_authClient, 'GET', url);
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data['request_token'];
+      final token = data['request_token'];
+      if (token is! String || token.isEmpty) {
+        throw const FormatException('Token non valido.');
+      }
+      return token;
     } else {
       if (response.statusCode == 401) {
         throw Exception(
@@ -79,140 +102,80 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _handleAuthRedirect(Uri uri) async {
-    if (uri.scheme == 'showtracker' && uri.host == 'auth') {
-      final requestToken = uri.queryParameters['request_token'];
-      final approved = uri.queryParameters['approved'];
+    final requestToken = _loginAttempt.consume(uri);
+    if (!mounted || requestToken == null) return;
+    final generation = _loginGeneration;
+    setState(() => _isLoading = true);
+    try {
+      final sessionUrl = Uri.parse(
+          'https://api.themoviedb.org/3/authentication/session/new?api_key=${ApiKeys.tmdb}');
+      final response = await apiRequest(
+        _authClient,
+        'POST',
+        sessionUrl,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'request_token': requestToken}),
+      );
 
-      if (approved == 'true' && requestToken != null) {
-        setState(() => _isLoading = true);
-        try {
-          final sessionUrl = Uri.parse(
-              'https://api.themoviedb.org/3/authentication/session/new?api_key=${ApiKeys.tmdb}');
-          final response = await http.post(
-            sessionUrl,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'request_token': requestToken}),
-          );
-
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body);
-            final sessionId = data['session_id'];
-            await ref
-                .read(authControllerProvider.notifier)
-                .loginWithSession(sessionId);
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Autenticazione fallita.')),
-              );
-            }
-          }
-        } finally {
-          if (mounted) {
-            setState(() => _isLoading = false);
-          }
+      if (!mounted || generation != _loginGeneration) return;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final sessionId = data['session_id'];
+        if (sessionId is! String || sessionId.isEmpty) {
+          throw const FormatException('Sessione non valida.');
         }
+        await ref
+            .read(authControllerProvider.notifier)
+            .loginWithSession(sessionId);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Autenticazione fallita.')),
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Autenticazione non riuscita. Riprova.')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
 
-  void _showCustomKeyDialog() {
-    final controller = TextEditingController();
+  Future<void> _showCustomKeyDialog() => showDialog<void>(
+        context: context,
+        builder: (_) => SecretKeyDialog(
+          title: 'Inserisci API Key v3',
+          onSave: (key) {
+            _loginGeneration++;
+            _loginAttempt.cancel();
+            return ref
+                .read(authControllerProvider.notifier)
+                .loginWithManualKey(key);
+          },
+        ),
+      );
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Inserisci API Key v3'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              hintText: 'La tua TMDB API Key',
-              border: OutlineInputBorder(),
-            ),
+  Future<void> _showRawgKeyDialog() => showDialog<void>(
+        context: context,
+        builder: (_) => SecretKeyDialog(
+          title: 'Inserisci RAWG API Key',
+          description:
+              'La chiave RAWG è facoltativa e abilita il catalogo videogiochi.',
+          onSave: (key) =>
+              ref.read(rawgAuthControllerProvider.notifier).loginWithKey(key),
+          help: TextButton.icon(
+            onPressed: () => launchUrl(Uri.parse('https://rawg.io/apidocs'),
+                mode: LaunchMode.externalApplication),
+            icon: const Icon(Icons.open_in_new, size: 16),
+            label: const Text('Documentazione RAWG'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annulla'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final key = controller.text.trim();
-                if (key.isNotEmpty) {
-                  ref
-                      .read(authControllerProvider.notifier)
-                      .loginWithManualKey(key);
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Salva e Inizia'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showRawgKeyDialog() {
-    final controller = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Inserisci RAWG API Key'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Ottieni gratuitamente una chiave API per abilitare il database dei videogiochi. '
-                'Questo passaggio è facoltativo e può essere configurato in seguito.',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  hintText: 'La tua RAWG API Key',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: () => launchUrl(
-                      Uri.parse('https://rawg.io/apidocs'),
-                      mode: LaunchMode.externalApplication),
-                  icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('Richiedi chiave gratis'),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annulla'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final key = controller.text.trim();
-                if (key.isNotEmpty) {
-                  ref
-                      .read(rawgAuthControllerProvider.notifier)
-                      .loginWithKey(key);
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Salva e Attiva'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {

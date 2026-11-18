@@ -4,10 +4,12 @@ import 'package:http/http.dart' as http;
 
 import 'anilist_queue.dart';
 import 'models/anilist_media.dart';
+import '../../../core/network/api_request.dart';
 
 class AniListService {
   static const _endpoint = 'https://graphql.anilist.co';
   static const int _maxRetries = 2;
+  static const int _maxRetryAfterSeconds = 60;
 
   final AniListQueue _queue = AniListQueue();
   final http.Client _client;
@@ -98,7 +100,9 @@ query($search: String) {
     final body = jsonEncode({'query': query, 'variables': variables});
     http.Response response;
     try {
-      response = await _client.post(
+      response = await apiRequest(
+        _client,
+        'POST',
         Uri.parse(_endpoint),
         headers: {
           'Content-Type': 'application/json',
@@ -110,12 +114,15 @@ query($search: String) {
       return null;
     }
 
-    // Rate-limited: retry after waiting.
+    // Honor the server delay in full, or stop and let the caller use its fallback.
     if (response.statusCode == 429 && attempt < _maxRetries) {
-      final retryAfter = int.tryParse(
-            response.headers['retry-after'] ?? '',
-          ) ??
-          10;
+      final header = response.headers['retry-after'];
+      final retryAfter = header == null ? 10 : int.tryParse(header.trim());
+      if (retryAfter == null ||
+          retryAfter < 0 ||
+          retryAfter > _maxRetryAfterSeconds) {
+        return null;
+      }
       await Future.delayed(Duration(seconds: retryAfter));
       return _graphql(query, variables, attempt: attempt + 1);
     }

@@ -188,7 +188,7 @@ final class AnimeDataProvider extends $FunctionalProvider<
   }
 }
 
-String _$animeDataHash() => r'f2ced8dfaa2550ca4f77e3f405fa9e690294f6ab';
+String _$animeDataHash() => r'9f0aaab804d1c718c556d9099a74a7e57ac2cccb';
 
 final class AnimeDataFamily extends $Family
     with
@@ -402,7 +402,7 @@ final class TrackedShowsNotifierProvider
 }
 
 String _$trackedShowsNotifierHash() =>
-    r'83ab8fa8c04d54ee285186426455f9cff7b7fae4';
+    r'3149d91f8bc4cba772f4a72dd241fd737b96ff3d';
 
 abstract class _$TrackedShowsNotifier
     extends $StreamNotifier<List<TrackedShow>> {

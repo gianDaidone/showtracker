@@ -13,10 +13,13 @@
 
 - Nessun backend cloud; il dispositivo mittente espone uno snapshot LAN.
 - `LocalSyncServer.start` ferma la sessione precedente, genera token e avvia
-  Shelf su `0.0.0.0:8080`; cerca IP Wi-Fi con fallback alle interfacce locali.
-- QR contiene `http://{ip}:8080/sync?token={token}`.
+  Shelf sul solo IPv4 privato selezionato, porta 8080; cerca IP Wi-Fi con fallback
+  alle interfacce locali. Sessione massima cinque minuti e chiusura anche al dispose.
+- QR contiene `http://{ip}:8080/sync?token={token}#k={chiave}`. La chiave
+  AES non viene inviata nella richiesta HTTP.
 - Handler separato dal socket per test; token errato → 403; risposta testo
-  con payload codificato e header CORS `*`.
+  con envelope cifrato STSYNC2:, no-store e senza CORS wildcard; richieste browser con
+  Origin e query/token duplicati rifiutati.
 - `SyncScreen.dispose` avvia lo stop del server. La recovery appartiene al
   container app e prosegue dopo l'uscita dalla schermata.
 
@@ -41,13 +44,17 @@ Esempio illustrativo del JSON prima della compressione:
 | `e` | Per serie: stagione/cour stringa → range degli episodi visti |
 
 - Export raggruppa episodi visti con una lettura, poi `RangeUtils` compatta i range.
-- Wire: JSON → UTF-8 → zlib → base64. Non è cifratura.
+- QR diretto legacy: JSON → UTF-8 → zlib → base64, leggibile da chi acquisisce il QR.
+- LAN v2: bytes zlib cifrati AES-256-GCM, nonce 12 byte e tag 16 byte, envelope
+  STSYNC2: + base64. Chiave nuova per ogni export, nonce casuale e token legato
+  come AAD. Implementazione standard del package cryptography, senza cipher proprietario.
 - Non trasferisce titoli, poster, mapping cour, cache, credenziali, note, rating
   o playtime. Non è un export completo né un backup ripristinabile identico.
 - Non contiene tombstone di rimozione o eventi “non visto”; non propaga quelle
   azioni come cancellazioni remote.
-- Non esiste un campo versione protocollo: cambiamenti al formato richiedono
-  compatibilità esplicita con i payload precedenti.
+- Il JSON legacy non contiene un campo versione; l’envelope LAN è versionato
+  STSYNC2:. Il proprietario ha approvato l’aggiornamento di entrambi i peer:
+  gli URL LAN legacy in chiaro sono rifiutati, senza downgrade; i QR diretti restano compatibili.
 - Il ricevitore supporta anche payload base64 diretto, oltre all'URL HTTP.
 
 ## Import e conflitti
@@ -63,7 +70,7 @@ Esempio illustrativo del JSON prima della compressione:
 | Episodi già visti | Non riscrivere soltanto per un nuovo timestamp parent |
 | Film legacy `watching` | Normalizzare a `planToWatch` |
 | Stato non riconosciuto | Fallback `watching` serie/giochi, `planToWatch` film |
-| ID media/stagione non numerico | Saltare l'elemento non convertibile |
+| ID/coordinate o struttura non validi | Rifiutare tutto prima della transazione |
 
 - Il merge episodi non è last-write-wins per episodio: il payload non contiene
   timestamp individuali né marcature false.
@@ -71,7 +78,10 @@ Esempio illustrativo del JSON prima della compressione:
 - Il codice ripristina il timestamp remoto dopo `updateStatus`, che normalmente
   lo aggiornerebbe all'ora corrente.
 - Timestamp wire sono al secondo; clock dei dispositivi non sono riconciliati.
-- Import atomico non significa validazione completa dell'input prima di ogni operazione.
+- Validazione strutturale e budget prima di ogni import; snapshot copiato prima
+  della transazione. Errori DB tardivi annullano anche modifiche dei domini precedenti.
+- Formato valido legacy invariato; la permissivita su frammenti malformati non
+  e piu supportata. Limiti e politica timestamp in [08](08-security-permissions.md).
 
 ## Recupero dei metadati
 
@@ -96,25 +106,33 @@ Esempio illustrativo del JSON prima della compressione:
   la rete e riempirlo soltanto se ancora null, dentro la transazione finale.
 - Errore: lasciare placeholder ritentabile; nessun retry automatico Riverpod.
 
-### Limite del percorso serie
+### Hydration serie
 
-La hydration serie mantiene un percorso precedente: aggiorna metadati TMDB per
-ID locale e non applica le stesse condizioni finali ID esterno+placeholder di
-film/giochi. Scrive totali TMDB e puntatore con default 09:00, senza eseguire
-direttamente la pipeline cour. Non estendere a questo ramo le garanzie della
-hydration film/giochi; verificare [09](09-anime-pipeline.md) prima di modificarlo.
+Update condizionato a ID locale + TMDB ID + titolo ancora Sconosciuto. Non
+ripristina record rimossi ne sovrascrive un titolo aggiornato durante la rete.
+Per anime aggiorna metadati descrittivi, senza totali o coordinate episodio TMDB
+grezze: attende la pipeline cour per quegli allineamenti. Preserva timestamp e
+campi personali; test dedicati in hydration_safety_test.
 
 ## Sicurezza e limiti
 
-- Token casuale di 16 byte; HTTP senza cifratura, niente autenticazione reciproca.
-- URL scanner non ristretto agli host LAN; range e decompressione senza limiti
-  espliciti di espansione. Dettagli in [08](08-security-permissions.md).
+- Token casuale di 16 byte e chiave AES casuale di 32 byte nel solo fragment QR.
+  Contenuto LAN cifrato/autenticato; IP, token e metadati HTTP restano osservabili.
+  Nessuna autenticazione reciproca: chi acquisisce il QR possiede la chiave.
+- URL, redirect, token, dimensioni, decompressione, range e tipi sono limitati
+  prima dell'import. Contratto autorevole e rischi residui in [08](08-security-permissions.md).
 - Server è temporaneo e lo snapshot non si aggiorna a ogni mutazione successiva.
 - Socket/IP/camera/connettività reali richiedono prova manuale su due dispositivi.
+
+La matrice di compatibilità, le garanzie AES-GCM e i limiti di identificazione
+sono riassunti nell’[audit attivo](security-reliability-audit.md).
+Comunicare il cambiamento con le [note release](github-release-notes.md).
 
 ## Test pertinenti
 
 `test/features/sync/sync_codec_test.dart`, `sync_service_test.dart`,
 `local_sync_server_test.dart`, `hydration_safety_test.dart`,
-`metadata_recovery_test.dart`, `metadata_recovery_screen_test.dart`.
+`metadata_recovery_test.dart`, `metadata_recovery_screen_test.dart`,
+`sync_encryption_test.dart`, `encrypted_receiver_test.dart`,
+`local_sync_lifecycle_test.dart`, `sync_security_test.dart`.
 I test handler non aprono socket LAN; i test recovery usano confini simulati.

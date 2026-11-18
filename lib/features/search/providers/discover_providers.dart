@@ -58,7 +58,7 @@ Future<List<R>> _perSeed<S, R>(
     try {
       return await fetch(s);
     } catch (e) {
-      debugPrint('Consigli: un seme non è stato caricato: $e');
+      debugPrint('Consigli: un seme non è stato caricato: ${e.runtimeType}');
       error = e;
       failed++;
       return empty;

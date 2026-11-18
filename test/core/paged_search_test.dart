@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:showtracker/core/paged_search.dart';
@@ -241,6 +242,10 @@ void main() {
 
   test('se una pagina fallisce tiene i risultati e permette di riprovare',
       () async {
+    final messages = <String?>[];
+    final previousDebugPrint = debugPrint;
+    debugPrint = (message, {wrapWidth}) => messages.add(message);
+    addTearDown(() => debugPrint = previousDebugPrint);
     setUpWith(_FakeSearch([
       [1],
       [2],
@@ -252,6 +257,9 @@ void main() {
     var state = container.read(provider('zelda')).requireValue;
     expect(state.items, [1]);
     expect(state.loadMoreFailed, isTrue);
+    expect(messages.join(), isNot(contains('zelda')));
+    expect(messages.join(), isNot(contains('rete assente')));
+    expect(messages, isNotEmpty);
 
     await notifier.loadMore(); // "Riprova"
     state = container.read(provider('zelda')).requireValue;

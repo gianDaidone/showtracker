@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'models/game_trailer.dart';
+import '../../../core/network/api_request.dart';
 
 /// Endpoint pubblico (non documentato) dello store Steam: niente chiave,
 /// circa 200 richieste ogni 5 minuti per IP.
@@ -12,9 +13,12 @@ class SteamService {
   SteamService(this._client);
 
   Future<List<GameTrailer>> getTrailers(int appId) async {
-    final response = await _client.get(Uri.parse('$_base/appdetails').replace(
-      queryParameters: {'appids': '$appId', 'filters': 'movies'},
-    ));
+    final response = await apiRequest(
+        _client,
+        'GET',
+        Uri.parse('$_base/appdetails').replace(
+          queryParameters: {'appids': '$appId', 'filters': 'movies'},
+        ));
     if (response.statusCode != 200) {
       throw SteamException('Errore Steam ${response.statusCode}');
     }

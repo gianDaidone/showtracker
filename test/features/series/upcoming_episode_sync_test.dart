@@ -411,6 +411,23 @@ void main() {
         9);
   });
 
+  test(
+      'aggiunta anime senza mapping conserva conteggi ignoti, senza stagioni TMDB grezze',
+      () async {
+    await db.showsDao.deleteShow(showId);
+    anilist.offline = true;
+    final raw = await TmdbService(client).getShowDetails(100);
+    await container.read(trackedShowsProvider.notifier).addShow(raw);
+    final saved = (await db.showsDao.getByTmdbId(100))!;
+    expect(saved.isAnime, isTrue);
+    expect(saved.totalEpisodes, 0);
+    expect(saved.totalSeasons, 0);
+    expect(await db.showsDao.getSeasonCounts(saved.id), isEmpty);
+    expect(saved.nextEpisodeSeason, isNull);
+    expect(notificationCalls.where((call) => call.method == 'zonedSchedule'),
+        isEmpty);
+  });
+
   test('addShow attende i cour normalizzati e salva totali e stagioni',
       () async {
     await db.showsDao.deleteShow(showId);

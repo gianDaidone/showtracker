@@ -1,3 +1,5 @@
+import '../../utils/sync_validation.dart';
+
 class SyncPayload {
   final Map<String, ShowSyncData> shows; // key: tmdbId
   final Map<String, GameSyncData> games; // key: rawgId
@@ -12,29 +14,34 @@ class SyncPayload {
   Map<String, dynamic> toJson() => {
         if (shows.isNotEmpty) 's': shows.map((k, v) => MapEntry(k, v.toJson())),
         if (games.isNotEmpty) 'g': games.map((k, v) => MapEntry(k, v.toJson())),
-        if (movies.isNotEmpty) 'm': movies.map((k, v) => MapEntry(k, v.toJson())),
+        if (movies.isNotEmpty)
+          'm': movies.map((k, v) => MapEntry(k, v.toJson())),
       };
 
-  factory SyncPayload.fromJson(Map<String, dynamic> json) => SyncPayload(
-        shows: (json['s'] as Map<String, dynamic>?)?.map(
-              (k, v) => MapEntry(k, ShowSyncData.fromJson(v)),
-            ) ??
-            {},
-        games: (json['g'] as Map<String, dynamic>?)?.map(
-              (k, v) => MapEntry(k, GameSyncData.fromJson(v)),
-            ) ??
-            {},
-        movies: (json['m'] as Map<String, dynamic>?)?.map(
-              (k, v) => MapEntry(k, MovieSyncData.fromJson(v)),
-            ) ??
-            {},
-      );
+  factory SyncPayload.fromJson(Map<String, dynamic> json) {
+    validateSyncJson(json);
+    return SyncPayload(
+      shows: (json['s'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, ShowSyncData.fromJson(v)),
+          ) ??
+          {},
+      games: (json['g'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, GameSyncData.fromJson(v)),
+          ) ??
+          {},
+      movies: (json['m'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, MovieSyncData.fromJson(v)),
+          ) ??
+          {},
+    );
+  }
 }
 
 class ShowSyncData {
   final String status;
   final int updatedAt;
-  final Map<String, String> eps; // season -> episodes range (e.g. "1": "1-10,12")
+  final Map<String, String>
+      eps; // season -> episodes range (e.g. "1": "1-10,12")
 
   ShowSyncData({
     required this.status,

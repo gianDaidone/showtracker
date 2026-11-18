@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show SynchronousFuture;
 import 'package:flutter/material.dart';
 import 'package:octo_image/octo_image.dart';
+import '../network/media_uri.dart';
 
 /// Only TMDB has documented size variants. Generic URLs (including RAWG) are
 /// never rewritten; their decode budget uses the actual encoded dimensions.
@@ -209,6 +210,14 @@ class MediaImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final secureUrl = secureMediaUrl(imageUrl);
+    if (secureUrl == null) {
+      return SizedBox(
+          width: width,
+          height: height,
+          child: errorWidget?.call(context, imageUrl,
+              const FormatException('URL immagine non sicuro.')));
+    }
     return LayoutBuilder(builder: (context, constraints) {
       final size = constraints.constrain(Size(
         width ?? constraints.maxWidth,
@@ -219,7 +228,8 @@ class MediaImage extends StatelessWidget {
               size, MediaQuery.devicePixelRatioOf(context))
           : null;
       final effectiveFit = fit ?? BoxFit.scaleDown;
-      final url = budget?.imageUrl(imageUrl, source, effectiveFit) ?? imageUrl;
+      final url =
+          budget?.imageUrl(secureUrl, source, effectiveFit) ?? secureUrl;
       final ImageProvider original = CachedNetworkImageProvider(url);
       final ImageProvider provider = budget == null
           ? original

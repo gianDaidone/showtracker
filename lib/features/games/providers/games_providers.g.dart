@@ -309,7 +309,7 @@ final class GameTrailersProvider extends $FunctionalProvider<
   }
 }
 
-String _$gameTrailersHash() => r'2baddf9494bdd8135550d27a2758a081ade80cd5';
+String _$gameTrailersHash() => r'd19641454f0acfd71c317880bf9006b1490e6969';
 
 /// Trailer da Steam, ricavando l'app ID dai negozi RAWG; RAWG `/movies` solo
 /// come riserva, perché per molti giochi è vuoto. Un gioco senza trailer

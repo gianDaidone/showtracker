@@ -97,7 +97,7 @@ class PagedListNotifier<T> extends AsyncNotifier<PagedResults<T>> {
     } catch (e) {
       // L'errore finisce nell'AsyncValue e lo mostra la schermata, ma va
       // anche nei log: altrimenti resta visibile solo come lista vuota.
-      debugPrint('$label fallita: $e');
+      debugPrint('Ricerca non riuscita: ${e.runtimeType}');
       link?.close();
       rethrow;
     }
@@ -124,8 +124,8 @@ class PagedListNotifier<T> extends AsyncNotifier<PagedResults<T>> {
     final current = state.value;
     if (current == null || !current.hasMore || current.isLoadingMore) return;
 
-    state = AsyncData(
-        current.copyWith(isLoadingMore: true, loadMoreFailed: false));
+    state =
+        AsyncData(current.copyWith(isLoadingMore: true, loadMoreFailed: false));
     try {
       final next = await _fetch(_page + 1);
       if (!ref.mounted) return;
@@ -142,7 +142,7 @@ class PagedListNotifier<T> extends AsyncNotifier<PagedResults<T>> {
         totalCount: current.totalCount,
       ));
     } catch (e) {
-      debugPrint('$label, pagina ${_page + 1} non caricata: $e');
+      debugPrint('Pagina ${_page + 1} non caricata: ${e.runtimeType}');
       if (!ref.mounted) return;
       state = AsyncData(
           current.copyWith(isLoadingMore: false, loadMoreFailed: true));

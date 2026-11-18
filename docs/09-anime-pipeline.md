@@ -58,17 +58,12 @@ fetch e ridistribuzione tra cour concorrenti. Non duplicare queste chiamate.
 - Non dichiarare completamento basandosi su una risposta parziale o saltare
   cour `RELEASING`/`NOT_YET_RELEASED` solo perché il totale è zero.
 
-## Limite attuale dell'aggiunta
+## Aggiunta senza mapping
 
-`TrackedShowsNotifier.addShow` attende AniList se il dettaglio anime non è ancora
-arricchito e usa `readFuture` per mantenerne vivo il caricamento. Tuttavia, se
-non ottiene dati utili, prosegue col dettaglio originale e può salvare totali e
-stagioni grezzi. Il commento “inserimento immediato” non descrive l'ordine reale:
-l'insert avviene dopo il tentativo async.
-
-- Non documentare un blocco completo dell'aggiunta senza mapping: non esiste.
-- Un eventuale rafforzamento di questo percorso richiede una modifica dedicata
-  e regressioni; non indebolire le protezioni già presenti su lettura e sync.
+TrackedShowsNotifier.addShow attende i cour usando readFuture. Se non ottiene un
+mapping utile, conserva il titolo ma registra totali ignoti (zero), senza righe
+stagione TMDB grezze. Nessun fallback di coordinate per anime; il successivo
+syncMetadata resta subordinato al mapping. Test in upcoming_episode_sync_test.
 
 ## Outage, cold offline e refresh
 

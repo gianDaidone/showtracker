@@ -34,7 +34,7 @@ final class RawgAuthControllerProvider
 }
 
 String _$rawgAuthControllerHash() =>
-    r'8118d4ab9f28c5be0b3cdbfd2dfcfb7a68ed7dc5';
+    r'20d1ec8ff81d7b83af15f2378cb9f670870843c7';
 
 abstract class _$RawgAuthController extends $AsyncNotifier<RawgAuthState> {
   FutureOr<RawgAuthState> build();
