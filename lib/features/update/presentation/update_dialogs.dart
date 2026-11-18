@@ -79,7 +79,8 @@ class UpdateAvailableDialog extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Installata: $installed',
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
           if (notes != null) ...[
             const SizedBox(height: 16),
@@ -171,14 +172,15 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
           .listen(
             _onEvent,
             onError: (Object e) {
-              debugPrint('[Update] errore download: $e');
+              debugPrint('[Update] errore download: ${e.runtimeType}');
               _close(_downloadFailedMessage);
             },
             onDone: () => _close(null),
           );
     } catch (e) {
-      debugPrint('[Update] impossibile avviare il download: $e');
-      WidgetsBinding.instance.addPostFrameCallback((_) => _close(_downloadFailedMessage));
+      debugPrint('[Update] impossibile avviare il download: ${e.runtimeType}');
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _close(_downloadFailedMessage));
     }
   }
 
@@ -201,7 +203,7 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
       case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
         _close(installPermissionDeniedMessage);
       case OtaStatus.DOWNLOAD_ERROR:
-        debugPrint('[Update] DOWNLOAD_ERROR: ${event.value}');
+        debugPrint('[Update] DOWNLOAD_ERROR: [dettaglio omesso]');
         _close(_cancelling ? null : _downloadFailedMessage);
       case OtaStatus.CHECKSUM_ERROR:
         _close('Il file scaricato è danneggiato. Riprova.');
@@ -209,7 +211,7 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
         _close('Un download dell\'aggiornamento è già in corso.');
       case OtaStatus.INSTALLATION_ERROR:
       case OtaStatus.INTERNAL_ERROR:
-        debugPrint('[Update] ${event.status.name}: ${event.value}');
+        debugPrint('[Update] ${event.status.name}: [dettaglio omesso]');
         _close(_cancelling
             ? null
             : 'Installazione dell\'aggiornamento non riuscita. Riprova.');
@@ -227,7 +229,7 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
     try {
       await _ota.cancel();
     } catch (e) {
-      debugPrint('[Update] cancel fallito: $e');
+      debugPrint('[Update] cancel fallito: ${e.runtimeType}');
     }
     // Il plugin manda CANCELED solo se un download era davvero attivo.
     _close(null);
@@ -246,7 +248,8 @@ class _UpdateDownloadDialogState extends State<UpdateDownloadDialog> {
       canPop: false,
       child: AlertDialog(
         backgroundColor: AppColors.surface,
-        title: Text('Download versione ${widget.release.version}', style: _titleStyle),
+        title: Text('Download versione ${widget.release.version}',
+            style: _titleStyle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

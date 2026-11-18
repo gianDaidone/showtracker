@@ -54,8 +54,10 @@ class GithubReleaseService {
       // SocketException, TlsException/HandshakeException, HttpException,
       // http.ClientException, TimeoutException… Il messaggio per l'utente è
       // generico: la causa reale resta nel log.
-      if (e is IOException || e is http.ClientException || e is TimeoutException) {
-        debugPrint('[Update] richiesta GitHub fallita: ${e.runtimeType}: $e');
+      if (e is IOException ||
+          e is http.ClientException ||
+          e is TimeoutException) {
+        debugPrint('[Update] richiesta GitHub fallita: ${e.runtimeType}');
         throw const UpdateNoConnection();
       }
       rethrow;
@@ -119,8 +121,9 @@ class GithubReleaseService {
     if (apkUrl == null || apkName == null) throw UpdateNoApk(tagName);
 
     final rawNotes = json['body'];
-    final notes =
-        rawNotes is String && rawNotes.trim().isNotEmpty ? rawNotes.trim() : null;
+    final notes = rawNotes is String && rawNotes.trim().isNotEmpty
+        ? rawNotes.trim()
+        : null;
 
     return GithubRelease(
       version: version,

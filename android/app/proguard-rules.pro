@@ -30,5 +30,5 @@
 # package_info_plus
 -keep class dev.fluttercommunity.plus.packageinfo.** { *; }
 
-# Google Play Core (Deferred Components warning fix)
+# Flutter embedding references optional deferred-component classes even in APK builds.
 -dontwarn com.google.android.play.core.**

@@ -19,7 +19,8 @@ titoli seme per richiedere raccomandazioni.
   l'orario AniList; la consegna effettiva dipende dalla pianificazione Android.
 - **Widget per la home** di Android: "Da Vedere" e "In Uscita" (componenti Maratona/Prossimamente).
 - **Sincronizzazione tra due dispositivi** sulla stessa rete Wi-Fi tramite QR code,
-  senza backend esterno, con un server temporaneo sul dispositivo mittente.
+  senza backend esterno, con un server temporaneo sul dispositivo mittente. La LAN
+  usa AES-GCM e richiede entrambi i dispositivi aggiornati; i QR diretti legacy restano leggibili.
 - **Aggiornamento in-app**: dal tab Profilo, "Cerca aggiornamenti" scarica e installa l'ultima
   release pubblicata su GitHub.
 - Interfaccia in italiano, solo tema scuro.
@@ -62,8 +63,8 @@ agli utenti.
 
 ```bash
 flutter analyze --no-pub                 # analisi statica
-flutter test --no-pub                    # test unitari, provider e widget
-flutter test --no-pub --coverage         # report coverage/lcov.info
+flutter test --no-pub  # test unitari, provider e widget
+flutter test --no-pub --coverage # report coverage/lcov.info
 # Rigenera Riverpod (*.g.dart) e Drift (*.drift.dart)
 dart run build_runner build
 ```
@@ -100,14 +101,20 @@ sono conservati nell'[audit prestazionale](docs/performance-audit.md).
 
 1. In `pubspec.yaml` alza **sia** la versione **sia** il numero di build, es. `1.0.0+1` → `1.0.1+2`.
    L'app confronta la versione; Android rifiuta un aggiornamento con numero di build non superiore.
-2. Compila firmando sempre con la stessa chiave (`android/key.properties`, non versionato):
+2. Prepara `dart_defines/release.json` dall’esempio con chiavi applicative appropriate
+   (file locale ignorato), poi compila con la stessa firma (`android/key.properties`, non versionato):
    ```bash
-   flutter build apk --release --dart-define-from-file=dart_defines/dev.json
+   flutter build apk --release --dart-define-from-file=dart_defines/release.json
    ```
 3. Crea su GitHub una release **non** in bozza e **non** pre-release, con tag `v1.0.1`, le note di
    rilascio nella descrizione e allegato `build/app/outputs/flutter-apk/app-release.apk`.
 
-Chi ha l'app installata la troverà con "Cerca aggiornamenti".
+L’app la troverà con "Cerca aggiornamenti", soltanto dopo un tap. Firma release obbligatoria, identità invariata. Prima di una
+release seguire la [checklist GitHub](docs/github-release-checklist.md), che
+documenta i comandi canonici con configurazione release locale e le prove native.
+Vedere anche [audit](docs/security-reliability-audit.md),
+[privacy/servizi](docs/privacy-and-services.md) e
+[note di aggiornamento LAN](docs/github-release-notes.md).
 
 ## Crediti
 

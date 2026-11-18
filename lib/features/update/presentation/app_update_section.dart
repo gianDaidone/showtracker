@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/riverpod_utils.dart';
 import '../../../core/services/app_toast.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../settings/presentation/widgets/settings_widgets.dart';
@@ -36,6 +37,7 @@ class _AppUpdateTileState extends ConsumerState<AppUpdateTile> {
       );
 
   Future<void> _checkForUpdates() async {
+    if (_busy) return;
     if (!Platform.isAndroid) {
       _showError('Gli aggiornamenti in-app sono disponibili solo su Android.');
       return;
@@ -45,10 +47,13 @@ class _AppUpdateTileState extends ConsumerState<AppUpdateTile> {
     final GithubRelease release;
     final AppVersion installed;
     try {
-      final info = await ref.read(packageInfoProvider.future);
+      final info = await ProviderScope.containerOf(context)
+          .readFuture(packageInfoProvider.future);
+      if (!mounted) return;
       final parsed = AppVersion.tryParse(info.version);
       if (parsed == null) {
-        _showError('Impossibile leggere la versione installata (${info.version}).');
+        _showError(
+            'Impossibile leggere la versione installata (${info.version}).');
         return;
       }
       installed = parsed;
@@ -57,8 +62,9 @@ class _AppUpdateTileState extends ConsumerState<AppUpdateTile> {
       _showError(e.message);
       return;
     } catch (e) {
-      debugPrint('[Update] controllo fallito: $e');
-      _showError('Impossibile verificare gli aggiornamenti. Riprova più tardi.');
+      debugPrint('[Update] controllo fallito: ${e.runtimeType}');
+      _showError(
+          'Impossibile verificare gli aggiornamenti. Riprova più tardi.');
       return;
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -76,7 +82,8 @@ class _AppUpdateTileState extends ConsumerState<AppUpdateTile> {
 
     final wantsUpdate = await showDialog<bool>(
       context: context,
-      builder: (_) => UpdateAvailableDialog(release: release, installed: installed),
+      builder: (_) =>
+          UpdateAvailableDialog(release: release, installed: installed),
     );
     if (wantsUpdate != true || !mounted) return;
 
@@ -84,6 +91,7 @@ class _AppUpdateTileState extends ConsumerState<AppUpdateTile> {
   }
 
   Future<void> _downloadAndInstall(GithubRelease release) async {
+    if (!mounted) return;
     setState(() => _busy = true);
     try {
       // Verificato prima del download: altrimenti Android blocca
@@ -123,12 +131,14 @@ class _AppUpdateTileState extends ConsumerState<AppUpdateTile> {
       enabled: !_busy,
       leading: const SettingsIconBox(Icons.system_update_rounded),
       title: 'Cerca aggiornamenti',
-      subtitle: _busy ? 'Verifica in corso…' : 'Scarica l\'ultima versione da GitHub',
+      subtitle:
+          _busy ? 'Verifica in corso…' : 'Scarica l\'ultima versione da GitHub',
       trailing: _busy
           ? const SizedBox(
               width: 22,
               height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.accent),
+              child: CircularProgressIndicator(
+                  strokeWidth: 2.5, color: AppColors.accent),
             )
           : null,
       onTap: _busy ? null : _checkForUpdates,

@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // Stable identity: preserve updates, app data and widget instances.
         applicationId = "com.example.showtracker"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
@@ -52,13 +52,7 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             
-            val keystorePropertiesFile = rootProject.file("key.properties")
-            if (keystorePropertiesFile.exists()) {
-                signingConfig = signingConfigs.getByName("release")
-            } else {
-                // Fallback to debug signature if key is missing to avoid NullPointerException
-                signingConfig = signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
@@ -75,4 +69,9 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    constraints {
+        implementation("com.google.guava:guava:33.7.2-android") {
+            because("Fix CVE-2026-102554 in the transitive Android Guava dependency")
+        }
+    }
 }

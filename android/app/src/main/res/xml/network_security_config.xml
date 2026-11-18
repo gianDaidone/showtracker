@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Dynamic RFC1918 peers cannot be represented as CIDRs in domain-config.
+         LAN is restricted in SyncReceiver; known remote services never use HTTP. -->
+    <base-config cleartextTrafficPermitted="true" />
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">themoviedb.org</domain>
+        <domain includeSubdomains="true">rawg.io</domain>
+        <domain includeSubdomains="true">anilist.co</domain>
+        <domain includeSubdomains="true">yuna.moe</domain>
+        <domain includeSubdomains="true">github.com</domain>
+        <domain includeSubdomains="true">githubusercontent.com</domain>
+        <domain includeSubdomains="true">steampowered.com</domain>
+        <domain includeSubdomains="true">steamstatic.com</domain>
+        <domain includeSubdomains="true">steamusercontent.com</domain>
+    </domain-config>
+</network-security-config>

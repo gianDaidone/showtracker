@@ -7,10 +7,13 @@
 .pub/
 build/
 coverage/
+/tool/__pycache__/
 *.iml
 
 # Android
 android/.gradle/
+/third_party/home_widget/android/.gradle/
+/third_party/ota_update/android/.gradle/
 android/local.properties
 android/key.properties
 android/app/google-services.json

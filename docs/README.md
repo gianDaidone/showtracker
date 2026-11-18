@@ -13,6 +13,7 @@ il codice resta la fonte di verità. I percorsi citati sono relativi alla root.
 | Integrare API o modificare errori/fallback | [04 — Servizi e API](04-services-api.md) | `lib/core/network/`, `lib/features/series/data/`, `lib/features/games/data/` |
 | Modificare provider, route, widget o tema | [05 — Stato e UI](05-ui-state-management.md) | `lib/core/router/`, `lib/core/shell/`, `lib/core/theme/`, `test/core/router/` |
 | Configurare ambiente, codegen, test o release | [06 — Sviluppo](06-development-rules.md) | `pubspec.yaml`, `build.yaml`, `.github/workflows/test.yml`, [guida test](../test/README.md) |
+| Verificare APK, firma e aggiornamenti GitHub | [Checklist release](github-release-checklist.md) | `tool/verify_apk.py`, `tool/audit_native_libraries.py` |
 | Scrivere o rifattorizzare Dart/Flutter | [07 — Regole di codice](07-clean-code-best-practices.md) | `analysis_options.yaml`, `lib/core/riverpod_utils.dart`, `lib/core/widgets/` |
 | Modificare auth, permessi, input o dati sensibili | [08 — Sicurezza](08-security-permissions.md) | `lib/core/auth/`, `lib/core/network/tmdb_http_client.dart`, `android/app/src/main/AndroidManifest.xml` |
 | Modificare anime, cour o numerazione episodi | [09 — Pipeline anime](09-anime-pipeline.md) | `lib/features/series/providers/series_providers.dart`, `test/features/series/` |
@@ -44,3 +45,12 @@ il codice resta la fonte di verità. I percorsi citati sono relativi alla root.
 - `performance-audit.md` conserva risultati datati: non certifica la build attuale.
 - [test/README.md](../test/README.md) possiede fixture, copertura e checklist test;
   [third_party/README.md](../third_party/README.md) possiede la patch vendorizzata.
+
+## Sicurezza, affidabilità e release GitHub
+
+- [Report principale](security-reliability-audit.md): correzioni conservate, evidenze e problemi aperti.
+- [Checklist GitHub e comandi canonici](github-release-checklist.md).
+- [Note della prossima release](github-release-notes.md), ancora in bozza.
+- [Chiarimento AniList](anilist-terms-clarification.md).
+- [Privacy, flussi e condizioni API](privacy-and-services.md), pertinenti anche a GitHub.
+- [Procedura e registro delle prove native](native-release-validation.md), con build, esiti e limiti distinti.

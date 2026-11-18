@@ -6,6 +6,11 @@ la mappa delle verifiche, le convenzioni delle fixture e i limiti dei test nativ
 
 ## Comandi
 
+L’OTA si esercita nella suite ordinaria, senza configurazione di canale.
+I test UI verificano voce aggiornamenti, sync nel Profilo, assenza di controlli
+automatici, download e annullamento. I mock non provano l’installer Android:
+vedere [checklist GitHub](../docs/github-release-checklist.md).
+
 SDK verificato: **Flutter 3.47.6 / Dart 3.13.5**.
 
 ```bash
@@ -164,3 +169,23 @@ Android o del callback con DB singleton.
 
 La suite è una protezione ampia delle regressioni principali, non una prova di
 ogni schermata, plugin, versione Android o combinazione possibile di dati.
+
+## Regressioni sicurezza e affidabilità 2026-11-17
+
+Test dedicati sotto core/auth, core/network, features/sync e features/settings:
+callback monouso, mutazioni credenziali concorrenti, cancellazione e redirect,
+budget risposte, input QR/zlib/range ostili, rollback, AES-GCM e chiave esclusa
+da HTTP, TTL/stop durante bind, camera non avviata in export, testo 200% e tastiera.
+I test hydration preservano campi personali e impediscono coordinate TMDB grezze
+negli anime. Nessun MethodChannel simulato certifica il runtime Android:
+vedere [prove isolate](../docs/native-release-validation.md).
+
+## Consolidamento GitHub
+
+Obiettivo corrente: APK/OTA GitHub su tap, senza configurazione di canale. Dopo il cambio
+obiettivo non è stata ripetuta la suite intera: regressioni pertinenti in
+sync_encryption_test, encrypted_receiver_test, sync_service_test,
+sync_security_test e features/update. Il nuovo test DB prova che plaintext,
+envelope sconosciuto e tag alterato falliscono prima di modificare record locali.
+Risultati correnti e limiti nell’[audit](../docs/security-reliability-audit.md);
+prove native prioritarie nella [checklist GitHub](../docs/github-release-checklist.md).

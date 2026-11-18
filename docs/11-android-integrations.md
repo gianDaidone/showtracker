@@ -84,6 +84,8 @@ Fonti:
 Fonti: `lib/features/update/`, `lib/core/constants.dart`,
 `android/app/src/main/kotlin/com/example/showtracker/MainActivity.kt`.
 
+Unica distribuzione APK GitHub: [checklist release](github-release-checklist.md).
+
 1. Tap `AppUpdateTile` in Profilo avvia il controllo; nessun controllo automatico.
 2. `GithubReleaseService` legge `releases/latest` per `kGithubRepo`, senza token
    TMDB/RAWG; timeout e mapping errori in [04](04-services-api.md).
@@ -99,14 +101,34 @@ Fonti: `lib/features/update/`, `lib/core/constants.dart`,
 | `canRequestPackageInstalls` | Su Android 8+ legge packageManager; versioni precedenti true |
 | `openInstallSettings` | Apre `ACTION_MANAGE_UNKNOWN_APP_SOURCES` del package; false se non applicabile/non disponibile |
 
-- `InstallPermission.isGranted` tratta `MissingPluginException` come true:
-  non è una verifica nativa riuscita su piattaforma senza canale.
+- `InstallPermission.isGranted` restituisce false quando manca il canale nativo; non presume un permesso concesso.
 - `requestViaSettings` possiede un `AppLifecycleListener`, lo elimina in finally
   e attende il ritorno prima di ricontrollare.
 - Gestire eventi e cancellazione download in `update_dialogs.dart`; non affidarsi
   al solo `PERMISSION_NOT_GRANTED_ERROR` del plugin per il controllo preventivo.
-- Pubblicazione: stessa firma, versione e build number crescenti; attenzione al
-  fallback firma debug nel build script. Procedura in [06](06-development-rules.md).
+- Pubblicazione: stessa firma, versione e build number crescenti; nessun fallback
+  firma debug. Procedura in [06](06-development-rules.md).
+
+### Permessi, FileProvider e installer
+
+L’app usa ota_update ufficiale 7.1.0. Il Manifest comune mantiene
+REQUEST_INSTALL_PACKAGES; prima del download MainActivity/InstallPermission
+verificano il consenso Android e lo ricontrollano al ritorno dalle impostazioni.
+Non è prevista installazione silenziosa.
+
+Il FileProvider sk.fourq.otaupdate.OtaUpdateFileProvider è non esportato, concede
+accesso tramite URI e conserva l’autorità com.example.showtracker.ota_update_provider.
+La risorsa android/app/src/main/res/xml/filepaths.xml espone soltanto la cartella
+interna files/ota_update usata dal plugin, non l’intero storage applicativo.
+
+INSTALL_PACKAGES, WRITE_EXTERNAL_STORAGE e READ_EXTERNAL_STORAGE sono esclusi
+con tools:node=remove nel Manifest dell’app: l’installer normale non richiede
+privilegi di sistema né storage esterno. Il merger può inferire READ dalla
+dichiarazione WRITE del plugin; anche questo permesso viene quindi rimosso
+esplicitamente, come verificato nel Manifest impacchettato.
+Il controllo APK e la CI verificano permessi, provider, canali OTA e componenti;
+la presenza di un evento INSTALLING non dimostra che Android abbia concluso
+l’aggiornamento. Servono le [prove native](native-release-validation.md).
 
 ## Verifiche e limiti
 

@@ -64,7 +64,7 @@ lib/
 | Credenziali / link | `flutter_secure_storage`, `app_links`, `url_launcher` |
 | Notifiche / widget | `flutter_local_notifications`, `timezone`, `flutter_timezone`, `home_widget` locale |
 | Sync | `shelf`, `shelf_router`, `network_info_plus`, `qr_flutter`, `mobile_scanner` |
-| Update | `package_info_plus`, `ota_update` |
+| Update | `package_info_plus`, `ota_update` ufficiale con installer APK Android |
 
 Le versioni esatte appartengono a `pubspec.lock`; evitare di copiarne l'intero
 contenuto nella documentazione. La patch `home_widget` è in [third_party](../third_party/README.md).

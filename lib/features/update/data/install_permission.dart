@@ -17,8 +17,7 @@ class InstallPermission {
       return await _channel.invokeMethod<bool>('canRequestPackageInstalls') ??
           false;
     } on MissingPluginException {
-      // Piattaforma senza il canale nativo: lascia decidere ad Android.
-      return true;
+      return false;
     }
   }
 

@@ -76,8 +76,9 @@ flutter test --no-pub --coverage --test-randomize-ordering-seed=20261029
 - Nuove regressioni devono verificare effetti osservabili, non copiare l'implementazione.
 - Guida autorevole per fixture, teardown, copertura e limiti: [test/README.md](../test/README.md).
 - CI `.github/workflows/test.yml`: Ubuntu, Flutter 3.47.6, pub get, analyze,
-  suite randomizzata con seed fisso e artefatto coverage. Non compila l'APK e
-  non applica una soglia coverage.
+  suite randomizzata con seed fisso e artefatto coverage.
+  Un job Android compila/ispeziona l’APK debug; nessuna
+  installazione, credenziale release o soglia coverage.
 - Non trasferire i conteggi storici di [performance-audit.md](performance-audit.md)
   nel report di una verifica corrente senza rieseguire la suite.
 
@@ -109,16 +110,27 @@ salvo istruzioni diverse; non rinominare un branch esistente per uniformarlo.
 
 1. Incrementare nome versione **e** build number in `pubspec.yaml`.
 2. Compilare con le chiavi applicative appropriate e la stessa firma delle release precedenti.
-3. Verificare la firma: il build script ripiega sulla chiave debug se manca
-   `android/key.properties`. Una build riuscita non certifica una firma pubblicabile.
-4. Creare release GitHub pubblicata, non draft/non prerelease, con tag parsabile
-   e asset `.apk`.
-5. Verificare su dispositivo di test i flussi nativi della checklist.
+3. Verificare la firma: la release richiede `android/key.properties` valido;
+   non esiste un fallback alla chiave debug.
+4. Verificare prima su dispositivo isolato i flussi della [checklist GitHub](github-release-checklist.md).
+5. Soltanto dopo richiesta esplicita creare la release GitHub non draft/non prerelease,
+   con tag parsabile e asset `.apk` verificato.
 
 ```powershell
-flutter build apk --release --dart-define-from-file=dart_defines/dev.json
+flutter build apk --release --dart-define-from-file=dart_defines/release.json
 ```
 
-Output standard: `build/app/outputs/flutter-apk/app-release.apk`.
+Output: `build/app/outputs/flutter-apk/app-release.apk`.
+Preparare release.json dall’esempio senza sovrascrivere configurazioni locali.
+Comandi e gate autorevoli: [checklist GitHub](github-release-checklist.md);
+Controlli APK/Manifest/firma tramite tool/verify_apk.py e apksigner; nessuna selezione di canale.
 Non installare o disinstallare test runner sull'app personale; un DB in memoria
 non isola il ciclo di installazione Android.
+
+## Manutenzione delle correzioni di audit
+
+Guava Android è vincolata a 33.7.2-android per l’advisory del produttore: prima
+di rimuovere il constraint verificare l’albero risolto e OSV. cryptography 2.9.0
+fornisce AES-GCM LAN v2 senza plugin nativo. Non aggiungere downgrade plaintext;
+entrambi i peer aggiornati sono un requisito approvato. Inventario ELF e Manifest
+si verificano sugli artefatti effettivi; procedure e limiti nell’[audit attivo](security-reliability-audit.md).

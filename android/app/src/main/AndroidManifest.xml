@@ -1,20 +1,23 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- The upstream installer uses internal files, not system installation privileges. -->
+    <uses-permission android:name="android.permission.INSTALL_PACKAGES" tools:node="remove"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
+    <!-- The merger also infers READ from the upstream WRITE declaration. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <!-- Aggiornamento in-app (ota_update): installazione dell'APK scaricato -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
-    <!-- ota_update la dichiara senza limiti; l'APK finisce in storage interno,
-         quindi la limitiamo ai vecchi Android -->
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28"/>
     <application
-        android:label="showtracker"
+        android:label="ShowTracker"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"
-        android:allowBackup="false">
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -62,7 +65,7 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </receiver>
-        <!-- Aggiornamento in-app: espone l'APK scaricato all'installer di sistema -->
+        <!-- Grant the Android installer access only to files/ota_update. -->
         <provider
             android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
             android:authorities="${applicationId}.ota_update_provider"
@@ -99,7 +102,7 @@
         </receiver>
 
         <!-- Obbligatorio per HomeWidgetBackground -->
-        <receiver android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver" android:exported="true">
+        <receiver android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
             </intent-filter>
