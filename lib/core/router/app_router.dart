@@ -24,12 +24,20 @@ import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/sync/presentation/sync_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authStateAsync = ref.watch(authControllerProvider);
+  // Aggiorna i redirect senza ricreare i Navigator e le route ancora attive.
+  final authRefresh = ValueNotifier<bool?>(null);
+  ref.listen(authControllerProvider, (_, next) {
+    if (next.isLoading) return;
+    final auth = next.value;
+    authRefresh.value = auth != null && auth is! Unauthenticated;
+  }, fireImmediately: true);
 
-  return GoRouter(
+  final router = GoRouter(
     navigatorKey: AppToast.navigatorKey,
     initialLocation: '/series',
+    refreshListenable: authRefresh,
     redirect: (context, state) {
+      final authStateAsync = ref.read(authControllerProvider);
       final segments = state.uri.pathSegments;
       if (segments.length == 3 &&
           {'series', 'movies', 'games'}.contains(segments[0]) &&
@@ -181,4 +189,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(() {
+    router.dispose();
+    authRefresh.dispose();
+  });
+  return router;
 });

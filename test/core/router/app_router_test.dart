@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:showtracker/core/auth/auth_state.dart';
 import 'package:showtracker/core/database/app_database.dart';
@@ -51,6 +54,62 @@ void main() {
       await app.flush(tester);
       expect(tester.takeException(), isNull);
     }
+  });
+
+  for (final loggedIn in [false, true]) {
+    testWidgets('avvio con auth pendente mantiene il router (login: $loggedIn)',
+        (tester) async {
+      final credentials = Completer<AuthState>();
+      final app = (await tester.runAsync(() => AppTestHarness.create(
+            pendingAuth: credentials.future,
+          )))!;
+      addTearDown(() => app.dispose(tester));
+      await app.pump(tester);
+      final router = app.container.read(appRouterProvider);
+      expect(app.container.read(authControllerProvider).isLoading, isTrue);
+
+      credentials.complete(loggedIn
+          ? const AuthenticatedWithManualKey('test-key')
+          : const Unauthenticated());
+      await app.flush(tester);
+
+      expect(app.container.read(appRouterProvider), same(router));
+      expect(find.byType(OnboardingScreen),
+          loggedIn ? findsNothing : findsOneWidget);
+      expect(find.byType(NextEpisodesScreen),
+          loggedIn ? findsOneWidget : findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('cambio credenziali conserva route e future del push',
+      (tester) async {
+    final app = await mount(tester);
+    final router = app.container.read(appRouterProvider);
+    router.go('/settings');
+    await app.flush(tester);
+    var completed = false;
+    String? result;
+    unawaited(router.push<String>('/privacy').then((value) {
+      completed = true;
+      result = value;
+    }));
+    await app.flush(tester);
+
+    await app.container
+        .read(authControllerProvider.notifier)
+        .loginWithManualKey('replacement-test-key');
+    await app.flush(tester);
+
+    expect(app.container.read(appRouterProvider), same(router));
+    expect(find.byType(PrivacyInfoScreen), findsOneWidget);
+    expect(completed, isFalse);
+    router.pop('closed');
+    await app.flush(tester);
+    expect(completed, isTrue);
+    expect(result, 'closed');
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('senza credenziali mostra onboarding e protegge le route',

@@ -64,6 +64,11 @@ Fonti: `lib/core/router/app_router.dart`, `lib/core/shell/main_shell.dart`.
   `/games/detail/:id`, `/sync`, `/privacy`.
 - Il redirect aspetta il caricamento auth; non autenticato → onboarding;
   autenticato su onboarding → serie. `/` è ricondotto a `/series`.
+- `appRouterProvider` mantiene una sola istanza di `GoRouter`: un listener auth
+  aggiorna i redirect tramite `refreshListenable` quando cambia l'accesso
+  (autenticato/non autenticato), senza ricreare lo stack o
+  completare le future delle route aperte. Router e notifier di refresh vengono
+  disposti dal provider alla chiusura del container proprietario.
 - Il redirect del router valida gli ID dei dettagli come interi positivi int32
   prima dei builder, che usano `int.parse`; ID non validi tornano a `/series`.
   Gli indici del tab episodi sono limitati all’intervallo 0–1.

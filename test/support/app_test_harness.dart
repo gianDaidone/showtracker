@@ -13,7 +13,6 @@ import 'package:showtracker/core/database/app_database.dart';
 import 'package:showtracker/core/database/database_provider.dart';
 import 'package:showtracker/core/riverpod_utils.dart';
 import 'package:showtracker/core/services/startup_coordinator.dart';
-import 'package:showtracker/core/router/app_router.dart';
 import 'package:showtracker/features/games/data/rawg_service.dart';
 import 'package:showtracker/features/games/providers/games_providers.dart';
 import 'package:showtracker/features/series/data/tmdb_service.dart';
@@ -21,11 +20,12 @@ import 'package:showtracker/features/series/providers/series_providers.dart';
 import 'package:showtracker/features/update/providers/update_providers.dart';
 
 class TestAuthController extends AuthController {
-  TestAuthController(this.initial);
+  TestAuthController(this.initial, {this.pendingInitial});
   final AuthState initial;
+  final Future<AuthState>? pendingInitial;
 
   @override
-  Future<AuthState> build() async => initial;
+  Future<AuthState> build() => pendingInitial ?? Future.value(initial);
 
   @override
   Future<void> loginWithManualKey(String apiKey) async {
@@ -53,6 +53,7 @@ class AppTestHarness {
 
   static Future<AppTestHarness> create({
     AuthState auth = const AuthenticatedWithManualKey('test-key'),
+    Future<AuthState>? pendingAuth,
     bool rescheduleAtStartup = false,
     TmdbService? tmdbService,
     RawgService? rawgService,
@@ -68,7 +69,8 @@ class AppTestHarness {
       retry: noProviderRetry,
       overrides: [
         databaseProvider.overrideWithValue(db),
-        authControllerProvider.overrideWith(() => TestAuthController(auth)),
+        authControllerProvider.overrideWith(
+            () => TestAuthController(auth, pendingInitial: pendingAuth)),
         rawgAuthControllerProvider.overrideWithBuild(
           (ref, notifier) async => rawgAuth,
         ),
@@ -87,7 +89,9 @@ class AppTestHarness {
         ...overrides,
       ],
     );
-    await container.read(authControllerProvider.future);
+    if (pendingAuth == null) {
+      await container.read(authControllerProvider.future);
+    }
     container.listen(trackedShowsProvider, (_, __) {});
     await container.read(trackedShowsProvider.future);
     final app = AppTestHarness._(db, container, client);
@@ -135,9 +139,7 @@ class AppTestHarness {
   }
 
   Future<void> dispose(WidgetTester tester) async {
-    final router = container.read(appRouterProvider);
     await tester.pumpWidget(const SizedBox.shrink());
-    router.dispose();
     container.dispose();
     client.close();
     await tester.runAsync(db.close);

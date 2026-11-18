@@ -23,6 +23,23 @@ flutter run --dart-define-from-file=dart_defines/dev.json
 dell'utente; il login browser necessita invece `ApiKeys.tmdb`.
 Il flag giochi attuale è una costante `true`, non un dart-define.
 
+Se sul dispositivo è già installata una build con `versionCode` maggiore di
+quello locale, `flutter run` può rispondere a `INSTALL_FAILED_VERSION_DOWNGRADE`
+disinstallando e reinstallando l'app, con perdita dei dati locali. Verificare il
+build number prima dell'avvio e usare un numero almeno pari a quello installato.
+`flutter run` legge il numero dopo `+` in `pubspec.yaml` e non accetta
+`--build-number` (disponibile invece per `flutter build apk`). Per esempio, se
+sul dispositivo c'è la build 9 e nel checkout la 8, portare il campo `version`
+da `1.2.0+8` a `1.2.0+9` prima di eseguire:
+
+```powershell
+flutter run --dart-define-from-file=dart_defines/dev.json
+```
+
+L'aggiornamento richiede anche una firma compatibile; non risolvere eventuali
+conflitti di firma disinstallando l'app personale. Per prove isolate usare un
+emulatore dedicato.
+
 ## Code generation
 
 ```powershell
