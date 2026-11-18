@@ -4118,6 +4118,696 @@ class AnimeSeasonCacheCompanion extends UpdateCompanion<AnimeSeasonCacheData> {
   }
 }
 
+class $SyncSessionsTable extends SyncSessions
+    with TableInfo<$SyncSessionsTable, SyncSession> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncSessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _fingerprintMeta =
+      const VerificationMeta('fingerprint');
+  @override
+  late final GeneratedColumn<String> fingerprint = GeneratedColumn<String>(
+      'fingerprint', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [id, fingerprint, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_sessions';
+  @override
+  VerificationContext validateIntegrity(Insertable<SyncSession> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('fingerprint')) {
+      context.handle(
+          _fingerprintMeta,
+          fingerprint.isAcceptableOrUnknown(
+              data['fingerprint']!, _fingerprintMeta));
+    } else if (isInserting) {
+      context.missing(_fingerprintMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SyncSession map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncSession(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      fingerprint: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}fingerprint'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $SyncSessionsTable createAlias(String alias) {
+    return $SyncSessionsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncSession extends DataClass implements Insertable<SyncSession> {
+  final int id;
+  final String fingerprint;
+  final DateTime createdAt;
+  const SyncSession(
+      {required this.id, required this.fingerprint, required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['fingerprint'] = Variable<String>(fingerprint);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SyncSessionsCompanion toCompanion(bool nullToAbsent) {
+    return SyncSessionsCompanion(
+      id: Value(id),
+      fingerprint: Value(fingerprint),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory SyncSession.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncSession(
+      id: serializer.fromJson<int>(json['id']),
+      fingerprint: serializer.fromJson<String>(json['fingerprint']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'fingerprint': serializer.toJson<String>(fingerprint),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  SyncSession copyWith({int? id, String? fingerprint, DateTime? createdAt}) =>
+      SyncSession(
+        id: id ?? this.id,
+        fingerprint: fingerprint ?? this.fingerprint,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  SyncSession copyWithCompanion(SyncSessionsCompanion data) {
+    return SyncSession(
+      id: data.id.present ? data.id.value : this.id,
+      fingerprint:
+          data.fingerprint.present ? data.fingerprint.value : this.fingerprint,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncSession(')
+          ..write('id: $id, ')
+          ..write('fingerprint: $fingerprint, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, fingerprint, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncSession &&
+          other.id == this.id &&
+          other.fingerprint == this.fingerprint &&
+          other.createdAt == this.createdAt);
+}
+
+class SyncSessionsCompanion extends UpdateCompanion<SyncSession> {
+  final Value<int> id;
+  final Value<String> fingerprint;
+  final Value<DateTime> createdAt;
+  const SyncSessionsCompanion({
+    this.id = const Value.absent(),
+    this.fingerprint = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  SyncSessionsCompanion.insert({
+    this.id = const Value.absent(),
+    required String fingerprint,
+    required DateTime createdAt,
+  })  : fingerprint = Value(fingerprint),
+        createdAt = Value(createdAt);
+  static Insertable<SyncSession> custom({
+    Expression<int>? id,
+    Expression<String>? fingerprint,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (fingerprint != null) 'fingerprint': fingerprint,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  SyncSessionsCompanion copyWith(
+      {Value<int>? id,
+      Value<String>? fingerprint,
+      Value<DateTime>? createdAt}) {
+    return SyncSessionsCompanion(
+      id: id ?? this.id,
+      fingerprint: fingerprint ?? this.fingerprint,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (fingerprint.present) {
+      map['fingerprint'] = Variable<String>(fingerprint.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncSessionsCompanion(')
+          ..write('id: $id, ')
+          ..write('fingerprint: $fingerprint, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncItemsTable extends SyncItems
+    with TableInfo<$SyncItemsTable, SyncItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _sessionIdMeta =
+      const VerificationMeta('sessionId');
+  @override
+  late final GeneratedColumn<int> sessionId = GeneratedColumn<int>(
+      'session_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES sync_sessions (id)'));
+  static const VerificationMeta _domainMeta = const VerificationMeta('domain');
+  @override
+  late final GeneratedColumn<String> domain = GeneratedColumn<String>(
+      'domain', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _externalIdMeta =
+      const VerificationMeta('externalId');
+  @override
+  late final GeneratedColumn<int> externalId = GeneratedColumn<int>(
+      'external_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _localIdMeta =
+      const VerificationMeta('localId');
+  @override
+  late final GeneratedColumn<int> localId = GeneratedColumn<int>(
+      'local_id', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('pending'));
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _errorMeta = const VerificationMeta('error');
+  @override
+  late final GeneratedColumn<String> error = GeneratedColumn<String>(
+      'error', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _progressDataMeta =
+      const VerificationMeta('progressData');
+  @override
+  late final GeneratedColumn<String> progressData = GeneratedColumn<String>(
+      'progress_data', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        sessionId,
+        domain,
+        externalId,
+        localId,
+        status,
+        title,
+        error,
+        progressData
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_items';
+  @override
+  VerificationContext validateIntegrity(Insertable<SyncItem> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(_sessionIdMeta,
+          sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta));
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('domain')) {
+      context.handle(_domainMeta,
+          domain.isAcceptableOrUnknown(data['domain']!, _domainMeta));
+    } else if (isInserting) {
+      context.missing(_domainMeta);
+    }
+    if (data.containsKey('external_id')) {
+      context.handle(
+          _externalIdMeta,
+          externalId.isAcceptableOrUnknown(
+              data['external_id']!, _externalIdMeta));
+    } else if (isInserting) {
+      context.missing(_externalIdMeta);
+    }
+    if (data.containsKey('local_id')) {
+      context.handle(_localIdMeta,
+          localId.isAcceptableOrUnknown(data['local_id']!, _localIdMeta));
+    } else if (isInserting) {
+      context.missing(_localIdMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    }
+    if (data.containsKey('error')) {
+      context.handle(
+          _errorMeta, error.isAcceptableOrUnknown(data['error']!, _errorMeta));
+    }
+    if (data.containsKey('progress_data')) {
+      context.handle(
+          _progressDataMeta,
+          progressData.isAcceptableOrUnknown(
+              data['progress_data']!, _progressDataMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {sessionId, domain, externalId},
+      ];
+  @override
+  SyncItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncItem(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      sessionId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}session_id'])!,
+      domain: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}domain'])!,
+      externalId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}external_id'])!,
+      localId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}local_id'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title']),
+      error: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}error']),
+      progressData: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}progress_data']),
+    );
+  }
+
+  @override
+  $SyncItemsTable createAlias(String alias) {
+    return $SyncItemsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncItem extends DataClass implements Insertable<SyncItem> {
+  final int id;
+  final int sessionId;
+  final String domain;
+  final int externalId;
+  final int localId;
+  final String status;
+  final String? title;
+  final String? error;
+  final String? progressData;
+  const SyncItem(
+      {required this.id,
+      required this.sessionId,
+      required this.domain,
+      required this.externalId,
+      required this.localId,
+      required this.status,
+      this.title,
+      this.error,
+      this.progressData});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['session_id'] = Variable<int>(sessionId);
+    map['domain'] = Variable<String>(domain);
+    map['external_id'] = Variable<int>(externalId);
+    map['local_id'] = Variable<int>(localId);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || title != null) {
+      map['title'] = Variable<String>(title);
+    }
+    if (!nullToAbsent || error != null) {
+      map['error'] = Variable<String>(error);
+    }
+    if (!nullToAbsent || progressData != null) {
+      map['progress_data'] = Variable<String>(progressData);
+    }
+    return map;
+  }
+
+  SyncItemsCompanion toCompanion(bool nullToAbsent) {
+    return SyncItemsCompanion(
+      id: Value(id),
+      sessionId: Value(sessionId),
+      domain: Value(domain),
+      externalId: Value(externalId),
+      localId: Value(localId),
+      status: Value(status),
+      title:
+          title == null && nullToAbsent ? const Value.absent() : Value(title),
+      error:
+          error == null && nullToAbsent ? const Value.absent() : Value(error),
+      progressData: progressData == null && nullToAbsent
+          ? const Value.absent()
+          : Value(progressData),
+    );
+  }
+
+  factory SyncItem.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncItem(
+      id: serializer.fromJson<int>(json['id']),
+      sessionId: serializer.fromJson<int>(json['sessionId']),
+      domain: serializer.fromJson<String>(json['domain']),
+      externalId: serializer.fromJson<int>(json['externalId']),
+      localId: serializer.fromJson<int>(json['localId']),
+      status: serializer.fromJson<String>(json['status']),
+      title: serializer.fromJson<String?>(json['title']),
+      error: serializer.fromJson<String?>(json['error']),
+      progressData: serializer.fromJson<String?>(json['progressData']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'sessionId': serializer.toJson<int>(sessionId),
+      'domain': serializer.toJson<String>(domain),
+      'externalId': serializer.toJson<int>(externalId),
+      'localId': serializer.toJson<int>(localId),
+      'status': serializer.toJson<String>(status),
+      'title': serializer.toJson<String?>(title),
+      'error': serializer.toJson<String?>(error),
+      'progressData': serializer.toJson<String?>(progressData),
+    };
+  }
+
+  SyncItem copyWith(
+          {int? id,
+          int? sessionId,
+          String? domain,
+          int? externalId,
+          int? localId,
+          String? status,
+          Value<String?> title = const Value.absent(),
+          Value<String?> error = const Value.absent(),
+          Value<String?> progressData = const Value.absent()}) =>
+      SyncItem(
+        id: id ?? this.id,
+        sessionId: sessionId ?? this.sessionId,
+        domain: domain ?? this.domain,
+        externalId: externalId ?? this.externalId,
+        localId: localId ?? this.localId,
+        status: status ?? this.status,
+        title: title.present ? title.value : this.title,
+        error: error.present ? error.value : this.error,
+        progressData:
+            progressData.present ? progressData.value : this.progressData,
+      );
+  SyncItem copyWithCompanion(SyncItemsCompanion data) {
+    return SyncItem(
+      id: data.id.present ? data.id.value : this.id,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      domain: data.domain.present ? data.domain.value : this.domain,
+      externalId:
+          data.externalId.present ? data.externalId.value : this.externalId,
+      localId: data.localId.present ? data.localId.value : this.localId,
+      status: data.status.present ? data.status.value : this.status,
+      title: data.title.present ? data.title.value : this.title,
+      error: data.error.present ? data.error.value : this.error,
+      progressData: data.progressData.present
+          ? data.progressData.value
+          : this.progressData,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncItem(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('domain: $domain, ')
+          ..write('externalId: $externalId, ')
+          ..write('localId: $localId, ')
+          ..write('status: $status, ')
+          ..write('title: $title, ')
+          ..write('error: $error, ')
+          ..write('progressData: $progressData')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, sessionId, domain, externalId, localId,
+      status, title, error, progressData);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncItem &&
+          other.id == this.id &&
+          other.sessionId == this.sessionId &&
+          other.domain == this.domain &&
+          other.externalId == this.externalId &&
+          other.localId == this.localId &&
+          other.status == this.status &&
+          other.title == this.title &&
+          other.error == this.error &&
+          other.progressData == this.progressData);
+}
+
+class SyncItemsCompanion extends UpdateCompanion<SyncItem> {
+  final Value<int> id;
+  final Value<int> sessionId;
+  final Value<String> domain;
+  final Value<int> externalId;
+  final Value<int> localId;
+  final Value<String> status;
+  final Value<String?> title;
+  final Value<String?> error;
+  final Value<String?> progressData;
+  const SyncItemsCompanion({
+    this.id = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.domain = const Value.absent(),
+    this.externalId = const Value.absent(),
+    this.localId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.title = const Value.absent(),
+    this.error = const Value.absent(),
+    this.progressData = const Value.absent(),
+  });
+  SyncItemsCompanion.insert({
+    this.id = const Value.absent(),
+    required int sessionId,
+    required String domain,
+    required int externalId,
+    required int localId,
+    this.status = const Value.absent(),
+    this.title = const Value.absent(),
+    this.error = const Value.absent(),
+    this.progressData = const Value.absent(),
+  })  : sessionId = Value(sessionId),
+        domain = Value(domain),
+        externalId = Value(externalId),
+        localId = Value(localId);
+  static Insertable<SyncItem> custom({
+    Expression<int>? id,
+    Expression<int>? sessionId,
+    Expression<String>? domain,
+    Expression<int>? externalId,
+    Expression<int>? localId,
+    Expression<String>? status,
+    Expression<String>? title,
+    Expression<String>? error,
+    Expression<String>? progressData,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sessionId != null) 'session_id': sessionId,
+      if (domain != null) 'domain': domain,
+      if (externalId != null) 'external_id': externalId,
+      if (localId != null) 'local_id': localId,
+      if (status != null) 'status': status,
+      if (title != null) 'title': title,
+      if (error != null) 'error': error,
+      if (progressData != null) 'progress_data': progressData,
+    });
+  }
+
+  SyncItemsCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? sessionId,
+      Value<String>? domain,
+      Value<int>? externalId,
+      Value<int>? localId,
+      Value<String>? status,
+      Value<String?>? title,
+      Value<String?>? error,
+      Value<String?>? progressData}) {
+    return SyncItemsCompanion(
+      id: id ?? this.id,
+      sessionId: sessionId ?? this.sessionId,
+      domain: domain ?? this.domain,
+      externalId: externalId ?? this.externalId,
+      localId: localId ?? this.localId,
+      status: status ?? this.status,
+      title: title ?? this.title,
+      error: error ?? this.error,
+      progressData: progressData ?? this.progressData,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<int>(sessionId.value);
+    }
+    if (domain.present) {
+      map['domain'] = Variable<String>(domain.value);
+    }
+    if (externalId.present) {
+      map['external_id'] = Variable<int>(externalId.value);
+    }
+    if (localId.present) {
+      map['local_id'] = Variable<int>(localId.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (error.present) {
+      map['error'] = Variable<String>(error.value);
+    }
+    if (progressData.present) {
+      map['progress_data'] = Variable<String>(progressData.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('domain: $domain, ')
+          ..write('externalId: $externalId, ')
+          ..write('localId: $localId, ')
+          ..write('status: $status, ')
+          ..write('title: $title, ')
+          ..write('error: $error, ')
+          ..write('progressData: $progressData')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4131,6 +4821,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $YunaCacheTable yunaCache = $YunaCacheTable(this);
   late final $AnimeSeasonCacheTable animeSeasonCache =
       $AnimeSeasonCacheTable(this);
+  late final $SyncSessionsTable syncSessions = $SyncSessionsTable(this);
+  late final $SyncItemsTable syncItems = $SyncItemsTable(this);
   late final ShowsDao showsDao = ShowsDao(this as AppDatabase);
   late final MoviesDao moviesDao = MoviesDao(this as AppDatabase);
   late final GamesDao gamesDao = GamesDao(this as AppDatabase);
@@ -4148,7 +4840,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         trackedMovies,
         trackedGames,
         yunaCache,
-        animeSeasonCache
+        animeSeasonCache,
+        syncSessions,
+        syncItems
       ];
 }
 
@@ -6476,6 +7170,551 @@ typedef $$AnimeSeasonCacheTableProcessedTableManager = ProcessedTableManager<
     ),
     AnimeSeasonCacheData,
     PrefetchHooks Function()>;
+typedef $$SyncSessionsTableCreateCompanionBuilder = SyncSessionsCompanion
+    Function({
+  Value<int> id,
+  required String fingerprint,
+  required DateTime createdAt,
+});
+typedef $$SyncSessionsTableUpdateCompanionBuilder = SyncSessionsCompanion
+    Function({
+  Value<int> id,
+  Value<String> fingerprint,
+  Value<DateTime> createdAt,
+});
+
+final class $$SyncSessionsTableReferences
+    extends BaseReferences<_$AppDatabase, $SyncSessionsTable, SyncSession> {
+  $$SyncSessionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$SyncItemsTable, List<SyncItem>>
+      _syncItemsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.syncItems,
+              aliasName: 'sync_sessions__id__sync_items__session_id');
+
+  $$SyncItemsTableProcessedTableManager get syncItemsRefs {
+    final manager = $$SyncItemsTableTableManager($_db, $_db.syncItems)
+        .filter((f) => f.sessionId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_syncItemsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$SyncSessionsTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncSessionsTable> {
+  $$SyncSessionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get fingerprint => $composableBuilder(
+      column: $table.fingerprint, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> syncItemsRefs(
+      Expression<bool> Function($$SyncItemsTableFilterComposer f) f) {
+    final $$SyncItemsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.syncItems,
+        getReferencedColumn: (t) => t.sessionId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SyncItemsTableFilterComposer(
+              $db: $db,
+              $table: $db.syncItems,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$SyncSessionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncSessionsTable> {
+  $$SyncSessionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get fingerprint => $composableBuilder(
+      column: $table.fingerprint, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$SyncSessionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncSessionsTable> {
+  $$SyncSessionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get fingerprint => $composableBuilder(
+      column: $table.fingerprint, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> syncItemsRefs<T extends Object>(
+      Expression<T> Function($$SyncItemsTableAnnotationComposer a) f) {
+    final $$SyncItemsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.syncItems,
+        getReferencedColumn: (t) => t.sessionId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SyncItemsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.syncItems,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$SyncSessionsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SyncSessionsTable,
+    SyncSession,
+    $$SyncSessionsTableFilterComposer,
+    $$SyncSessionsTableOrderingComposer,
+    $$SyncSessionsTableAnnotationComposer,
+    $$SyncSessionsTableCreateCompanionBuilder,
+    $$SyncSessionsTableUpdateCompanionBuilder,
+    (SyncSession, $$SyncSessionsTableReferences),
+    SyncSession,
+    PrefetchHooks Function({bool syncItemsRefs})> {
+  $$SyncSessionsTableTableManager(_$AppDatabase db, $SyncSessionsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncSessionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncSessionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncSessionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> fingerprint = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+          }) =>
+              SyncSessionsCompanion(
+            id: id,
+            fingerprint: fingerprint,
+            createdAt: createdAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String fingerprint,
+            required DateTime createdAt,
+          }) =>
+              SyncSessionsCompanion.insert(
+            id: id,
+            fingerprint: fingerprint,
+            createdAt: createdAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$SyncSessionsTable, SyncSession>(table),
+                    $$SyncSessionsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({syncItemsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (syncItemsRefs) db.syncItems],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (syncItemsRefs)
+                    await $_getPrefetchedData<SyncSession, $SyncSessionsTable,
+                            SyncItem>(
+                        currentTable: table,
+                        referencedTable: $$SyncSessionsTableReferences
+                            ._syncItemsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SyncSessionsTableReferences(db, table, p0)
+                                .syncItemsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.sessionId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$SyncSessionsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SyncSessionsTable,
+    SyncSession,
+    $$SyncSessionsTableFilterComposer,
+    $$SyncSessionsTableOrderingComposer,
+    $$SyncSessionsTableAnnotationComposer,
+    $$SyncSessionsTableCreateCompanionBuilder,
+    $$SyncSessionsTableUpdateCompanionBuilder,
+    (SyncSession, $$SyncSessionsTableReferences),
+    SyncSession,
+    PrefetchHooks Function({bool syncItemsRefs})>;
+typedef $$SyncItemsTableCreateCompanionBuilder = SyncItemsCompanion Function({
+  Value<int> id,
+  required int sessionId,
+  required String domain,
+  required int externalId,
+  required int localId,
+  Value<String> status,
+  Value<String?> title,
+  Value<String?> error,
+  Value<String?> progressData,
+});
+typedef $$SyncItemsTableUpdateCompanionBuilder = SyncItemsCompanion Function({
+  Value<int> id,
+  Value<int> sessionId,
+  Value<String> domain,
+  Value<int> externalId,
+  Value<int> localId,
+  Value<String> status,
+  Value<String?> title,
+  Value<String?> error,
+  Value<String?> progressData,
+});
+
+final class $$SyncItemsTableReferences
+    extends BaseReferences<_$AppDatabase, $SyncItemsTable, SyncItem> {
+  $$SyncItemsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $SyncSessionsTable _sessionIdTable(_$AppDatabase db) =>
+      db.syncSessions.createAlias('sync_items__session_id__sync_sessions__id');
+
+  $$SyncSessionsTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<int>('session_id')!;
+
+    final manager = $$SyncSessionsTableTableManager($_db, $_db.syncSessions)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$SyncItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncItemsTable> {
+  $$SyncItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get domain => $composableBuilder(
+      column: $table.domain, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get externalId => $composableBuilder(
+      column: $table.externalId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get localId => $composableBuilder(
+      column: $table.localId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get error => $composableBuilder(
+      column: $table.error, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get progressData => $composableBuilder(
+      column: $table.progressData, builder: (column) => ColumnFilters(column));
+
+  $$SyncSessionsTableFilterComposer get sessionId {
+    final $$SyncSessionsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sessionId,
+        referencedTable: $db.syncSessions,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SyncSessionsTableFilterComposer(
+              $db: $db,
+              $table: $db.syncSessions,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SyncItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncItemsTable> {
+  $$SyncItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get domain => $composableBuilder(
+      column: $table.domain, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get externalId => $composableBuilder(
+      column: $table.externalId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get localId => $composableBuilder(
+      column: $table.localId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get error => $composableBuilder(
+      column: $table.error, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get progressData => $composableBuilder(
+      column: $table.progressData,
+      builder: (column) => ColumnOrderings(column));
+
+  $$SyncSessionsTableOrderingComposer get sessionId {
+    final $$SyncSessionsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sessionId,
+        referencedTable: $db.syncSessions,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SyncSessionsTableOrderingComposer(
+              $db: $db,
+              $table: $db.syncSessions,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SyncItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncItemsTable> {
+  $$SyncItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get domain =>
+      $composableBuilder(column: $table.domain, builder: (column) => column);
+
+  GeneratedColumn<int> get externalId => $composableBuilder(
+      column: $table.externalId, builder: (column) => column);
+
+  GeneratedColumn<int> get localId =>
+      $composableBuilder(column: $table.localId, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get error =>
+      $composableBuilder(column: $table.error, builder: (column) => column);
+
+  GeneratedColumn<String> get progressData => $composableBuilder(
+      column: $table.progressData, builder: (column) => column);
+
+  $$SyncSessionsTableAnnotationComposer get sessionId {
+    final $$SyncSessionsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sessionId,
+        referencedTable: $db.syncSessions,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SyncSessionsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.syncSessions,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SyncItemsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SyncItemsTable,
+    SyncItem,
+    $$SyncItemsTableFilterComposer,
+    $$SyncItemsTableOrderingComposer,
+    $$SyncItemsTableAnnotationComposer,
+    $$SyncItemsTableCreateCompanionBuilder,
+    $$SyncItemsTableUpdateCompanionBuilder,
+    (SyncItem, $$SyncItemsTableReferences),
+    SyncItem,
+    PrefetchHooks Function({bool sessionId})> {
+  $$SyncItemsTableTableManager(_$AppDatabase db, $SyncItemsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncItemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> sessionId = const Value.absent(),
+            Value<String> domain = const Value.absent(),
+            Value<int> externalId = const Value.absent(),
+            Value<int> localId = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String?> title = const Value.absent(),
+            Value<String?> error = const Value.absent(),
+            Value<String?> progressData = const Value.absent(),
+          }) =>
+              SyncItemsCompanion(
+            id: id,
+            sessionId: sessionId,
+            domain: domain,
+            externalId: externalId,
+            localId: localId,
+            status: status,
+            title: title,
+            error: error,
+            progressData: progressData,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int sessionId,
+            required String domain,
+            required int externalId,
+            required int localId,
+            Value<String> status = const Value.absent(),
+            Value<String?> title = const Value.absent(),
+            Value<String?> error = const Value.absent(),
+            Value<String?> progressData = const Value.absent(),
+          }) =>
+              SyncItemsCompanion.insert(
+            id: id,
+            sessionId: sessionId,
+            domain: domain,
+            externalId: externalId,
+            localId: localId,
+            status: status,
+            title: title,
+            error: error,
+            progressData: progressData,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable<$SyncItemsTable, SyncItem>(table),
+                    $$SyncItemsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (sessionId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.sessionId,
+                    referencedTable:
+                        $$SyncItemsTableReferences._sessionIdTable(db),
+                    referencedColumn:
+                        $$SyncItemsTableReferences._sessionIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$SyncItemsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SyncItemsTable,
+    SyncItem,
+    $$SyncItemsTableFilterComposer,
+    $$SyncItemsTableOrderingComposer,
+    $$SyncItemsTableAnnotationComposer,
+    $$SyncItemsTableCreateCompanionBuilder,
+    $$SyncItemsTableUpdateCompanionBuilder,
+    (SyncItem, $$SyncItemsTableReferences),
+    SyncItem,
+    PrefetchHooks Function({bool sessionId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6496,4 +7735,8 @@ class $AppDatabaseManager {
       $$YunaCacheTableTableManager(_db, _db.yunaCache);
   $$AnimeSeasonCacheTableTableManager get animeSeasonCache =>
       $$AnimeSeasonCacheTableTableManager(_db, _db.animeSeasonCache);
+  $$SyncSessionsTableTableManager get syncSessions =>
+      $$SyncSessionsTableTableManager(_db, _db.syncSessions);
+  $$SyncItemsTableTableManager get syncItems =>
+      $$SyncItemsTableTableManager(_db, _db.syncItems);
 }

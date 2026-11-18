@@ -369,7 +369,16 @@ class TmdbService {
     return _searchPage(data, TmdbMovie.fromJson).items;
   }
 
-  Future<TmdbMovieDetail> getMovieDetails(int id) async {
+  final _moviesInFlight = <int, Future<TmdbMovieDetail>>{};
+
+  Future<TmdbMovieDetail> getMovieDetails(int id) =>
+      _moviesInFlight.putIfAbsent(
+          id,
+          () => _fetchMovieDetails(id).whenComplete(() {
+                _moviesInFlight.remove(id);
+              }));
+
+  Future<TmdbMovieDetail> _fetchMovieDetails(int id) async {
     final results = await Future.wait([
       _get(_uri('/movie/$id', {'language': 'it-IT'})),
       _get(_uri('/movie/$id', {'language': 'en-US'})),

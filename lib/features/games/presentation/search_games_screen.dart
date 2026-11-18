@@ -1,3 +1,4 @@
+import '../../sync/presentation/sync_status_action.dart';
 import 'dart:async';
 
 import '../../../core/widgets/media_image.dart';
@@ -56,6 +57,7 @@ class _SearchGamesScreenState extends State<SearchGamesScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        actions: const [SyncStatusAction()],
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
         title: const Text(

@@ -61,6 +61,24 @@ def verify_manifest(xml):
             raise ValueError("Missing stable widget component: " + widget)
     if "android.permission.INTERNET" not in permissions:
         raise ValueError("Missing shared network permission")
+    sync_permissions = {"android.permission.FOREGROUND_SERVICE",
+                        "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+                        "android.permission.WAKE_LOCK"}
+    sync = [e for e in components if e.get(ANDROID + "name") ==
+            "com.example.showtracker.SyncForegroundService"]
+    if not sync_permissions <= permissions or len(sync) != 1:
+        raise ValueError("Missing sync foreground service or permissions")
+    sync_type = sync[0].get(ANDROID + "foregroundServiceType", "")
+    if sync_type != "dataSync":
+        # apkanalyzer decodes the compiled enum bitmask as hex (dataSync = 1).
+        try:
+            sync_type = int(sync_type, 0)
+        except ValueError:
+            sync_type = None
+    if (sync[0].get(ANDROID + "exported") != "false"
+            or sync_type not in ("dataSync", 1)
+            or sync[0].get(ANDROID + "stopWithTask") != "false"):
+        raise ValueError("Unsafe or unexpected sync service lifecycle")
     return sorted(permissions)
 
 
@@ -96,9 +114,10 @@ def main():
     permissions = verify_manifest(result.stdout)
     with zipfile.ZipFile(artifact) as archive:
         dex = b"".join(archive.read(n) for n in archive.namelist() if n.endswith(".dex"))
-        for marker in (b"showtracker/install_permission", b"sk.fourq.ota_update/stream"):
+        for marker in (b"showtracker/install_permission", b"sk.fourq.ota_update/stream",
+                       b"showtracker/sync", b"Lcom/example/showtracker/SyncForegroundService;"):
             if marker not in dex:
-                raise ValueError("Missing OTA native channel: " + marker.decode())
+                raise ValueError("Missing native component/channel: " + marker.decode())
     print("OK:", artifact)
     print("Manifest permissions:", ", ".join(permissions))
 

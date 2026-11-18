@@ -1,3 +1,4 @@
+import '../../sync/presentation/sync_status_action.dart';
 import 'dart:async';
 
 import '../../../core/widgets/media_image.dart';
@@ -77,6 +78,7 @@ class _MoviesListScreenState extends ConsumerState<MoviesListScreen> {
                 ),
               ),
         actions: [
+          const SyncStatusAction(),
           if (_isSearching)
             IconButton(
               icon: const Icon(Icons.close, color: AppColors.textPrimary),

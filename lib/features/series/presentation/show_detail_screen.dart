@@ -1,3 +1,4 @@
+import '../../sync/presentation/sync_status_action.dart';
 import '../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +39,8 @@ class ShowDetailScreen extends ConsumerWidget {
     // l'icona stessa mostra lo spinner finché non arrivano i dati nuovi.
     final detail = detailAsync.value;
     return Scaffold(
+      appBar:
+          detail == null ? AppBar(actions: const [SyncStatusAction()]) : null,
       backgroundColor: AppColors.background,
       body: detail != null
           ? _DetailBody(detail: detail)
@@ -300,6 +303,7 @@ class _BackdropAppBar extends StatelessWidget {
         onPressed: () => _leaveDetail(context),
       ),
       actions: [
+        const SyncStatusAction(),
         _RefreshButton(tmdbId: detail.id, isAnime: detail.isAnime),
       ],
       flexibleSpace: FlexibleSpaceBar(

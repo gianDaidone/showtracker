@@ -26,12 +26,14 @@ class RawgService {
 
     if (response.statusCode >= 500) {
       throw RawgException(
-          'Il servizio RAWG è temporaneamente non disponibile (Errore ${response.statusCode}). Riprova più tardi.');
+          'Il servizio RAWG è temporaneamente non disponibile (Errore ${response.statusCode}). Riprova più tardi.',
+          statusCode: response.statusCode);
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw RawgException(
-          'Errore RAWG ${response.statusCode}: ${response.reasonPhrase ?? ""}');
+          'Errore RAWG ${response.statusCode}: ${response.reasonPhrase ?? ""}',
+          statusCode: response.statusCode);
     }
 
     return jsonDecode(response.body) as Map<String, dynamic>;
@@ -109,7 +111,15 @@ class RawgService {
     );
   }
 
-  Future<RawgGameDetail> getGameDetails(int id) async {
+  final _gamesInFlight = <int, Future<RawgGameDetail>>{};
+
+  Future<RawgGameDetail> getGameDetails(int id) => _gamesInFlight.putIfAbsent(
+      id,
+      () => _fetchGameDetails(id).whenComplete(() {
+            _gamesInFlight.remove(id);
+          }));
+
+  Future<RawgGameDetail> _fetchGameDetails(int id) async {
     final data = await _get(_uri('/games/$id'));
     return RawgGameDetail.fromJson(data);
   }
@@ -152,7 +162,8 @@ class RawgService {
 
 class RawgException implements Exception {
   final String message;
-  RawgException(this.message);
+  final int? statusCode;
+  RawgException(this.message, {this.statusCode});
 
   @override
   String toString() => message;

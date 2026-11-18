@@ -1,3 +1,4 @@
+import 'sync_status_action.dart';
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -7,9 +8,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/app_toast.dart';
 import '../services/sync_service.dart';
-import '../providers/metadata_recovery_provider.dart';
+import '../providers/sync_controller.dart';
 import '../services/local_sync_server.dart';
-import '../services/sync_receiver.dart';
 import '../utils/sync_compressor.dart';
 import '../domain/models/sync_payload.dart';
 
@@ -149,47 +149,10 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
   Future<void> _processScannedData(String data) async {
     if (!mounted || _isProcessingScan) return;
     setState(() => _isProcessingScan = true);
-    AppToast.show('Sincronizzazione in corso...', type: ToastType.info);
-    final container = ProviderScope.containerOf(context, listen: false);
-    var completed = false;
-
-    try {
-      final base64String = await SyncReceiver().read(data);
-      if (!mounted) return;
-
-      final jsonMap = SyncCompressor.decompressPayload(base64String);
-      final payload = SyncPayload.fromJson(jsonMap);
-
-      final serviceSubscription =
-          container.listen(syncServiceProvider, (_, __) {});
-      try {
-        await serviceSubscription.read().importData(payload);
-      } finally {
-        serviceSubscription.close();
-      }
-      // Il coordinatore appartiene al container dell'app: continua anche dopo
-      // il pop della schermata e riprova al successivo inserimento credenziali.
-      unawaited(container.read(metadataRecoveryProvider).recoverAfterImport());
-
-      if (mounted) {
-        completed = true;
-        AppToast.show('Sincronizzazione completata!', type: ToastType.success);
-        Navigator.of(context).pop();
-      }
-    } catch (e) {
-      if (mounted) {
-        AppToast.show(
-            e is FormatException
-                ? e.message.toString()
-                : 'Trasferimento non riuscito. Controlla la rete Wi-Fi e riprova.',
-            type: ToastType.error);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isProcessingScan = false);
-        if (!completed) _updateCamera();
-      }
-    }
+    final controller = ref.read(syncControllerProvider.notifier);
+    // Il coordinatore acquisisce il lock prima del pop e possiede tutti gli await.
+    unawaited(controller.receive(data));
+    Navigator.of(context).pop();
   }
 
   @override
@@ -199,6 +162,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
+          actions: const [SyncStatusAction()],
           backgroundColor: AppColors.background,
           title: const Text('Trasferimento',
               style: TextStyle(fontWeight: FontWeight.w600)),
@@ -468,7 +432,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen>
                           ),
                           SizedBox(height: 8),
                           Text(
-                            'Non chiudere l\'applicazione',
+                            'Puoi continuare a usare l’app',
                             style: TextStyle(
                                 color: AppColors.textSecondary, fontSize: 13),
                           ),

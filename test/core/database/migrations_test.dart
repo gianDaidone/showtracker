@@ -11,7 +11,7 @@ void main() {
     expect(
         (await db.customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
-        14);
+        15);
     final tables = await db
         .customSelect(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
@@ -27,6 +27,8 @@ void main() {
           'cached_episodes',
           'yuna_cache',
           'anime_season_cache',
+          'sync_sessions',
+          'sync_items',
         ]));
     for (final table in [
       'tracked_shows',
@@ -78,6 +80,19 @@ void main() {
       expect(uniqueColumns, contains(orderedEquals(entry.value)),
           reason: 'Vincolo unico ${entry.key}');
     }
+  });
+
+  test('v14 → v15 crea checkpoint sync preservando progressi e timestamp',
+      () async {
+    final db = historicalDatabase(14);
+    addTearDown(db.close);
+    final show = (await db.showsDao.getById(10))!;
+    expect(show.updatedAt!.millisecondsSinceEpoch ~/ 1000, 1800000000);
+    expect(await db.showsDao.countWatchedEpisodes(10), 1);
+    expect(await db.select(db.syncSessions).get(), isEmpty);
+    expect(await db.select(db.syncItems).get(), isEmpty);
+    await verifyHistoricalCache(db);
+    await verifyUpgradedDatabase(db);
   });
 
   test('v12 → v14 aggiunge e riempie timestamp senza perdere progressi/cache',
@@ -175,7 +190,7 @@ Future<void> verifyUpgradedDatabase(AppDatabase db) async {
   expect(
       (await db.customSelect('PRAGMA user_version').getSingle())
           .read<int>('user_version'),
-      14);
+      15);
   expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
   expect(
       (await db.customSelect('PRAGMA integrity_check').getSingle())
@@ -200,8 +215,8 @@ Future<void> verifyUpgradedDatabase(AppDatabase db) async {
 // contiene già lo schema 8 (rawg_id). Il ramo di migrazione da igdb_id è
 // documentato nel codice, ma non prova l'intero DDL storico v7.
 AppDatabase historicalDatabase(int version) {
-  assert(version == 12 || version == 13);
-  final timestamp = version == 13 ? ', updated_at INTEGER' : '';
+  assert(version == 12 || version == 13 || version == 14);
+  final timestamp = version >= 13 ? ', updated_at INTEGER' : '';
   return AppDatabase.forTesting(NativeDatabase.memory(setup: (sqlite) {
     sqlite.execute('''
       CREATE TABLE tracked_shows (
@@ -280,7 +295,7 @@ AppDatabase historicalDatabase(int version) {
     ''');
     final showColumns =
         sqlite.select('PRAGMA table_info(tracked_shows)').map((r) => r['name']);
-    expect(showColumns.contains('updated_at'), version == 13);
+    expect(showColumns.contains('updated_at'), version >= 13);
     expect(showColumns, contains('next_episode_number'));
     sqlite.execute('''
       INSERT INTO tracked_shows
@@ -338,7 +353,7 @@ AppDatabase historicalDatabase(int version) {
         '{"seasonNumber":1,"tmdbSeasonNumber":1,"anilistId":101,"episodeCount":12,"status":"FINISHED","streamingEpisodes":[]}',
         1700000000, 1700000001)
     ''');
-    if (version == 13) {
+    if (version >= 13) {
       for (final table in [
         'tracked_shows',
         'tracked_movies',
@@ -348,6 +363,10 @@ AppDatabase historicalDatabase(int version) {
       }
       sqlite.execute('UPDATE tracked_episodes SET updated_at = 1800000000 '
           'WHERE watched = 1');
+    }
+    if (version >= 14) {
+      sqlite.execute(
+          "UPDATE tracked_movies SET status = 'planToWatch' WHERE status = 'watching'");
     }
     sqlite.execute('PRAGMA user_version = $version');
   }));

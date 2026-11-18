@@ -1,3 +1,4 @@
+import '../../sync/presentation/sync_status_action.dart';
 import '../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -85,6 +86,7 @@ class _MoviesHeader extends StatelessWidget {
             ),
           ),
         ),
+        const SyncStatusAction(),
         IconButton(
           icon: const Icon(Icons.search, color: AppColors.accent, size: 30),
           onPressed: () => context.go('/search?filter=movie'),

@@ -108,3 +108,25 @@ ShowTrackerApp → MaterialApp.router → GoRouter
 
 Test: `test/core/router/app_router_test.dart`, `test/core/media_image_test.dart`,
 `test/features/series/presentation/{feed_identity,season_virtualization}_test.dart`.
+
+## Avanzamento QR globale
+
+`syncControllerProvider` possiede il lavoro, `syncPanelOpenProvider` soltanto la
+visibilità. `SyncProgressHost` nel builder di MaterialApp sovrappone un banner
+fluttuante in alto, senza ridimensionare navigator, liste o navbar e senza barriera
+modale. La chiusura riduce il banner a `SyncStatusAction`: l'azione è accanto alla
+ricerca nelle intestazioni di serie/film/giochi, nelle liste e ricerche e nelle
+intestazioni dei dettagli, del Profilo e della pagina QR. L'indicatore compatto
+distingue lavoro attivo e conferma richiesta. Il tap riapre il banner.
+I testi mostrano solo avanzamento generale; niente titoli, ID, fasi interne o
+errori tecnici. Alla conclusione si chiudono banner e icona, con un breve toast.
+Un avviso giochi non letto apre automaticamente il banner anche se era ridotto;
+chiuderlo non equivale a «Ho capito». Finché non viene confermato, resta accessibile
+anche dopo la fine del lavoro, una nuova scansione o il recupero dei dettagli.
+Le librerie restano autorevoli negli stream DB: nessuna invalidazione globale.
+`visibleWatchingShowsProvider` continua a decidere lista e conteggio Da Vedere.
+
+Il banner distingue il totale misto «Serie, film e giochi» dalla ripresa dei soli
+giochi («Aggiornamento giochi», N/T giochi aggiornati). Il denominatore di un retry
+riguarda solo il suo insieme di lavoro; non viene riutilizzato il totale del QR
+precedente. L'attesa dell'ultimo contenuto ha una breve indicazione esplicita.

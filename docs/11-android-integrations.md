@@ -140,3 +140,41 @@ l’aggiornamento. Servono le [prove native](native-release-validation.md).
 - Usare dispositivo di test o identità separata; non installare/disinstallare
   runner con applicationId dell'app personale.
 - Checklist estesa e limiti copertura: [test/README.md](../test/README.md).
+
+## Sincronizzazione QR in background
+
+`SyncForegroundService.kt` espone il solo lavoro dataSync, avviato dalla scansione
+mentre l'app è visibile. `SyncRuntime` collega il bridge allo stesso FlutterEngine
+conservato da MainActivity: non avvia un secondo isolate/container/DB o coda AniList.
+Non è WorkManager e non viene riavviato al boot (START_NOT_STICKY).
+La notifica usa il canale sync_progress a importanza bassa e ID negativo -17841,
+separato dagli ID positivi TMDB. Lo snapshot è quello del pannello Dart; scritture
+serializzate e limitate a una al secondo, esito finale immediato. Il tap riapre il
+pannello se il lavoro o un avviso sono ancora attivi. POST_NOTIFICATIONS/canale negati non bloccano il lavoro; Android può
+mostrare solo il gestore attività, senza notifica nel drawer.
+Il servizio possiede wake lock limitato e watchdog di dieci minuti, gestisce anche
+onTimeout Android 15+, poi si ferma. I dati già commessi restano disponibili.
+Home/cambio app/schermo spento sono supportati dal lifetime del servizio e motore;
+non equivalgono a force-stop, morte processo o riavvio. In questi ultimi casi i
+checkpoint vengono recuperati alla successiva apertura; non è promessa esecuzione
+continua o ripartenza automatica. I retry da ripristino auth non avviano FGS dal
+background: la continuazione protetta richiede scansione o retry manuale in app.
+Build APK e test MethodChannel non provano il runtime su Android/OEM: verificare
+schermo spento, recenti, force-stop, timeout, credenziali e permessi su device
+isolato. Il server mittente continua ad avere TTL cinque minuti/dispose pagina.
+
+L'avvio nativo risponde al bridge soltanto dopo la promozione effettiva a FGS.
+Se il sistema rifiuta il servizio, l'import può proseguire in foreground con una
+notifica ordinaria quando consentita. La sola lettura del checkpoint all'avvio
+non ripubblica notifiche. Dopo un timeout la notifica finale può aggiornarsi senza
+riavviare il servizio. `tool/verify_apk.py` controlla anche tipo, visibilità,
+stopWithTask e permessi del servizio nel Manifest dell'APK effettivo.
+
+La notifica sync ora usa soltanto il contatore generale, senza titoli o fasi
+interne. Un avviso RAWG non letto invita ad aprire l'app; se le operazioni sono
+finite il FGS si ferma comunque, mentre l'icona in app resta fino a «Ho capito».
+Confermare l'avviso non richiede una nuova connessione al peer LAN.
+
+Il contatore della notifica usa lo stesso insieme fisso del passaggio visualizzato:
+la ripresa dei soli giochi non riusa il totale del trasferimento misto. Non vengono
+pubblicati esiti finali intermedi tra sessione corrente e giochi arretrati.

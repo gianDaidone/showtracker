@@ -1,3 +1,4 @@
+import '../../sync/presentation/sync_status_action.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -87,6 +88,7 @@ class _GamesListScreenState extends ConsumerState<GamesListScreen> {
                 ),
               ),
         actions: [
+          const SyncStatusAction(),
           if (_isSearching)
             IconButton(
               icon: const Icon(Icons.close, color: AppColors.textPrimary),

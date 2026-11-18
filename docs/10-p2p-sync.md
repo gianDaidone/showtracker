@@ -20,8 +20,9 @@
 - Handler separato dal socket per test; token errato → 403; risposta testo
   con envelope cifrato STSYNC2:, no-store e senza CORS wildcard; richieste browser con
   Origin e query/token duplicati rifiutati.
-- `SyncScreen.dispose` avvia lo stop del server. La recovery appartiene al
-  container app e prosegue dopo l'uscita dalla schermata.
+- `SyncScreen.dispose` avvia lo stop del server mittente. Il ricevitore consegna
+  subito il QR al coordinatore app-level e lascia la pagina: download, import e
+  arricchimento continuano indipendentemente dalla route.
 
 ## Contratto del payload
 
@@ -48,13 +49,18 @@ Esempio illustrativo del JSON prima della compressione:
 - LAN v2: bytes zlib cifrati AES-256-GCM, nonce 12 byte e tag 16 byte, envelope
   STSYNC2: + base64. Chiave nuova per ogni export, nonce casuale e token legato
   come AAD. Implementazione standard del package cryptography, senza cipher proprietario.
-- Non trasferisce titoli, poster, mapping cour, cache, credenziali, note, rating
+- Non trasferisce titoli, poster, cache complete, credenziali, note, rating
   o playtime. Non è un export completo né un backup ripristinabile identico.
 - Non contiene tombstone di rimozione o eventi “non visto”; non propaga quelle
   azioni come cancellazioni remote.
-- Il JSON legacy non contiene un campo versione; l’envelope LAN è versionato
+- Il JSON legacy non contiene un campo versione; il nuovo export usa `v: 2`
+  e richiede peer aggiornati (le vecchie app rifiutano i campi nuovi). Il ricevitore
+  continua a leggere il legacy. Per ogni serie v2 `c` distingue `tmdb`/`cour`;
+  `a` associa numero cour esportato → AniList ID quando noto. Nessun titolo,
+  credenziale o cache completa viene aggiunto al trasferimento.
+  Separatamente, l’envelope LAN è versionato
   STSYNC2:. Il proprietario ha approvato l’aggiornamento di entrambi i peer:
-  gli URL LAN legacy in chiaro sono rifiutati, senza downgrade; i QR diretti restano compatibili.
+  gli URL LAN legacy in chiaro sono rifiutati, senza downgrade; i QR diretti legacy restano leggibili dalla nuova app.
 - Il ricevitore supporta anche payload base64 diretto, oltre all'URL HTTP.
 
 ## Import e conflitti
@@ -136,3 +142,92 @@ Comunicare il cambiamento con le [note release](github-release-notes.md).
 `sync_encryption_test.dart`, `encrypted_receiver_test.dart`,
 `local_sync_lifecycle_test.dart`, `sync_security_test.dart`.
 I test handler non aprono socket LAN; i test recovery usano confini simulati.
+
+## Coordinatore e avanzamento progressivo (2026-11-18)
+
+- `providers/sync_controller.dart` possiede la sessione; `SyncProgressHost`, montato
+  nel builder di MaterialApp, lascia utilizzabili tutte le route. Scanner e pagina
+  non possiedono più gli await di ricezione/importazione. Una nuova scansione
+  durante un lavoro attivo condivide il lavoro corrente.
+- Fasi: preparazione indeterminata (rete/decifratura/validazione), importazione
+  locale, arricchimento, esito finale. Il totale è la somma delle identità distinte
+  dominio+ID del payload; stagioni, episodi e retry non aumentano il totale.
+- `SyncSessions` e `SyncItems` (schema 15) sono checkpoint, non una seconda libreria.
+  Import e registrazione avvengono nella stessa transazione. Al commit le librerie
+  ricevono i placeholder tramite gli stream Drift, prima dei fetch dei metadati.
+- Stati elemento: pending, running, completed, failed, removed. Il riepilogo separa
+  completati e non completati; una rimozione concorrente non è ritentata e non
+  ricrea il record. Alla ricreazione del coordinatore running diventa failed.
+- Due elementi vengono arricchiti contemporaneamente. Titolo/poster sono pubblicati
+  prima di mapping/conteggi/calendario. Film/giochi già titolati non richiedono rete.
+  Una serie si completa solo dopo pipeline valida, syncMetadata e preparazione
+  della stagione/cour necessaria al feed se applicabile. Poster remoti e altre
+  stagioni restano lazy. Snapshot locali o cour stale non certificano successo.
+- Il dettaglio serie grezzo è condiviso; AniList resta nella coda esistente.
+  Le richieste film/giochi contemporanee sullo stesso servizio/ID condividono la
+  Future in-flight, senza introdurre cache di risposte completate.
+- Il SHA-256 del JSON ordinato identifica replay della stessa sessione senza
+  conservare QR/token/chiave LAN. Il retry lavora sui soli elementi incompleti;
+  le serie fallite invalidano in modo mirato i dettagli durante il retry.
+  Nuovi snapshot creano una sessione; quelle precedenti incomplete sono accessibili
+  dal pannello tramite «Riprendi trasferimenti precedenti».
+- Il cambio credenziali riaccoda anche le serie; una generazione per servizio
+  impedisce commit da client obsoleti. Credenziali TMDB assenti o errori producono
+  elementi non completati, senza retry globali Riverpod o loop AniList esterni.
+  La chiave RAWG assente segue il percorso differito descritto sotto.
+- I cour v2 non sono inseriti usando numeri sorgente: i progressi ricevuti restano
+  nel checkpoint e vengono uniti ai visti locali solo dopo una corrispondenza
+  univoca con AniList ID. Cour divisi/ambigui o senza ID restano ritentabili;
+  nessun fallback su stagioni TMDB. Le coordinate legacy conservano il contratto
+  precedente e non possono provare identità cour fra mapping diversi.
+- Se esistono progressi cour sospesi per serie ancora presenti, l'export è fermato
+  con un messaggio esplicito: generare un QR incompleto perderebbe quei progressi.
+- La barra misura elementi elaborati (completati o non completati), il testo
+  mantiene il contatore dei successi. «Sincronizzazione completata» richiede tutti
+  gli elementi elaborati senza errori e gli eventuali avvisi confermati. I giochi
+  differiti sono salvataggi riusciti dell’elenco, con dettagli da completare.
+- Errori prima del commit richiedono un nuovo QR se il mittente non è più
+  disponibile. Dopo il commit il retry usa solo ID/dati persistiti, senza LAN.
+
+Notifica e lifetime Android: [11](11-android-integrations.md). Prove automatiche:
+`sync_controller_test.dart`, `sync_progress_panel_test.dart`,
+`sync_android_bridge_test.dart`, oltre alle regressioni preesistenti.
+
+## Giochi senza chiave e conferma dell'avviso
+
+La mancanza di una chiave RAWG effettiva (incluso il fallback dart-define) non è un
+errore: i placeholder già importati restano nel DB e i dettagli vengono saltati.
+I job `deferred` sono contati come elaborati per questo trasferimento, separati dai
+successi di hydration e dai fallimenti. Gli altri domini continuano normalmente.
+Il banner sostituisce la barra con l'avviso «Configura la chiave API per completare
+i tuoi giochi» e il testo che conferma il salvataggio dell'elenco. Solo «Ho capito»
+conferma la lettura: chiusura, navigazione e fine delle richieste non lo fanno.
+La conferma persiste nel job (`deferred_ack`), senza cambiare lo schema v15.
+Se i dettagli vengono recuperati prima della conferma, gli esiti `*_notice`
+conservano l'avviso fino alla lettura. La conferma è globale per gli avvisi già
+presenti; un nuovo trasferimento può richiedere un nuovo avviso. Non cancella job
+né dati personali. I titoli restano soltanto dati interni e non sono esposti nel
+pannello o nella notifica di avanzamento.
+Al cambio chiave RAWG lo stesso coordinatore riprende i dettagli differiti di tutte
+le sessioni, anche se l'ultima era già conclusa. Rimangono attivi controllo della
+generazione credenziale, update condizionato, conservazione dei timestamp e divieto
+di ricreare record rimossi. Nessun nuovo worker o polling viene introdotto.
+
+## Contatore dei passaggi di recupero
+
+Il primo trasferimento conta insieme serie, film e giochi del QR. Ogni successivo
+retry fissa un insieme di lavoro separato, composto soltanto da elementi ancora da
+elaborare: i successi precedenti non entrano nel denominatore. Se contiene solo
+giochi, pannello e notifica mostrano «Aggiornamento giochi» e «N/T giochi aggiornati».
+L'insieme degli ID del passaggio resta fisso; il coordinatore tiene separati gli
+elementi ancora da elaborare dai checkpoint precedenti. Un gioco prima differito
+non è già completato nel nuovo passaggio mentre ne vengono recuperati i dettagli.
+Il contatore quindi parte da zero e cresce, senza alternare 53/54 e 54/54.
+I giochi differiti/falliti di altre sessioni vengono accodati nello stesso passaggio
+automatico, senza pubblicare completamenti intermedi. Identità duplicate dello
+stesso record locale condividono un lavoro; l'esito viene propagato ai checkpoint
+corrispondenti mantenendo gli eventuali avvisi non letti. Non vengono ripetuti
+l'import o le richieste per i contenuti già completati.
+«Ho capito» conferma soltanto l'avviso: non completa l'eventuale ultimo elemento
+ancora in lavorazione. La UI mantiene visibile l'ambito del totale e segnala
+«Ultimo elemento in corso…» durante quell'attesa, senza mostrare fasi o titoli.

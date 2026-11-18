@@ -2,16 +2,34 @@ package com.example.showtracker
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    override fun provideFlutterEngine(context: Context): FlutterEngine? =
+        FlutterEngineCache.getInstance().get(SyncRuntime.ENGINE)
+
+    override fun shouldDestroyEngineWithHost(): Boolean = false
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra("show_sync", false)) {
+            SyncRuntime.channel?.invokeMethod("show", null)
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        SyncRuntime.install(flutterEngine, applicationContext)
+        if (intent.getBooleanExtra("show_sync", false)) {
+            SyncRuntime.channel?.invokeMethod("show", null)
+        }
 
         // Permesso "Installa app sconosciute" per l'aggiornamento in-app
         // (lib/features/update/data/install_permission.dart).

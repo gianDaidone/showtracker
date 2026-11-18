@@ -98,3 +98,14 @@ Autorità di lista/conteggio e regole 09:00 in [02](02-functional-specs.md).
 - `test/features/series/presentation/cold_offline_screen_test.dart`: dettaglio e refresh.
 - `test/core/database/anime_cache_dao_test.dart`: upsert e scadenza conservativa.
 - `test/watch_next_rules_test.dart`: regole condivise, assenza dati e uscite.
+
+## Serie importate da QR
+
+Il coordinatore sync pubblica prima i metadati descrittivi e poi usa i provider
+condivisi per cour, conteggi e prossimo episodio. Il commit metadata/conteggi è
+transazionale, ricontrolla l'identità locale e preserva updatedAt personale.
+Per payload v2 cour i progressi restano nel journal finché gli ID AniList non sono
+riconciliabili univocamente; un cambio di numero sintetico non cambia l'identità.
+Se uno stesso ID corrisponde a più cour o manca, il lavoro resta incompleto:
+nessuna conversione grezza TMDB. Il formato legacy mantiene il merge numerico
+precedente, con il limite di identità descritto in [10](10-p2p-sync.md).

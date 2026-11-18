@@ -328,7 +328,9 @@ void main() {
   });
 
   for (final size in [0, 10, 50, 100]) {
-    test('export $size serie: quattro SELECT e payload invariato', () async {
+    test(
+        'export $size serie: al massimo sei SELECT con mapping cour e checkpoint',
+        () async {
       for (var id = 1; id <= size; id++) {
         final localId = await _show(db, id);
         await db.batch((b) {
@@ -362,7 +364,8 @@ void main() {
           TmdbService(client), RawgService(client));
       counter.reset();
       final exported = await service.exportData();
-      expect(counter.selects, 4);
+      expect(counter.selects, size == 0 ? 5 : 6);
+      expect(exported.version, 2);
       expect(exported.shows, hasLength(size));
       for (var id = 1; id <= size; id++) {
         final data = exported.shows['$id']!;

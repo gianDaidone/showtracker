@@ -149,3 +149,17 @@ il tag GCM autentica lo snapshot ma non attribuisce un’identità al mittente. 
 - L’OTA GitHub parte soltanto su tap; Manifest e canali nativi si verificano
   sull’APK finale con tool/verify_apk.py. [Checklist](github-release-checklist.md).
 - Flusso permessi e limiti delle prove native: [11](11-android-integrations.md).
+
+## Permessi e dati del lavoro sync
+
+Il Manifest dichiara FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC e WAKE_LOCK;
+SyncForegroundService è non esportato, tipo dataSync. Wake lock e watchdog hanno
+un limite di dieci minuti per esecuzione; timeout e stop conservano i commit.
+Il consenso POST_NOTIFICATIONS non è un requisito per importare o avviare il FGS:
+il pannello resta disponibile anche se il sistema nasconde la notifica.
+Il bridge consente di aprire le impostazioni notifiche su azione esplicita.
+Il payload applicativo v2 aggiunge coordinate tmdb/cour e ID AniList limitati;
+la validazione completa precede ogni scrittura. L'envelope AES-GCM resta STSYNC2.
+Gli ID dei cour sono associazioni strutturali, non autorizzano metadati parziali.
+I checkpoint sono nel DB locale, con la stessa protezione delle librerie; non
+contengono URL LAN, token, chiavi di cifratura o credenziali API.

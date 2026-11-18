@@ -1,3 +1,4 @@
+import '../../sync/presentation/sync_status_action.dart';
 import '../../../core/widgets/media_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +20,9 @@ class MovieDetailScreen extends ConsumerWidget {
     final detailAsync = ref.watch(movieDetailProvider(tmdbId));
 
     return Scaffold(
+      appBar: detailAsync.value == null
+          ? AppBar(actions: const [SyncStatusAction()])
+          : null,
       backgroundColor: AppColors.background,
       body: detailAsync.when(
         loading: () => const Center(
@@ -122,6 +126,7 @@ class _BackdropAppBarState extends ConsumerState<_BackdropAppBar> {
         },
       ),
       actions: [
+        const SyncStatusAction(),
         _RefreshButton(tmdbId: widget.detail.id),
       ],
       flexibleSpace: FlexibleSpaceBar(

@@ -7,7 +7,7 @@ Il codice è la fonte di verità; aggiornare la documentazione insieme ai contra
 ## Contesto e mappa
 
 App Flutter Android local-first per serie/anime, film e giochi. Stato Riverpod 3,
-SQLite/Drift schema v14, GoRouter. Nessun backend dedicato: Shelf è temporaneo
+SQLite/Drift schema v15, GoRouter. Nessun backend dedicato: Shelf è temporaneo
 sul dispositivo per sync LAN. Codice feature-first in `lib/features/`;
 `lib/core/` ospita infrastruttura condivisa. Non aggiungere codice ai placeholder
 `lib/models/`, `lib/services/`, `lib/shared/`.

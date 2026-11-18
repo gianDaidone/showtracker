@@ -6,7 +6,9 @@ import 'sync_limits.dart';
 void validateSyncJson(Map<String, dynamic> json, {DateTime? now}) {
   void invalid() => throw const FormatException(
       'Dati di trasferimento non validi o troppo grandi.');
-  if (json.keys.any((key) => !{'s', 'g', 'm'}.contains(key))) invalid();
+  if (json.keys.any((key) => !{'v', 's', 'g', 'm'}.contains(key))) invalid();
+  final version = json.containsKey('v') ? json['v'] : 1;
+  if (version is! int || (version != 1 && version != 2)) invalid();
   var records = 0;
   var episodes = 0;
   final latest = (now ?? DateTime.now())
@@ -31,9 +33,34 @@ void validateSyncJson(Map<String, dynamic> json, {DateTime? now}) {
       final value = entry.value;
       if (value is! Map<String, dynamic>) invalid();
       final row = value as Map<String, dynamic>;
-      if (row.keys
-          .any((key) => !{'st', 'u', if (domain == 's') 'e'}.contains(key))) {
+      if (row.keys.any((key) => !{
+            'st',
+            'u',
+            if (domain == 's') 'e',
+            if (domain == 's' && version == 2) ...['c', 'a']
+          }.contains(key))) {
         invalid();
+      }
+      if (domain == 's' && version == 2) {
+        if (row['c'] != 'tmdb' && row['c'] != 'cour') invalid();
+        final ids = row['a'];
+        if (ids != null) {
+          if (row['c'] != 'cour' || ids is! Map<String, dynamic>) invalid();
+          final entries = (ids as Map<String, dynamic>).entries;
+          if (entries.length > SyncLimits.seasonsPerShow) invalid();
+          for (final e in entries) {
+            final n = int.tryParse(e.key);
+            if (n == null ||
+                n <= 0 ||
+                n > SyncLimits.maxCoordinate ||
+                n.toString() != e.key ||
+                e.value is! int ||
+                (e.value as int) <= 0 ||
+                (e.value as int) > 2147483647) {
+              invalid();
+            }
+          }
+        }
       }
       final status = row['st'];
       final timestamp = row['u'];

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'features/sync/presentation/sync_progress_panel.dart';
 
 class ShowTrackerApp extends ConsumerWidget {
   const ShowTrackerApp({super.key});
@@ -14,6 +15,8 @@ class ShowTrackerApp extends ConsumerWidget {
       title: 'Show Tracker',
       theme: AppTheme.dark(),
       routerConfig: router,
+      builder: (context, child) =>
+          SyncProgressHost(child: child ?? const SizedBox.shrink()),
       debugShowCheckedModeBanner: false,
     );
   }

@@ -9,6 +9,8 @@ import '../../../core/constants/api_keys.dart';
 import '../../../core/riverpod_utils.dart';
 import '../../../core/services/coalescing_refresh.dart';
 import '../services/sync_service.dart';
+import 'sync_controller.dart';
+import '../../series/providers/series_providers.dart';
 
 /// Il proprietario non dipende dai client: i cambi credenziali accodano un nuovo
 /// passaggio, invece di disporre il coordinatore durante una richiesta.
@@ -73,7 +75,10 @@ class MetadataRecovery {
     if (credential == _tmdbCredential) return;
     _tmdbCredential = credential;
     _tmdbGeneration++;
-    if (credential != null) unawaited(recoverMovies());
+    if (credential != null) {
+      unawaited(recoverMovies());
+      unawaited(recoverShows());
+    }
   }
 
   Future<void> recoverGames() =>
@@ -88,7 +93,7 @@ class MetadataRecovery {
   }
 
   Future<void> _run(_Domain domain) async {
-    if (_disposed) return;
+    if (_disposed || _ref.read(syncControllerProvider.notifier).busy) return;
     ProviderSubscription<SyncService>? subscription;
     try {
       final games = domain == _Domain.games;
@@ -113,6 +118,8 @@ class MetadataRecovery {
         movies: domain == _Domain.movies,
         shows: domain == _Domain.shows,
         isCurrent: isCurrent,
+        showDetailsLoader: (id) =>
+            _ref.readFuture(rawShowDetailProvider(id).future),
       );
     } catch (_) {
       // Nessun retry automatico: login, apertura libreria o prossimo avvio

@@ -851,7 +851,13 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
   /// cancellare episodi e mapping AniList a ogni apertura della pagina — e
   /// quindi pagare un fetch completo (Yuna + N query AniList + stagioni TMDB)
   /// al successivo accesso alla lista.
-  Future<void> syncMetadata(TmdbShowDetail detail, int dbId) async {
+  Future<void> syncMetadata(
+    TmdbShowDetail detail,
+    int dbId, {
+    bool Function()? isCurrent,
+  }) async {
+    bool current() => ref.mounted && (isCurrent?.call() ?? true);
+    if (!current()) return;
     if (detail.isLocalSnapshot) return;
     final show = await ref.read(showsDaoProvider).getById(dbId);
     if (show == null) return;
@@ -872,51 +878,58 @@ class TrackedShowsNotifier extends _$TrackedShowsNotifier {
         : detail.numberOfSeasons;
 
     final next = await _resolveNextEpisode(detail);
+    if (!current()) return;
+    final db = ref.read(databaseProvider);
+    await db.transaction(() async {
+      if (!current()) return;
+      final latest = await ref.read(showsDaoProvider).getById(dbId);
+      if (!current() || latest == null || latest.tmdbId != detail.id) return;
 
-    // Il titolo è un metadato TMDB come gli altri: va riallineato quando
-    // compare una traduzione (o il fallback inglese/AniList) assente al
-    // momento dell'aggiunta. Un titolo vuoto non sovrascrive quello salvato.
-    final title = detail.name.isNotEmpty ? detail.name : show.title;
+      // Il titolo è un metadato TMDB come gli altri: va riallineato quando
+      // compare una traduzione (o il fallback inglese/AniList) assente al
+      // momento dell'aggiunta. Un titolo vuoto non sovrascrive quello salvato.
+      final title = detail.name.isNotEmpty ? detail.name : show.title;
 
-    if (show.title != title ||
-        show.totalEpisodes != effectiveTotal ||
-        show.totalSeasons != effectiveSeasons ||
-        show.tmdbStatus != detail.status ||
-        show.nextEpisodeNumber != next.episode ||
-        show.nextEpisodeSeason != next.season ||
-        show.nextEpisodeName != next.name ||
-        show.nextEpisodeAirDate != next.airDate) {
-      await ref.read(showsDaoProvider).updateShowMetadata(
-            dbId,
-            effectiveTotal,
-            effectiveSeasons,
-            detail.status,
-            title: Value(title),
-            nextEpisodeNumber: Value(next.episode),
-            nextEpisodeSeason: Value(next.season),
-            nextEpisodeName: Value(next.name),
-            nextEpisodeAirDate: Value(next.airDate),
-          );
-    }
+      if (show.title != title ||
+          show.totalEpisodes != effectiveTotal ||
+          show.totalSeasons != effectiveSeasons ||
+          show.tmdbStatus != detail.status ||
+          show.nextEpisodeNumber != next.episode ||
+          show.nextEpisodeSeason != next.season ||
+          show.nextEpisodeName != next.name ||
+          show.nextEpisodeAirDate != next.airDate) {
+        await ref.read(showsDaoProvider).updateShowMetadata(
+              dbId,
+              effectiveTotal,
+              effectiveSeasons,
+              detail.status,
+              title: Value(title),
+              nextEpisodeNumber: Value(next.episode),
+              nextEpisodeSeason: Value(next.season),
+              nextEpisodeName: Value(next.name),
+              nextEpisodeAirDate: Value(next.airDate),
+            );
+      }
 
-    final counts = {
-      for (final s in detail.seasons) s.seasonNumber: s.episodeCount
-    };
-    final currentCounts =
-        await ref.read(showsDaoProvider).getSeasonCounts(dbId);
-    bool countsChanged = counts.length != currentCounts.length;
-    if (!countsChanged) {
-      for (final s in counts.keys) {
-        if (counts[s] != currentCounts[s]) {
-          countsChanged = true;
-          break;
+      final counts = {
+        for (final s in detail.seasons) s.seasonNumber: s.episodeCount
+      };
+      final currentCounts =
+          await ref.read(showsDaoProvider).getSeasonCounts(dbId);
+      bool countsChanged = counts.length != currentCounts.length;
+      if (!countsChanged) {
+        for (final s in counts.keys) {
+          if (counts[s] != currentCounts[s]) {
+            countsChanged = true;
+            break;
+          }
         }
       }
-    }
-    if (countsChanged) {
-      await ref.read(showsDaoProvider).insertSeasons(dbId, counts);
-      ref.invalidate(seasonEpisodeCountsProvider(dbId));
-    }
+      if (countsChanged) {
+        await ref.read(showsDaoProvider).insertSeasons(dbId, counts);
+        ref.invalidate(seasonEpisodeCountsProvider(dbId));
+      }
+    });
   }
 
   /// Re-schedules the notification for an already-tracked show.

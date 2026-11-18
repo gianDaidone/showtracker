@@ -1,3 +1,4 @@
+import '../../sync/presentation/sync_status_action.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -34,6 +35,9 @@ class GameDetailScreen extends ConsumerWidget {
         .firstOrNull;
 
     return Scaffold(
+      appBar: detailAsync.value == null
+          ? AppBar(actions: const [SyncStatusAction()])
+          : null,
       backgroundColor: AppColors.background,
       body: detailAsync.when(
         loading: () => const Center(
@@ -277,6 +281,7 @@ class _TopBar extends StatelessWidget {
               ),
             ),
             const Spacer(),
+            const SyncStatusAction(),
             _RefreshButton(rawgId: rawgId),
           ],
         ),

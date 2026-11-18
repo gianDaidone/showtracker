@@ -1,3 +1,4 @@
+import '../../sync/presentation/sync_status_action.dart';
 import 'dart:convert';
 
 import '../../../core/widgets/media_image.dart';
@@ -41,7 +42,9 @@ class GamesScreen extends ConsumerWidget {
     final isUnauthenticated = rawgStateAsync.value is RawgUnauthenticated;
 
     if (rawgStateAsync.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+          appBar: AppBar(actions: const [SyncStatusAction()]),
+          body: const Center(child: CircularProgressIndicator()));
     }
 
     if (isUnauthenticated) {
@@ -119,6 +122,7 @@ class _RawgEmptyShellState extends ConsumerState<_RawgEmptyShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(actions: const [SyncStatusAction()]),
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -225,6 +229,7 @@ class _GamesHeader extends StatelessWidget {
             ),
           ),
         ),
+        const SyncStatusAction(),
         IconButton(
           icon: const Icon(Icons.search, color: AppColors.accent, size: 30),
           onPressed: () => context.go('/search?filter=game'),

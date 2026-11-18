@@ -2,7 +2,7 @@
 
 ## Proprietà del database
 
-- Schema **v14**: `lib/core/database/app_database.dart`.
+- Schema **v15**: `lib/core/database/app_database.dart`.
 - Produzione: singleton `AppDatabase.instance`, aperto con
   `driftDatabase(name: 'showtracker')`.
 - Provider DAO: `lib/core/database/database_provider.dart`.
@@ -114,3 +114,16 @@ Esempi storici: v7 rimuove libri; v8 ricostruisce giochi IGDB→RAWG; v9 aggiung
 anime/cache; v12 aggiunge puntatore; v13 aggiunge timestamp; v14 normalizza film.
 `test/core/database/migrations_test.dart` copre upgrade reali v12→14 e v13→14;
 non dichiarare copertura completa v7→14.
+
+## Checkpoint sync (schema 15)
+
+`SyncSessions` conserva ID, fingerprint SHA-256 e data; `SyncItems` conserva
+identità dominio/ID esterno, ID locale, stato, titolo/errore e progressi cour
+in attesa. UNIQUE(sessionId, domain, externalId) evita conteggi duplicati.
+La migrazione 14→15 aggiunge solo le due tabelle, senza riscrivere librerie/cache.
+Import e checkpoint sono atomici. Il journal non contiene token o chiavi QR.
+Le letture import sono bulk in gruppi di 900 ID, i nuovi visti sono scritti in
+batch su chiave naturale; stato e timestamp LWW sono aggiornati insieme.
+`updateShowMetadata` preserva updatedAt: soltanto mutazioni personali devono
+far avanzare il timestamp usato per i conflitti. Il journal conserva anche
+sessioni incomplete precedenti; non viene eseguito pruning distruttivo automatico.

@@ -1,3 +1,4 @@
+import '../../sync/presentation/sync_status_action.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -235,6 +236,7 @@ class _SearchBar extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
+          const SyncStatusAction(),
           const Icon(Icons.search, color: AppColors.accent, size: 26),
         ],
       ),

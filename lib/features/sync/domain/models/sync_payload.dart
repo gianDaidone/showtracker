@@ -1,17 +1,20 @@
 import '../../utils/sync_validation.dart';
 
 class SyncPayload {
+  final int version;
   final Map<String, ShowSyncData> shows; // key: tmdbId
   final Map<String, GameSyncData> games; // key: rawgId
   final Map<String, MovieSyncData> movies; // key: tmdbId
 
   SyncPayload({
+    this.version = 1,
     required this.shows,
     required this.games,
     required this.movies,
   });
 
   Map<String, dynamic> toJson() => {
+        if (version > 1) 'v': version,
         if (shows.isNotEmpty) 's': shows.map((k, v) => MapEntry(k, v.toJson())),
         if (games.isNotEmpty) 'g': games.map((k, v) => MapEntry(k, v.toJson())),
         if (movies.isNotEmpty)
@@ -21,6 +24,7 @@ class SyncPayload {
   factory SyncPayload.fromJson(Map<String, dynamic> json) {
     validateSyncJson(json);
     return SyncPayload(
+      version: json['v'] as int? ?? 1,
       shows: (json['s'] as Map<String, dynamic>?)?.map(
             (k, v) => MapEntry(k, ShowSyncData.fromJson(v)),
           ) ??
@@ -38,24 +42,35 @@ class SyncPayload {
 }
 
 class ShowSyncData {
+  final String? coordinates;
+  final Map<String, int> courIds;
   final String status;
   final int updatedAt;
   final Map<String, String>
       eps; // season -> episodes range (e.g. "1": "1-10,12")
 
   ShowSyncData({
+    this.coordinates,
+    this.courIds = const {},
     required this.status,
     required this.updatedAt,
     required this.eps,
   });
 
   Map<String, dynamic> toJson() => {
+        if (coordinates != null) 'c': coordinates,
+        if (courIds.isNotEmpty) 'a': courIds,
         'st': status,
         'u': updatedAt,
         if (eps.isNotEmpty) 'e': eps,
       };
 
   factory ShowSyncData.fromJson(Map<String, dynamic> json) => ShowSyncData(
+        coordinates: json['c'] as String?,
+        courIds: (json['a'] as Map<String, dynamic>?)?.map(
+              (k, v) => MapEntry(k, v as int),
+            ) ??
+            const {},
         status: json['st'] as String,
         updatedAt: json['u'] as int,
         eps: (json['e'] as Map<String, dynamic>?)?.map(

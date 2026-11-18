@@ -1,9 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:showtracker/core/riverpod_utils.dart';
+import 'package:showtracker/features/sync/providers/sync_controller.dart';
+import 'package:showtracker/features/sync/domain/models/sync_progress.dart';
 import 'package:showtracker/core/theme/app_theme.dart';
 import 'package:showtracker/core/widgets/secret_key_dialog.dart';
 import 'package:showtracker/features/settings/presentation/privacy_info_screen.dart';
+
+class _IdleSync extends SyncController {
+  @override
+  SyncProgress build() => const SyncProgress();
+}
 
 void main() {
   testWidgets('privacy con testo 200% su display stretto resta scorrevole',
@@ -12,13 +21,16 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(MaterialApp(
-        theme: AppTheme.dark(),
-        builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(textScaler: const TextScaler.linear(2)),
-            child: child!),
-        home: const PrivacyInfoScreen()));
+    await tester.pumpWidget(ProviderScope(
+        retry: noProviderRetry,
+        overrides: [syncControllerProvider.overrideWith(_IdleSync.new)],
+        child: MaterialApp(
+            theme: AppTheme.dark(),
+            builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: const TextScaler.linear(2)),
+                child: child!),
+            home: const PrivacyInfoScreen())));
     await tester.pumpAndSettle();
     expect(find.textContaining('100%'), findsNothing);
     await tester.scrollUntilVisible(find.text('Licenze open source'), 400);

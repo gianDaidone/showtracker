@@ -1,3 +1,4 @@
+import '../../sync/presentation/sync_status_action.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -64,6 +65,7 @@ class _SeriesListScreenState extends ConsumerState<SeriesListScreen> {
                 ),
               ),
         actions: [
+          const SyncStatusAction(),
           if (_isSearching)
             IconButton(
               icon: const Icon(Icons.close, color: AppColors.textPrimary),
@@ -79,8 +81,8 @@ class _SeriesListScreenState extends ConsumerState<SeriesListScreen> {
         ],
       ),
       body: showsAsync.when(
-        loading: () =>
-            const Center(child: CircularProgressIndicator(color: AppColors.accent)),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.accent)),
         error: (e, _) => const Center(
           child: Padding(
             padding: EdgeInsets.all(24),
@@ -96,12 +98,13 @@ class _SeriesListScreenState extends ConsumerState<SeriesListScreen> {
 
           var filtered = shows;
           if (_selectedStatus != null) {
-            filtered = filtered.where((s) => s.status == _selectedStatus).toList();
+            filtered =
+                filtered.where((s) => s.status == _selectedStatus).toList();
           }
           if (_query.isNotEmpty) {
             filtered = filtered
-                .where((s) =>
-                    s.title.toLowerCase().contains(_query.toLowerCase()))
+                .where(
+                    (s) => s.title.toLowerCase().contains(_query.toLowerCase()))
                 .toList();
           }
 
@@ -120,7 +123,8 @@ class _SeriesListScreenState extends ConsumerState<SeriesListScreen> {
             children: [
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
                     _FilterChip(
@@ -133,7 +137,8 @@ class _SeriesListScreenState extends ConsumerState<SeriesListScreen> {
                           child: _FilterChip(
                             label: status.label,
                             isSelected: _selectedStatus == status,
-                            onTap: () => setState(() => _selectedStatus = status),
+                            onTap: () =>
+                                setState(() => _selectedStatus = status),
                           ),
                         )),
                   ],
@@ -162,10 +167,13 @@ class _NoResults extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.search_off, size: 56, color: AppColors.textSecondary),
+            const Icon(Icons.search_off,
+                size: 56, color: AppColors.textSecondary),
             const SizedBox(height: 16),
             Text(
-              query.isNotEmpty ? 'Nessuna serie trovata\nper "$query"' : 'Nessuna serie in questo stato',
+              query.isNotEmpty
+                  ? 'Nessuna serie trovata\nper "$query"'
+                  : 'Nessuna serie in questo stato',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.textPrimary,

@@ -28,7 +28,12 @@ http.Response _reply(http.Request request) {
       jsonEncode({
         'id': id,
         if (game) 'slug': 'game-$id',
-        if (game) 'name': 'Gioco $id' else 'title': 'Film $id',
+        if (game)
+          'name': 'Gioco $id'
+        else if (request.url.path.contains('/tv/'))
+          'name': 'Serie $id'
+        else
+          'title': 'Film $id',
         'overview': 'Trama recuperata',
         'poster_path': '/poster.jpg',
         'background_image': 'https://example.test/cover.jpg',
@@ -206,7 +211,7 @@ void main() {
           }));
 
   test(
-      'login TMDB recupera solo film; i domini e gli stati restano isolati',
+      'login TMDB recupera film e serie; RAWG e dati personali restano isolati',
       () => _withFixture((f) async {
             await f.importMedia(movies: [303], shows: [101]);
             final recovery = f.recovery;
@@ -221,6 +226,7 @@ void main() {
                 .loginWithManualKey('fake-tmdb');
             await f.movieReady();
             await recovery.recoverMovies();
+            await recovery.recoverShows();
             final movie = (await f.db.moviesDao.getByTmdbId(303))!;
             expect([movie.id, movie.status, movie.addedAt, movie.updatedAt],
                 [before.id, before.status, before.addedAt, before.updatedAt]);
@@ -230,12 +236,11 @@ void main() {
             expect(movie.posterPath, '/poster.jpg');
             expect(
                 (await f.db.gamesDao.getByRawgId(202))!.title, 'Sconosciuto');
-            expect(
-                (await f.db.showsDao.getByTmdbId(101))!.title, 'Sconosciuto');
-            expect(f.requests, hasLength(2)); // TMDB italiano + inglese.
+            expect((await f.db.showsDao.getByTmdbId(101))!.title, 'Serie 101');
+            expect(f.requests, hasLength(4)); // Due dettagli bilingui.
             expect(
                 f.requests.every((r) =>
-                    r.url.path == '/3/movie/303' &&
+                    {'/3/movie/303', '/3/tv/101'}.contains(r.url.path) &&
                     r.url.queryParameters['api_key'] == 'fake-tmdb'),
                 isTrue);
             await f.db.moviesDao.insertMovie(TrackedMoviesCompanion.insert(
@@ -248,7 +253,7 @@ void main() {
                 .loginWithKey('fake-rawg');
             await f.gamesReady([202]);
             await recovery.recoverGames();
-            expect(f.requests, hasLength(3));
+            expect(f.requests, hasLength(5));
             expect(f.requests.last.url.host, 'api.rawg.io');
             expect(
                 (await f.db.moviesDao.getByTmdbId(304))!.title, 'Sconosciuto');

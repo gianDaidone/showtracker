@@ -1,3 +1,4 @@
+import '../../sync/presentation/sync_status_action.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -15,6 +16,7 @@ class PrivacyInfoScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        actions: const [SyncStatusAction()],
         backgroundColor: AppColors.background,
         title: const Text('Privacy e fonti dati',
             style: TextStyle(fontWeight: FontWeight.w600)),
@@ -80,7 +82,7 @@ class PrivacyInfoScreen extends StatelessWidget {
               icon: Icons.perm_camera_mic_outlined,
               title: 'Permessi e contenuti esterni',
               body:
-                'La fotocamera legge i QR sul dispositivo. ML Kit non invia immagini o risultati della scansione a Google, ma invia via HTTPS informazioni sul dispositivo e sull’app, identificatori di installazione e metriche diagnostiche e di utilizzo. Le notifiche e i widget possono mostrare titoli sul dispositivo bloccato. Yuna e AniList ricevono ID e ricerche anime; RAWG e Steam forniscono dati, immagini e trailer. Non sono integrati SDK pubblicitari.'),
+                  'La fotocamera legge i QR sul dispositivo. ML Kit non invia immagini o risultati della scansione a Google, ma invia via HTTPS informazioni sul dispositivo e sull’app, identificatori di installazione e metriche diagnostiche e di utilizzo. Le notifiche e i widget possono mostrare titoli sul dispositivo bloccato. Yuna e AniList ricevono ID e ricerche anime; RAWG e Steam forniscono dati, immagini e trailer. Non sono integrati SDK pubblicitari.'),
           const SizedBox(height: 12),
           const _InfoCard(
               icon: Icons.delete_outline,

@@ -189,3 +189,26 @@ sync_security_test e features/update. Il nuovo test DB prova che plaintext,
 envelope sconosciuto e tag alterato falliscono prima di modificare record locali.
 Risultati correnti e limiti nell’[audit](../docs/security-reliability-audit.md);
 prove native prioritarie nella [checklist GitHub](../docs/github-release-checklist.md).
+
+## Sync progressiva e schema 15
+
+`features/sync/sync_controller_test.dart` verifica pubblicazione prima del drain,
+totale unico, retry selettivo/replay, progressi e feed serie senza aprire dettagli,
+coordinate cour per ID AniList, cancellazione concorrente, checkpoint recuperabili
+e nuova scansione. `sync_progress_panel_test.dart` copre navigazione e testo 200%;
+`sync_android_bridge_test.dart` copre throttle/ordine e completamento notifica.
+`core/database/migrations_test.dart` include 14→15 e conserva le prove 12/13→corrente.
+Le fixture native restano simulate: prima della release provare QR su due device,
+Home/schermo spento, ricreazione Activity, rimozione recenti, force-stop, timeout e
+permessi/canale notifiche negati. Nessun runner con applicationId personale.
+
+Le regressioni del banner sync verificano posizione alta e sovrapposta senza
+ridimensionare il contenuto, chiusura/riapertura dall'icona, navigazione, assenza di
+titoli e fasi interne, chiusura automatica e avviso leggibile al 200%. I test del
+coordinatore coprono RAWG assente senza errori, conferma persistente e recupero
+all'inserimento chiave anche da sessioni precedenti o prima di «Ho capito».
+
+Regressioni contatore sync: trasferimento misto da 54 contenuti seguito da recupero
+RAWG con totale dei soli giochi, progresso non decrescente in ogni passaggio,
+identità duplicate tra sessioni contate/scaricate una volta e testi del pannello
+per ambito del totale e attesa dell'ultimo elemento.
