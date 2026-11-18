@@ -163,13 +163,13 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
       loading: () => const Center(
         child: CircularProgressIndicator(color: AppColors.accent),
       ),
-      error: (e, _) => Center(
+      error: (e, _) => const Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           child: Text(
-            'Errore:\n$e',
+            'Caricamento non riuscito. Controlla la connessione e riprova.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.redAccent),
+            style: TextStyle(color: Colors.redAccent),
           ),
         ),
       ),
@@ -244,13 +244,13 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
       loading: () => const Center(
         child: CircularProgressIndicator(color: AppColors.accent),
       ),
-      error: (e, _) => Center(
+      error: (e, _) => const Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           child: Text(
-            'Errore:\n$e',
+            'Caricamento non riuscito. Controlla la connessione e riprova.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.redAccent),
+            style: TextStyle(color: Colors.redAccent),
           ),
         ),
       ),

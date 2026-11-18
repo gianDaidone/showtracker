@@ -64,8 +64,9 @@ Fonti: `lib/core/router/app_router.dart`, `lib/core/shell/main_shell.dart`.
   `/games/detail/:id`, `/sync`, `/privacy`.
 - Il redirect aspetta il caricamento auth; non autenticato → onboarding;
   autenticato su onboarding → serie. `/` è ricondotto a `/series`.
-- Gli ID dei dettagli sono convertiti con `int.parse`: non assumere una
-  validazione generale degli input route o una schermata dedicata a ID malformati.
+- Il redirect del router valida gli ID dei dettagli come interi positivi int32
+  prima dei builder, che usano `int.parse`; ID non validi tornano a `/series`.
+  Gli indici del tab episodi sono limitati all’intervallo 0–1.
 
 ## Gerarchia UI e stile
 

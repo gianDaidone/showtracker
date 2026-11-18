@@ -27,8 +27,8 @@ class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController =
-        TabController(length: 2, vsync: this, initialIndex: widget.initialTab);
+    _tabController = TabController(
+        length: 2, vsync: this, initialIndex: widget.initialTab.clamp(0, 1));
     _tabController.addListener(_onTabChanged);
   }
 
@@ -52,7 +52,7 @@ class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
     super.didUpdateWidget(oldWidget);
     if (widget.initialTab != oldWidget.initialTab &&
         widget.initialTab != _tabController.index) {
-      _tabController.animateTo(widget.initialTab);
+      _tabController.animateTo(widget.initialTab.clamp(0, 1));
     }
   }
 
@@ -171,13 +171,13 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
         title: 'Da Vedere',
         borderColor: Colors.orange,
       ),
-      error: (e, _) => Center(
+      error: (e, _) => const Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           child: Text(
-            'Errore:\n$e',
+            'Caricamento non riuscito. Controlla la connessione e riprova.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.redAccent),
+            style: TextStyle(color: Colors.redAccent),
           ),
         ),
       ),
@@ -353,13 +353,13 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
         title: 'Prossimamente',
         borderColor: Colors.orange,
       ),
-      error: (e, _) => Center(
+      error: (e, _) => const Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           child: Text(
-            'Errore:\n$e',
+            'Caricamento non riuscito. Controlla la connessione e riprova.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.redAccent),
+            style: TextStyle(color: Colors.redAccent),
           ),
         ),
       ),
@@ -534,7 +534,7 @@ class _EmptyWatching extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -657,14 +657,15 @@ class _SkeletonListView extends StatelessWidget {
               padding: const EdgeInsets.only(left: 8),
               child: Row(
                 children: [
-                  Text(
+                  Expanded(
+                      child: Text(
                     title,
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
-                  ),
+                  )),
                   const SizedBox(width: 8),
                   Container(
                     width: 36,

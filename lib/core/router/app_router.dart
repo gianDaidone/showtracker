@@ -30,17 +30,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     navigatorKey: AppToast.navigatorKey,
     initialLocation: '/series',
     redirect: (context, state) {
+      final segments = state.uri.pathSegments;
+      if (segments.length == 3 &&
+          {'series', 'movies', 'games'}.contains(segments[0]) &&
+          segments[1] == 'detail') {
+        final id = int.tryParse(segments[2]);
+        if (id == null || id <= 0 || id > 2147483647) return '/series';
+      }
       if (authStateAsync.isLoading) return null;
 
       final isGoingToOnboarding = state.matchedLocation == '/onboarding';
-      
+
       final authState = authStateAsync.value;
-      final isAuthenticated = authState != null && authState is! Unauthenticated;
+      final isAuthenticated =
+          authState != null && authState is! Unauthenticated;
 
       if (!isAuthenticated && !isGoingToOnboarding) {
         return '/onboarding';
       }
-      
+
       if (isAuthenticated && isGoingToOnboarding) {
         return '/series';
       }
@@ -66,7 +74,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: '/series',
                 builder: (context, state) {
                   final tabStr = state.uri.queryParameters['tab'];
-                  final tabIndex = int.tryParse(tabStr ?? '0') ?? 0;
+                  final tabIndex =
+                      (int.tryParse(tabStr ?? '0') ?? 0).clamp(0, 1);
                   return NextEpisodesScreen(initialTab: tabIndex);
                 },
               ),

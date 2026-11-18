@@ -20,7 +20,7 @@ import 'discover_view.dart';
 import 'widgets/search_result_tile.dart';
 import 'widgets/search_error_message.dart';
 
-// ── Filtro attivo ─────────────────────────────────────────────────────────────
+// â”€â”€ Filtro attivo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 enum _SearchFilter {
   all,
@@ -53,7 +53,7 @@ _SearchFilter _parseFilter(String? raw) => switch (raw) {
       _ => _SearchFilter.all,
     };
 
-// ── Screen ────────────────────────────────────────────────────────────────────
+// â”€â”€ Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class SearchScreen extends StatefulWidget {
   final String? initialFilter;
@@ -116,47 +116,34 @@ class _SearchScreenState extends State<SearchScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ───────────────────────────────────────────────────
+            // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: GestureDetector(
-                      onTap: () {
-                        if (context.canPop()) {
-                          context.pop();
-                        } else {
-                          final route = switch (widget.initialFilter) {
-                            'game' => '/games',
-                            'movie' => '/movies',
-                            _ => '/series',
-                          };
-                          context.go(route);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        color: Colors.transparent,
-                        child: const Icon(
-                          Icons.arrow_back,
-                          color: AppColors.textPrimary,
-                          size: 26,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SvgPicture.asset(
-                    'assets/images/tmdb_logo.svg',
-                    height: 18, // Più piccolo e centrato
-                  ),
-                ],
-              ),
+              child: Row(children: [
+                IconButton(
+                  tooltip: 'Indietro',
+                  icon: const Icon(Icons.arrow_back,
+                      color: AppColors.textPrimary),
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go(switch (widget.initialFilter) {
+                        'game' => '/games',
+                        'movie' => '/movies',
+                        _ => '/series',
+                      });
+                    }
+                  },
+                ),
+                Expanded(
+                    child: Center(
+                        child: SvgPicture.asset('assets/images/tmdb_logo.svg',
+                            height: 18, semanticsLabel: 'TMDB'))),
+                const SizedBox(width: 48),
+              ]),
             ),
 
-            // ── Barra di ricerca ─────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: _SearchBar(
@@ -170,7 +157,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
 
-            // ── Badge filtro ─────────────────────────────────────────────
+            // â”€â”€ Badge filtro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: _FilterBadges(
@@ -179,7 +166,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
 
-            // ── Contenuto ────────────────────────────────────────────────
+            // â”€â”€ Contenuto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Expanded(
               child: _query.isEmpty
                   ? DiscoverView(
@@ -196,7 +183,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 }
 
-// ── Barra di ricerca ──────────────────────────────────────────────────────────
+// â”€â”€ Barra di ricerca â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _SearchBar extends StatelessWidget {
   final TextEditingController controller;
@@ -255,7 +242,7 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-// ── Badge filtro ──────────────────────────────────────────────────────────────
+// â”€â”€ Badge filtro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 typedef _FilterDef = ({_SearchFilter type, String label});
 
@@ -332,7 +319,7 @@ class _FilterBadge extends StatelessWidget {
   }
 }
 
-// ── Risultati ─────────────────────────────────────────────────────────────────
+// â”€â”€ Risultati â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _Results extends ConsumerWidget {
   final String query;
@@ -378,7 +365,7 @@ class _Results extends ConsumerWidget {
         showsAsync.isLoading || moviesAsync.isLoading || gamesAsync.isLoading,
     };
 
-    // Con "Tutti" ogni tipo resta alla prima pagina (20 risultati), così uno
+    // Con "Tutti" ogni tipo resta alla prima pagina (20 risultati), cosÃ¬ uno
     // non sommerge gli altri; con un filtro la lista scorre e carica le
     // pagine successive.
     final single = filter != _SearchFilter.all;
@@ -414,7 +401,7 @@ class _Results extends ConsumerWidget {
     ];
 
     if (results.isEmpty && !anyLoading) {
-      // Una ricerca fallita non è "nessun risultato": prima il messaggio
+      // Una ricerca fallita non Ã¨ "nessun risultato": prima il messaggio
       // mostrava lo stesso testo e nascondeva l'errore.
       final failed = [
         if (showShows) showsAsync,

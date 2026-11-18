@@ -93,7 +93,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
         });
       }
     } catch (e) {
-      AppToast.show('Errore: $e');
+      AppToast.show('Operazione non riuscita. Riprova.');
       if (mounted) {
         setState(() {
           _markState = _MarkState.idle;

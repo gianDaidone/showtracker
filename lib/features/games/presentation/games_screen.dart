@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/auth/rawg_auth_state.dart';
+import '../../../core/services/app_toast.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_theme.dart';
@@ -38,6 +39,10 @@ class GamesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final rawgStateAsync = ref.watch(rawgAuthControllerProvider);
     final isUnauthenticated = rawgStateAsync.value is RawgUnauthenticated;
+
+    if (rawgStateAsync.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     if (isUnauthenticated) {
       return const _RawgEmptyShell();
@@ -89,6 +94,21 @@ class _RawgEmptyShell extends ConsumerStatefulWidget {
 
 class _RawgEmptyShellState extends ConsumerState<_RawgEmptyShell> {
   final _controller = TextEditingController();
+  bool _saving = false;
+
+  Future<void> _save() async {
+    final key = _controller.text.trim();
+    if (_saving || key.isEmpty) return;
+    final notifier = ref.read(rawgAuthControllerProvider.notifier);
+    setState(() => _saving = true);
+    try {
+      await notifier.loginWithKey(key);
+    } catch (_) {
+      AppToast.show('Salvataggio della chiave non riuscito. Riprova.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -101,7 +121,7 @@ class _RawgEmptyShellState extends ConsumerState<_RawgEmptyShell> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(32.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -135,6 +155,11 @@ class _RawgEmptyShellState extends ConsumerState<_RawgEmptyShell> {
               const SizedBox(height: 32),
               TextField(
                 controller: _controller,
+                enabled: !_saving,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                maxLength: 512,
                 decoration: const InputDecoration(
                   hintText: 'La tua RAWG API Key',
                   border: OutlineInputBorder(),
@@ -148,19 +173,12 @@ class _RawgEmptyShellState extends ConsumerState<_RawgEmptyShell> {
                       Uri.parse('https://rawg.io/apidocs'),
                       mode: LaunchMode.externalApplication),
                   icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('Richiedi chiave gratis'),
+                  label: const Text('Documentazione RAWG'),
                 ),
               ),
               const SizedBox(height: 32),
               FilledButton(
-                onPressed: () {
-                  final key = _controller.text.trim();
-                  if (key.isNotEmpty) {
-                    ref
-                        .read(rawgAuthControllerProvider.notifier)
-                        .loginWithKey(key);
-                  }
-                },
+                onPressed: _saving ? null : _save,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.accent,
                   foregroundColor: Colors.black,

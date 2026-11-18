@@ -190,7 +190,7 @@ class _SeasonEpisodesState extends ConsumerState<_SeasonEpisodes> {
           child: Text(
             isRecoverableSeriesError(e)
                 ? 'Impossibile caricare gli episodi. Controlla la connessione e riprova.'
-                : 'Errore nel caricamento episodi:\n$e',
+                : 'Errore nel caricamento episodi: riprova più tardi.',
             style: const TextStyle(color: Colors.redAccent, fontSize: 13),
           ),
         ),

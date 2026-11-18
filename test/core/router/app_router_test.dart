@@ -38,6 +38,21 @@ void main() {
     return app;
   }
 
+  testWidgets('ID di dettaglio ostili e tab fuori range non causano crash',
+      (tester) async {
+    final app = await mount(tester);
+    for (final path in [
+      '/series/detail/not-an-id',
+      '/movies/detail/-1',
+      '/games/detail/999999999999999999999',
+      '/series?tab=999'
+    ]) {
+      app.container.read(appRouterProvider).go(path);
+      await app.flush(tester);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets('senza credenziali mostra onboarding e protegge le route',
       (tester) async {
     final app = await mount(tester, loggedIn: false);

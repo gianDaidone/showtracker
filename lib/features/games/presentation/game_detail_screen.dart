@@ -738,7 +738,7 @@ class _TrailerPlayerState extends State<_TrailerPlayer> {
       _controller.play();
       _scheduleHide();
     }).catchError((Object e) {
-      debugPrint('Trailer non riproducibile: $e');
+      debugPrint('Trailer non riproducibile: ${e.runtimeType}');
       if (mounted) setState(() => _failed = true);
     });
   }

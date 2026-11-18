@@ -18,13 +18,10 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final showsCount =
-        ref.watch(trackedShowsProvider).value?.length ?? 0;
-    final moviesCount =
-        ref.watch(trackedMoviesProvider).value?.length ?? 0;
-    final gamesCount = kEnableGames
-        ? ref.watch(trackedGamesProvider).value?.length ?? 0
-        : 0;
+    final showsCount = ref.watch(trackedShowsProvider).value?.length ?? 0;
+    final moviesCount = ref.watch(trackedMoviesProvider).value?.length ?? 0;
+    final gamesCount =
+        kEnableGames ? ref.watch(trackedGamesProvider).value?.length ?? 0 : 0;
 
     final summary = showsCount + moviesCount + gamesCount == 0
         ? 'Nessun titolo nella libreria'
