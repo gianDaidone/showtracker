@@ -55,6 +55,9 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
 
   Future<void> _markWatched(int season, int episode) async {
     if (_markState != _MarkState.idle) return;
+    final dao = ref.read(showsDaoProvider);
+    final notifier = ref.read(trackedShowsProvider.notifier);
+    final show = widget.showData.show;
     setState(() {
       _markState = _MarkState.marking;
       _lockedShowData = widget.showData; // congela l'intera card
@@ -70,20 +73,13 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
     // Diamo il tempo all'animazione del check verde di completarsi
     await Future.delayed(const Duration(milliseconds: 700));
 
-    final dao = ref.read(showsDaoProvider);
-    final notifier = ref.read(trackedShowsProvider.notifier);
-    final tmdbId = widget.showData.show.tmdbId;
-    final showId = widget.showData.show.id;
-
     try {
-      await dao.markEpisodeWatched(
-        showId,
-        season,
-        episode,
-        watched: true,
-      );
-
-      notifier.rescheduleNotificationById(tmdbId);
+      final saved = await dao.transaction(() async {
+        if (await dao.getById(show.id) == null) return false;
+        await dao.markEpisodeWatched(show.id, season, episode);
+        return true;
+      });
+      if (saved) notifier.rescheduleNotificationById(show.tmdbId);
 
       if (mounted) {
         setState(() {

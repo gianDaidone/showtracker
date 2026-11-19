@@ -370,6 +370,8 @@ class _WatchlistMovieCardState extends ConsumerState<_WatchlistMovieCard> {
   /// spunta verde.
   Future<void> _markWatched() async {
     if (_markState != _MarkState.idle) return;
+    final notifier = ref.read(trackedMoviesProvider.notifier);
+    final movieId = widget.movie.id;
     setState(() => _markState = _MarkState.marking);
 
     await Future.delayed(const Duration(milliseconds: 200));
@@ -378,9 +380,7 @@ class _WatchlistMovieCardState extends ConsumerState<_WatchlistMovieCard> {
     await Future.delayed(const Duration(milliseconds: 700));
 
     try {
-      await ref
-          .read(trackedMoviesProvider.notifier)
-          .updateStatus(widget.movie.id, MediaStatus.completed);
+      await notifier.updateStatus(movieId, MediaStatus.completed);
       if (mounted) setState(() => _markState = _MarkState.idle);
     } catch (_) {
       if (mounted) setState(() => _markState = _MarkState.idle);
