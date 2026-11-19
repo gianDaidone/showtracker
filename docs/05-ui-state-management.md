@@ -85,6 +85,13 @@ ShowTrackerApp → MaterialApp.router → GoRouter
 - Material 3; `AppColors.background` #161622, surface #1E1E2E, accent #E68A00.
 - Nuovi testi utente italiani; mantenere etichette per dominio e mesi italiani.
   Label metadati anime come `Winter 2026` sono un comportamento esistente del modello.
+- Negli header Serie, Film e Giochi, icona, titolo, conteggio e freccia
+  aprono la libreria come un unico bersaglio di tocco. Il pulsante di
+  ricerca in accento apre la ricerca con il filtro del dominio.
+- L'header Profilo riusa tessera, separatore e tipografia delle librerie
+  per il titolo e il riepilogo. L'azione di sincronizzazione è separata.
+- `ReleaseTimeline` costruisce le righe lazy per giorno. Ogni dominio
+  seleziona i propri elementi e fornisce le chiavi stabili e la card.
 - Componenti riutilizzabili: `lib/core/widgets/` e
   `lib/features/settings/presentation/widgets/settings_widgets.dart`.
 - Riutilizzare `AppToast`, `AnimatedRefreshButton` e `PagedListFooter` dove pertinenti.

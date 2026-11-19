@@ -13,6 +13,8 @@ import '../../../core/services/app_toast.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/library_header_link.dart';
+import '../../../core/widgets/library_media_card.dart';
+import '../../../core/widgets/release_timeline.dart';
 import '../providers/games_providers.dart';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -24,11 +26,6 @@ List<String> _decodePlatforms(String? json) {
   } catch (_) {
     return [];
   }
-}
-
-bool _isUpcoming(TrackedGame game) {
-  if (game.releaseDate == null) return true; // TBA → in uscita
-  return game.releaseDate!.isAfter(DateTime.now());
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -62,7 +59,7 @@ class GamesScreen extends ConsumerWidget {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: _GamesHeader(totalCount: totalCount),
               ),
               const Padding(
@@ -221,17 +218,16 @@ class _GamesHeader extends StatelessWidget {
             subtitle: Text(
               totalCount == 0
                   ? 'Nessun gioco aggiunto'
-                  : '$totalCount ${totalCount == 1 ? 'gioco nel backlog' : 'giochi nel backlog'}',
+                  : '$totalCount ${totalCount == 1 ? 'gioco in libreria' : 'giochi in libreria'}',
               style: const TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: 13,
+                fontSize: 15,
               ),
             ),
           ),
         ),
         const SyncStatusAction(),
-        IconButton(
-          icon: const Icon(Icons.search, color: AppColors.accent, size: 30),
+        LibrarySearchButton(
           onPressed: () => context.go('/search?filter=game'),
           tooltip: 'Cerca giochi',
         ),
@@ -320,6 +316,9 @@ class _BacklogTabState extends ConsumerState<_BacklogTab>
             .toList();
 
         if (backlog.isEmpty) return const _EmptyBacklog();
+        final indices = {
+          for (final (index, item) in backlog.indexed) ValueKey(item.id): index,
+        };
 
         return CustomScrollView(
           slivers: [
@@ -351,6 +350,7 @@ class _BacklogTabState extends ConsumerState<_BacklogTab>
                   game: backlog[index],
                 ),
                 childCount: backlog.length,
+                findChildIndexCallback: (key) => indices[key],
               ),
             ),
             const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
@@ -387,8 +387,11 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
       error: (e, _) => _ErrorView(message: e.toString()),
       data: (games) {
         // In Uscita: planToWatch con data futura o TBA
+        final now = DateTime.now();
         final upcoming = games
-            .where((g) => g.status == MediaStatus.planToWatch && _isUpcoming(g))
+            .where((game) =>
+                game.status == MediaStatus.planToWatch &&
+                (game.releaseDate == null || game.releaseDate!.isAfter(now)))
             .toList()
           ..sort((a, b) {
             if (a.releaseDate == null && b.releaseDate == null) return 0;
@@ -399,91 +402,23 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
 
         if (upcoming.isEmpty) return const _EmptyInUscita();
 
-        final now = DateTime.now();
-        final threshold = now.add(const Duration(days: 30));
-
-        final prossimamente = <TrackedGame>[];
-        final inArrivo = <TrackedGame>[];
-
-        for (final game in upcoming) {
-          if (game.releaseDate == null ||
-              game.releaseDate!.isAfter(threshold) ||
-              game.releaseDate!.isAtSameMomentAs(threshold)) {
-            inArrivo.add(game);
-          } else {
-            prossimamente.add(game);
-          }
-        }
-
-        return CustomScrollView(
-          slivers: [
-            const SliverPadding(padding: EdgeInsets.only(top: 12)),
-            if (prossimamente.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      border: Border(
-                          left: BorderSide(color: Colors.orange, width: 4)),
-                    ),
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Text(
-                      'Prossimamente (${prossimamente.length})',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _UpcomingGameCard(
-                    key: ValueKey(prossimamente[index].id),
-                    game: prossimamente[index],
-                    isFarFuture: false,
-                  ),
-                  childCount: prossimamente.length,
-                ),
-              ),
-            ],
-            if (inArrivo.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      border: Border(
-                          left: BorderSide(color: Colors.grey, width: 4)),
-                    ),
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Text(
-                      'In Arrivo (${inArrivo.length})',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _UpcomingGameCard(
-                    key: ValueKey(inArrivo[index].id),
-                    game: inArrivo[index],
-                    isFarFuture: true,
-                  ),
-                  childCount: inArrivo.length,
-                ),
-              ),
-            ],
-            const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
-          ],
+        return ReleaseTimeline(
+          items: upcoming,
+          now: now,
+          dateFor: (game) => game.releaseDate,
+          keyFor: (game) => ValueKey(game.id),
+          cardBuilder: (context, game) {
+            final platforms = _decodePlatforms(game.platforms);
+            return LibraryMediaCard(
+              title: game.title,
+              thumbnail: _Cover(url: game.coverUrl),
+              thumbnailSize: const Size(60, 48),
+              margin: EdgeInsets.zero,
+              onTap: () => context.push('/games/detail/${game.rawgId}'),
+              details:
+                  platforms.isEmpty ? null : _GameBadges(platforms: platforms),
+            );
+          },
         );
       },
     );
@@ -538,12 +473,18 @@ class _GiocatiTabState extends ConsumerState<_GiocatiTab>
           items.addAll(dropped.map(_GameItem.new));
         }
 
+        final indices = {
+          for (final (index, item) in items.indexed)
+            if (item is _GameItem) ValueKey(item.game.id): index,
+        };
+
         return Column(
           children: [
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.only(top: 12, bottom: 24),
                 itemCount: items.length,
+                findChildIndexCallback: (key) => indices[key],
                 itemBuilder: (_, i) {
                   final item = items[i];
                   if (item is _SectionItem) {
@@ -664,230 +605,67 @@ class _GameCardState extends ConsumerState<_GameCard> {
   Widget build(BuildContext context) {
     final game = widget.game;
     final platforms = _decodePlatforms(game.platforms);
-    final platformLabel = platforms.take(2).join(' · ');
     final releaseYear = game.releaseDate?.year;
-    final isPlayed = game.status == MediaStatus.completed;
-    final isDropped = game.status == MediaStatus.dropped;
+    return LibraryMediaCard(
+      title: game.title,
+      thumbnail: _Cover(url: game.coverUrl),
+      thumbnailSize: const Size(72, 58),
+      onTap: () => context.push('/games/detail/${game.rawgId}'),
+      details: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (platforms.isNotEmpty || releaseYear != null) ...[
+            _GameBadges(platforms: platforms, year: releaseYear),
+            const SizedBox(height: 6),
+          ],
+          _RatingRow(game: game),
+        ],
+      ),
+      action: _ActionButton(
+        isLoading: _loading,
+        isPlayed: game.status == MediaStatus.completed,
+        isDropped: game.status == MediaStatus.dropped,
+        onTap: _onActionTap,
+      ),
+    );
+  }
+}
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: InkWell(
-        onTap: () => context.push('/games/detail/${game.rawgId}'),
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Cover
-              _Cover(url: game.coverUrl),
-              const SizedBox(width: 12),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      game.title,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (releaseYear != null || platformLabel.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        [
-                          if (releaseYear != null) '$releaseYear',
-                          if (platformLabel.isNotEmpty) platformLabel,
-                        ].join(' · '),
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: 6),
-                    // Rating row
-                    _RatingRow(game: game),
-                  ],
+class _GameBadges extends StatelessWidget {
+  final List<String> platforms;
+  final int? year;
+
+  const _GameBadges({required this.platforms, this.year});
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+        spacing: 5,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (year != null)
+            Text('$year',
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 12)),
+          for (final platform in platforms.take(2))
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                child: Text(
+                  platform,
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 11),
                 ),
               ),
-              const SizedBox(width: 8),
-              // Action button
-              _ActionButton(
-                isLoading: _loading,
-                isPlayed: isPlayed,
-                isDropped: isDropped,
-                onTap: _onActionTap,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+            ),
+        ],
+      );
 }
-
-// ── Upcoming Game Card ────────────────────────────────────────────────────────
-
-class _UpcomingGameCard extends StatelessWidget {
-  final TrackedGame game;
-  final bool isFarFuture;
-  const _UpcomingGameCard(
-      {super.key, required this.game, this.isFarFuture = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final platforms = _decodePlatforms(game.platforms);
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: InkWell(
-        onTap: () => context.push('/games/detail/${game.rawgId}'),
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              _Cover(url: game.coverUrl),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      game.title,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    if (game.releaseDate != null)
-                      _ReleaseDateBadge(
-                          date: game.releaseDate!, isFarFuture: isFarFuture)
-                    else
-                      const _TbaBadge(),
-                    if (platforms.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        platforms.take(2).join(' · '),
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Release date badge ────────────────────────────────────────────────────────
-
-class _ReleaseDateBadge extends StatelessWidget {
-  final DateTime date;
-  final bool isFarFuture;
-  const _ReleaseDateBadge({required this.date, this.isFarFuture = false});
-
-  static const _months = [
-    'gen',
-    'feb',
-    'mar',
-    'apr',
-    'mag',
-    'giu',
-    'lug',
-    'ago',
-    'set',
-    'ott',
-    'nov',
-    'dic',
-  ];
-
-  String get _formatted =>
-      '${date.day} ${_months[date.month - 1]} ${date.year}';
-
-  String get _countdown {
-    final diff = date.difference(DateTime.now()).inDays;
-    if (diff <= 0) return 'Oggi!';
-    if (diff == 1) return 'Domani';
-    if (diff < 30) return 'tra $diff giorni';
-    if (diff < 365) {
-      final months = (diff / 30).round();
-      return 'tra $months ${months == 1 ? 'mese' : 'mesi'}';
-    }
-    return _formatted;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.divider.withAlpha(80),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        '$_formatted · $_countdown',
-        style: const TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w600,
-          fontSize: 11,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
-}
-
-class _TbaBadge extends StatelessWidget {
-  const _TbaBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.divider.withAlpha(80),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: const Text(
-        'Data da annunciare',
-        style: TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
-}
-
-// ── Rating row ────────────────────────────────────────────────────────────────
 
 class _RatingRow extends StatelessWidget {
   final TrackedGame game;
@@ -897,99 +675,53 @@ class _RatingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPlayed = game.status == MediaStatus.completed;
     final isDropped = game.status == MediaStatus.dropped;
+    final personalRating = game.userRating;
+    final average = game.voteAverage;
+    final playtime = game.playtime;
+    final showPersonalRating = isPlayed && personalRating != null;
+    final showAverage =
+        average != null && (showPersonalRating || isDropped || average > 0);
 
-    if (isPlayed && game.userRating != null) {
-      return Row(
-        children: [
-          const Icon(Icons.star, color: AppColors.accent, size: 13),
-          const SizedBox(width: 3),
-          Text(
-            '${game.userRating!.toStringAsFixed(1)}/10',
-            style: const TextStyle(
-              color: AppColors.accent,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (game.voteAverage != null) ...[
-            const SizedBox(width: 10),
-            const Icon(Icons.star_border,
-                color: AppColors.textSecondary, size: 13),
-            const SizedBox(width: 3),
-            Text(
-              '${game.voteAverage!.toStringAsFixed(1)}/10',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ],
-      );
-    }
-
-    if (isDropped) {
-      return Row(
-        children: [
-          const Icon(Icons.flag, color: Color(0xFFF44336), size: 13),
-          const SizedBox(width: 3),
-          const Text(
-            'Abbandonato',
-            style: TextStyle(
-              color: Color(0xFFF44336),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (game.voteAverage != null) ...[
-            const SizedBox(width: 10),
-            const Icon(Icons.star_border,
-                color: AppColors.textSecondary, size: 13),
-            const SizedBox(width: 3),
-            Text(
-              '${game.voteAverage!.toStringAsFixed(1)}/10',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ],
-      );
-    }
-
-    // Backlog
-    return Row(
+    return Wrap(
+      spacing: 10,
+      runSpacing: 4,
       children: [
-        if (game.voteAverage != null && game.voteAverage! > 0) ...[
-          const Icon(Icons.star_border,
-              color: AppColors.textSecondary, size: 13),
-          const SizedBox(width: 3),
-          Text(
-            '${game.voteAverage!.toStringAsFixed(1)}/10',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
-          ),
-        ],
-        if (game.playtime != null && game.playtime! > 0) ...[
-          if (game.voteAverage != null && game.voteAverage! > 0)
-            const SizedBox(width: 10),
-          const Icon(Icons.timer_outlined,
-              color: AppColors.textSecondary, size: 13),
-          const SizedBox(width: 3),
-          Text(
-            '~${game.playtime}h',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
-          ),
-        ],
+        if (showPersonalRating)
+          _metric(Icons.star, '${personalRating.toStringAsFixed(1)}/10',
+              AppColors.accent),
+        if (isDropped)
+          _metric(Icons.flag, 'Abbandonato', const Color(0xFFF44336)),
+        if (showAverage)
+          _metric(Icons.star_border, '${average.toStringAsFixed(1)}/10',
+              AppColors.textSecondary),
+        if (!showPersonalRating &&
+            !isDropped &&
+            playtime != null &&
+            playtime > 0)
+          _metric(
+              Icons.timer_outlined, '~${playtime}h', AppColors.textSecondary),
       ],
     );
   }
+
+  Widget _metric(IconData icon, String label, Color color) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 13),
+          const SizedBox(width: 3),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight:
+                    color == AppColors.textSecondary ? null : FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      );
 }
 
 // ── Action button ─────────────────────────────────────────────────────────────
@@ -1060,22 +792,15 @@ class _Cover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: 96,
-        height: 80,
-        child: url != null
-            ? MediaImage(
-                imageUrl: url!,
-                fit: BoxFit.cover,
-                placeholder: (_, __) =>
-                    const ColoredBox(color: AppColors.divider),
-                errorWidget: (_, __, ___) => const _CoverFallback(),
-              )
-            : const _CoverFallback(),
-      ),
-    );
+    final imageUrl = url;
+    return imageUrl == null
+        ? const _CoverFallback()
+        : MediaImage(
+            imageUrl: imageUrl,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => const ColoredBox(color: AppColors.divider),
+            errorWidget: (_, __, ___) => const _CoverFallback(),
+          );
   }
 }
 
@@ -1347,7 +1072,7 @@ class _EmptyBacklog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1392,7 +1117,7 @@ class _EmptyInUscita extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1427,7 +1152,7 @@ class _EmptyGiocati extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -9,6 +9,7 @@ import '../../../../core/services/app_toast.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/watch_next_rules.dart';
 import '../../providers/series_providers.dart';
+import 'episode_code_badge.dart';
 import 'episode_detail_sheet.dart';
 
 // ── Stati del pulsante ────────────────────────────────────────────────────────
@@ -296,29 +297,30 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
       return const SizedBox.shrink();
     }
 
-    int? airedEpisodes;
-    if (detail != null) {
-      if (detail.nextEpisodeToAir != null) {
-        int aired = 0;
-        for (final s in seasonCounts.keys) {
-          if (s < detail.nextEpisodeToAir!.seasonNumber) {
-            aired += seasonCounts[s] ?? 0;
-          } else if (s == detail.nextEpisodeToAir!.seasonNumber) {
-            aired += detail.nextEpisodeToAir!.episodeNumber - 1;
-          }
-        }
-        airedEpisodes = aired;
-      } else {
-        airedEpisodes = seasonCounts.values.fold<int>(0, (a, b) => a + b);
-      }
-    } else {
-      airedEpisodes = total;
-    }
+    final airedEpisodes = countAiredEpisodesForBacklog(
+      show: show,
+      seasonCounts: seasonCounts,
+      detail: detail,
+    );
+    final backlog =
+        airedEpisodes == null ? 0 : airedEpisodes - watchedCount - 1;
+    final detailSeasonTotal = seasonCounts[nextSeason];
+    final seasonTotal = detailSeasonTotal != null && detailSeasonTotal > 0
+        ? detailSeasonTotal
+        : dbSeasonCounts[nextSeason];
+    final seasonWatched = seasonTotal == null
+        ? 0
+        : watchedBySeason[nextSeason]
+                ?.where((episode) => episode > 0 && episode <= seasonTotal)
+                .length ??
+            0;
 
-    final int? availableUnwatched =
-        airedEpisodes != null ? (airedEpisodes - watchedCount) : null;
-    final bool showBadge = availableUnwatched == null || availableUnwatched > 1;
-
+    final seasonName = detail?.isAnime == true
+        ? detail!.seasons
+            .where((season) => season.seasonNumber == nextSeason)
+            .firstOrNull
+            ?.name
+        : null;
     final episodeTitle = nextEpisode?.name;
     final imageUrl = nextEpisode?.stillPath != null
         ? 'https://image.tmdb.org/t/p/w185${nextEpisode!.stillPath}'
@@ -326,23 +328,15 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
             ? 'https://image.tmdb.org/t/p/w185${show.posterPath}'
             : null;
 
+    const thumbnailWidth = 72.0;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: AppColors.surface,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: () {
           if (nextEpisode != null) {
-            final detail = ref.read(showDetailProvider(show.tmdbId)).value;
-            String? sName;
-            if (detail != null && detail.isAnime) {
-              final sSeason = detail.seasons
-                  .where((s) => s.seasonNumber == nextSeason)
-                  .firstOrNull;
-              if (sSeason != null && sSeason.name != null) {
-                sName = sSeason.name!.split(' · ').first.trim();
-              }
-            }
             showEpisodeDetailSheet(
               context,
               showTitle: show.title,
@@ -352,7 +346,7 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
               season: nextSeason,
               episodeNum: nextEp,
               episode: nextEpisode,
-              seasonName: sName,
+              seasonName: seasonName?.split(' · ').first.trim(),
             );
           } else {
             context.push('/series/detail/${show.tmdbId}');
@@ -360,126 +354,156 @@ class _NextEpisodeCardState extends ConsumerState<NextEpisodeCard> {
         },
         borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // ── Immagine episodio / poster ───────────────────────────
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 96,
-                  height: 80,
-                  child: imageUrl != null
-                      ? MediaImage(
-                          source: nextEpisode?.stillPath != null
-                              ? MediaImageSource.tmdbStill
-                              : MediaImageSource.tmdbPoster,
-                          imageUrl: imageUrl,
-                          fit: BoxFit.cover,
-                          placeholder: (_, __) =>
-                              const ColoredBox(color: AppColors.divider),
-                          errorWidget: (_, __, ___) => const _ImageFallback(),
-                        )
-                      : const _ImageFallback(),
+          padding: const EdgeInsets.all(12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 68),
+            child: Stack(
+              fit: StackFit.passthrough,
+              children: [
+                // Il testo determina l'altezza della card e della miniatura.
+                PositionedDirectional(
+                  start: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: thumbnailWidth,
+                  child: Align(
+                    alignment: AlignmentDirectional.topStart,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 112),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: SizedBox.expand(
+                          child: imageUrl != null
+                              ? MediaImage(
+                                  source: nextEpisode?.stillPath != null
+                                      ? MediaImageSource.tmdbStill
+                                      : MediaImageSource.tmdbPoster,
+                                  imageUrl: imageUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) => const ColoredBox(
+                                      color: AppColors.divider),
+                                  errorWidget: (_, __, ___) =>
+                                      const _ImageFallback(),
+                                )
+                              : const _ImageFallback(),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-
-              // ── Informazioni episodio ────────────────────────────────
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                Row(
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Flexible(
-                          child: Text(
+                    const SizedBox(width: thumbnailWidth + 10),
+                    // ── Informazioni episodio ────────────────────────────────
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
                             show.title,
                             style: const TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        if (showBadge) ...[
-                          const SizedBox(width: 6),
-                          Text(
-                            availableUnwatched != null
-                                ? '(+${availableUnwatched - 1})'
-                                : '(+?)',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              EpisodeCodeBadge(
+                                season: nextSeason,
+                                episode: nextEp,
+                                seasonName: seasonName,
+                              ),
+                              if (backlog > 0)
+                                Semantics(
+                                  label: backlog == 1
+                                      ? 'Un episodio arretrato oltre a questo'
+                                      : '$backlog episodi arretrati oltre a questo',
+                                  excludeSemantics: true,
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color: AppColors.accent.withAlpha(35),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      child: Text(
+                                        '+$backlog ep',
+                                        style: const TextStyle(
+                                          color: AppColors.accent,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          if (animeDataMissing) ...[
+                            const SizedBox(height: 5),
+                            const Text(
+                              'Dati anime incompleti: aggiorna online per segnare episodi.',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
+                          ],
+                          if (episodeTitle != null) ...[
+                            const SizedBox(height: 5),
+                            Text(
+                              episodeTitle,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                          if (seasonTotal != null && seasonTotal >= nextEp) ...[
+                            const SizedBox(height: 8),
+                            LinearProgressIndicator(
+                              value: seasonWatched / seasonTotal,
+                              minHeight: 3,
+                              color: AppColors.accent,
+                              backgroundColor:
+                                  AppColors.textSecondary.withAlpha(55),
+                              borderRadius:
+                                  const BorderRadius.all(Radius.circular(2)),
+                              trackGap: 0,
+                              stopIndicatorRadius: 0,
+                              semanticsLabel: seasonWatched == 1
+                                  ? 'Un episodio visto su $seasonTotal'
+                                  : '$seasonWatched episodi visti su $seasonTotal',
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final detail =
-                            ref.watch(showDetailProvider(show.tmdbId)).value;
-                        String? seasonName;
-                        if (detail != null && detail.isAnime) {
-                          final sSeason = detail.seasons
-                              .where((s) => s.seasonNumber == nextSeason)
-                              .firstOrNull;
-                          if (sSeason != null && sSeason.name != null) {
-                            seasonName =
-                                sSeason.name!.split(' · ').first.trim();
-                          }
-                        }
-                        return _EpisodeBadge(
-                          season: nextSeason,
-                          episode: nextEp,
-                          seasonName: seasonName,
-                        );
-                      },
-                    ),
-                    if (animeDataMissing) ...[
-                      const SizedBox(height: 5),
-                      const Text(
-                        'Dati anime incompleti: aggiorna online per segnare episodi.',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
                       ),
-                    ],
-                    if (episodeTitle != null) ...[
-                      const SizedBox(height: 5),
-                      Text(
-                        episodeTitle,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                    ),
+                    const SizedBox(width: 10),
+
+                    // ── Pulsante circolare ───────────────────────────────────
+                    _CircularMarkButton(
+                      state: _markState,
+                      onTap: animeDataMissing
+                          ? null
+                          : () => _markWatched(nextSeason, nextEp),
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 10),
-
-              // ── Pulsante circolare ───────────────────────────────────
-              _CircularMarkButton(
-                state: _markState,
-                onTap: animeDataMissing
-                    ? null
-                    : () => _markWatched(nextSeason, nextEp),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -513,29 +537,35 @@ class _CircularMarkButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: state == _MarkState.idle ? onTap : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeInOut,
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: _bgColor,
-          border: state == _MarkState.idle
-              ? Border.all(
-                  color: AppColors.accent.withAlpha(120),
-                  width: 1.5,
-                )
-              : null,
-        ),
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox.square(
+        dimension: 48,
         child: Center(
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: Icon(
-              Icons.check,
-              size: 18,
-              color: _iconColor,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _bgColor,
+              border: state == _MarkState.idle
+                  ? Border.all(
+                      color: AppColors.accent.withAlpha(120),
+                      width: 1.5,
+                    )
+                  : null,
+            ),
+            child: Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: Icon(
+                  Icons.check,
+                  size: 18,
+                  color: _iconColor,
+                ),
+              ),
             ),
           ),
         ),
@@ -569,8 +599,6 @@ class _CompletedContent extends StatelessWidget {
             fontWeight: FontWeight.bold,
             fontSize: 15,
           ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 8),
         Row(
@@ -770,51 +798,6 @@ class NextEpisodeSkeletonCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EpisodeBadge extends StatelessWidget {
-  final int season;
-  final int episode;
-  final String? seasonName;
-  const _EpisodeBadge(
-      {required this.season, required this.episode, this.seasonName});
-
-  @override
-  Widget build(BuildContext context) {
-    String label;
-    if (seasonName != null) {
-      final baseName = seasonName!.split(' · ').first.trim();
-      var abbr = baseName.replaceAll(
-          RegExp(r'^(Stagione|Season)\s*', caseSensitive: false), 'S');
-      abbr =
-          abbr.replaceAll(RegExp(r'\s*Parte\s*', caseSensitive: false), ' P');
-      // Aggiungi padding alla stagione se a una sola cifra (S1 -> S01)
-      abbr = abbr.replaceAllMapped(RegExp(r'(S)(\d)(?!\d)'), (match) {
-        return '${match.group(1)}0${match.group(2)}';
-      });
-      label = '$abbr E${episode.toString().padLeft(2, '0')}';
-    } else {
-      label =
-          'S${season.toString().padLeft(2, '0')} E${episode.toString().padLeft(2, '0')}';
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.divider.withAlpha(80),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w600,
-          fontSize: 11,
-          letterSpacing: 0.3,
         ),
       ),
     );

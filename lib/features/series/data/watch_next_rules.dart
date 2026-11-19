@@ -1,6 +1,7 @@
 import '../../../core/database/app_database.dart';
 import 'models/normalized_anime_season.dart';
 import 'models/tmdb_episode.dart';
+import 'models/tmdb_show_detail.dart';
 
 /// Regole condivise per decidere **quale** episodio l'utente deve guardare e
 /// **se quell'episodio è già andato in onda**.
@@ -147,6 +148,63 @@ bool resolveHasAired({
   if (airedPerAniList == true || airedPerTmdb == true) return true;
   if (airedPerAniList == false || airedPerTmdb == false) return false;
   return existsPerDatabase(show, dbSeasonCounts, season, episode);
+}
+
+/// Episodi usciti secondo i conteggi disponibili, fermandosi al primo
+/// episodio futuro noto. Per gli anime si usano coordinate cour.
+int? countAiredEpisodesForBacklog({
+  required TrackedShow show,
+  required Map<int, int> seasonCounts,
+  required TmdbShowDetail? detail,
+  DateTime? now,
+}) {
+  final current = now ?? DateTime.now();
+  (int, int)? upcoming;
+
+  void consider(int? season, int? episode, DateTime? at) {
+    if (season == null ||
+        episode == null ||
+        episode <= 0 ||
+        at == null ||
+        !at.isAfter(current)) {
+      return;
+    }
+    final boundary = upcoming;
+    if (boundary == null ||
+        season < boundary.$1 ||
+        (season == boundary.$1 && episode < boundary.$2)) {
+      upcoming = (season, episode);
+    }
+  }
+
+  consider(
+      show.nextEpisodeSeason, show.nextEpisodeNumber, show.nextEpisodeAirDate);
+  if (detail?.isAnime ?? show.isAnime) {
+    for (final season
+        in detail?.animeSeasonsData ?? const <NormalizedAnimeSeason>[]) {
+      final next = season.nextAiringEpisode;
+      consider(season.seasonNumber, next?.episode, next?.airingDateTime);
+    }
+  } else {
+    final next = detail?.nextEpisodeToAir;
+    final date = DateTime.tryParse(next?.airDate ?? '');
+    if (date != null) {
+      consider(next?.seasonNumber, next?.episodeNumber,
+          DateTime(date.year, date.month, date.day, 9));
+    }
+  }
+
+  final boundary = upcoming;
+  if (boundary == null && (detail == null || seasonCounts.isEmpty)) {
+    return show.totalEpisodes;
+  }
+  var aired = 0;
+  for (final entry in seasonCounts.entries) {
+    if (boundary == null || entry.key < boundary.$1) {
+      aired += entry.value;
+    }
+  }
+  return aired + (boundary == null ? 0 : boundary.$2 - 1);
 }
 
 /// Mantiene le 09:00 della serie normale anche nelle viste locali/stale.

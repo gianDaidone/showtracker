@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
-/// Blocco "icona + titolo + sottotitolo" in cima alle schede Serie, Film e
-/// Giochi, che porta all'elenco completo dei contenuti seguiti.
-///
-/// Tutto il blocco è un unico bersaglio di tocco (ripple compreso): la
-/// tessera piena in accento e la freccia accanto al titolo servono a farlo
-/// riconoscere come cliccabile. Va messo dentro un `Expanded`.
+import '../theme/app_theme.dart';
+import 'section_header_title.dart';
+
+/// L'icona, il titolo, il conteggio e la freccia aprono insieme la libreria.
 class LibraryHeaderLink extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -28,7 +25,7 @@ class LibraryHeaderLink extends StatelessWidget {
     final radius = BorderRadius.circular(16);
 
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: Tooltip(
         message: tooltip,
         child: Material(
@@ -40,57 +37,22 @@ class LibraryHeaderLink extends StatelessWidget {
             splashColor: AppColors.accent.withValues(alpha: 0.16),
             highlightColor: AppColors.accent.withValues(alpha: 0.08),
             child: Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.14),
-                      border: Border.all(
-                        color: AppColors.accent.withValues(alpha: 0.45),
-                        width: 1.5,
-                      ),
-                      borderRadius: radius,
-                    ),
-                    child: Icon(icon, color: AppColors.accent, size: 24),
+              padding: const EdgeInsetsDirectional.only(end: 6),
+              child: SectionHeaderTitle(
+                icon: icon,
+                title: title,
+                subtitle: subtitle,
+                titleAction: const DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.all(Radius.circular(6)),
                   ),
-                  const SizedBox(width: 14),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            const Icon(
-                              Icons.chevron_right_rounded,
-                              color: AppColors.accent,
-                              size: 26,
-                            ),
-                          ],
-                        ),
-                        subtitle,
-                      ],
-                    ),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.accent,
+                    size: 23,
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -98,4 +60,31 @@ class LibraryHeaderLink extends StatelessWidget {
       ),
     );
   }
+}
+
+class LibrarySearchButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final String tooltip;
+
+  const LibrarySearchButton({
+    super.key,
+    required this.onPressed,
+    required this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) => IconButton.filled(
+        style: IconButton.styleFrom(
+          backgroundColor: AppColors.accent,
+          foregroundColor: AppColors.background,
+          fixedSize: const Size.square(50),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        icon: const Icon(Icons.search_rounded, size: 30),
+        onPressed: onPressed,
+        tooltip: tooltip,
+      );
 }

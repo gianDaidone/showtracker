@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:showtracker/core/auth/auth_state.dart';
 import 'package:showtracker/core/database/app_database.dart';
 import 'package:showtracker/core/router/app_router.dart';
+import 'package:showtracker/core/theme/app_theme.dart';
 import 'package:showtracker/features/games/presentation/games_screen.dart';
 import 'package:showtracker/features/movies/presentation/movies_screen.dart';
 import 'package:showtracker/features/onboarding/presentation/onboarding_screen.dart';
@@ -40,6 +43,48 @@ void main() {
     await app.pump(tester);
     return app;
   }
+
+  testWidgets('L’header Serie apre la libreria e la ricerca filtrata',
+      (tester) async {
+    final app = (await tester.runAsync(() => AppTestHarness.create()))!;
+    final router = GoRouter(initialLocation: '/series', routes: [
+      GoRoute(
+        path: '/series',
+        builder: (_, __) => const NextEpisodesScreen(),
+        routes: [
+          GoRoute(
+            path: 'list',
+            builder: (_, __) => const Scaffold(body: Text('Libreria Serie')),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/search',
+        builder: (_, state) => Scaffold(
+            body: Text('Filtro ${state.uri.queryParameters['filter']}')),
+      ),
+    ]);
+    addTearDown(() async {
+      await app.dispose(tester);
+      router.dispose();
+    });
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: app.container,
+      child: MaterialApp.router(routerConfig: router, theme: AppTheme.dark()),
+    ));
+    await app.flush(tester);
+
+    await tester.tap(find.byTooltip('Vai alle mie serie'));
+    await app.flush(tester);
+    expect(find.text('Libreria Serie'), findsOneWidget);
+
+    router.pop();
+    await app.flush(tester);
+    await tester.tap(find.byTooltip('Cerca serie'));
+    await app.flush(tester);
+    expect(find.text('Filtro series'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('ID di dettaglio ostili e tab fuori range non causano crash',
       (tester) async {

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/library_header_link.dart';
+import '../../../core/widgets/release_timeline.dart';
 import '../providers/series_providers.dart';
 import 'widgets/next_episode_card.dart';
 import 'widgets/upcoming_episode_card.dart';
@@ -70,7 +71,7 @@ class _NextEpisodesScreenState extends ConsumerState<NextEpisodesScreen>
           children: [
             // ── Header ────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child:
                   _SeriesHeader(totalCount: totalCount, isLoading: isLoading),
             ),
@@ -350,10 +351,7 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
 
     return upcomingAsync.when(
       skipLoadingOnReload: true,
-      loading: () => const _SkeletonListView(
-        title: 'Prossimamente',
-        borderColor: Colors.orange,
-      ),
+      loading: () => const _SkeletonListView(),
       error: (e, _) => const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -364,115 +362,25 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
           ),
         ),
       ),
-      data: (items) {
-        if (items.isEmpty) {
-          return const _EmptyUpcoming();
-        }
-
-        final now = DateTime.now();
-        final threshold = now.add(const Duration(days: 30));
-
-        final prossimamente = <UpcomingEpisodeInfo>[];
-        final inArrivo = <UpcomingEpisodeInfo>[];
-
-        for (final info in items) {
-          if (info.airDate.isAfter(threshold) ||
-              info.airDate.isAtSameMomentAs(threshold)) {
-            inArrivo.add(info);
-          } else {
-            prossimamente.add(info);
-          }
-        }
-
-        return CustomScrollView(
-          slivers: [
-            const SliverPadding(padding: EdgeInsets.only(top: 12)),
-            if (prossimamente.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      border: Border(
-                          left: BorderSide(color: Colors.orange, width: 4)),
-                    ),
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Text(
-                      'Prossimamente (${prossimamente.length})',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
+      data: (items) => items.isEmpty
+          ? const _EmptyUpcoming()
+          : ReleaseTimeline(
+              items: items,
+              now: DateTime.now(),
+              dateFor: (info) => info.airDate,
+              keyFor: (info) => ValueKey((
+                info.show.id,
+                info.episode.seasonNumber,
+                info.episode.episodeNumber,
+              )),
+              cardBuilder: (context, info) => UpcomingEpisodeCard(
+                show: info.show,
+                episode: info.episode,
+                preciseAirTime: info.preciseAirTime,
+                seasonName: info.seasonName,
+                additionalEpisodes: info.additionalEpisodes,
               ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final info = prossimamente[index];
-                    return UpcomingEpisodeCard(
-                      key: ValueKey(
-                          '${info.show.id}_${info.episode.seasonNumber}_${info.episode.episodeNumber}'),
-                      show: info.show,
-                      episode: info.episode,
-                      airDate: info.airDate,
-                      preciseAirTime: info.preciseAirTime,
-                      isFarFuture: false,
-                      seasonName: info.seasonName,
-                      additionalEpisodes: info.additionalEpisodes,
-                    );
-                  },
-                  childCount: prossimamente.length,
-                ),
-              ),
-            ],
-            if (inArrivo.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      border: Border(
-                          left: BorderSide(color: Colors.grey, width: 4)),
-                    ),
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Text(
-                      'In Arrivo (${inArrivo.length})',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final info = inArrivo[index];
-                    return UpcomingEpisodeCard(
-                      key: ValueKey(
-                          '${info.show.id}_${info.episode.seasonNumber}_${info.episode.episodeNumber}'),
-                      show: info.show,
-                      episode: info.episode,
-                      airDate: info.airDate,
-                      preciseAirTime: info.preciseAirTime,
-                      isFarFuture: true,
-                      seasonName: info.seasonName,
-                      additionalEpisodes: info.additionalEpisodes,
-                    );
-                  },
-                  childCount: inArrivo.length,
-                ),
-              ),
-            ],
-            const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
-          ],
-        );
-      },
+            ),
     );
   }
 }
@@ -511,14 +419,13 @@ class _SeriesHeader extends StatelessWidget {
                             '${totalCount == 1 ? 'serie seguita' : 'serie seguite'}',
                     style: const TextStyle(
                       color: AppColors.textSecondary,
-                      fontSize: 13,
+                      fontSize: 15,
                     ),
                   ),
           ),
         ),
         const SyncStatusAction(),
-        IconButton(
-          icon: const Icon(Icons.search, color: AppColors.accent, size: 30),
+        LibrarySearchButton(
           onPressed: () => context.go('/search?filter=series'),
           tooltip: 'Cerca serie',
         ),
@@ -636,12 +543,12 @@ class _EmptyUpcoming extends StatelessWidget {
 // ── Skeleton Loader con Header ────────────────────────────────────────────────
 
 class _SkeletonListView extends StatelessWidget {
-  final String title;
+  final String? title;
   final Color borderColor;
 
   const _SkeletonListView({
-    required this.title,
-    required this.borderColor,
+    this.title,
+    this.borderColor = AppColors.accent,
   });
 
   @override
@@ -649,39 +556,41 @@ class _SkeletonListView extends StatelessWidget {
     return CustomScrollView(
       slivers: [
         const SliverPadding(padding: EdgeInsets.only(top: 12)),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(left: BorderSide(color: borderColor, width: 4)),
-              ),
-              padding: const EdgeInsets.only(left: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                      child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+        if (title != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  border:
+                      Border(left: BorderSide(color: borderColor, width: 4)),
+                ),
+                padding: const EdgeInsets.only(left: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                        child: Text(
+                      title!,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 36,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: AppColors.divider,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
-                  )),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 36,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: AppColors.divider,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
         SliverList(
           delegate: SliverChildBuilderDelegate(
             (context, index) => const NextEpisodeSkeletonCard(),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/section_header_title.dart';
 import '../../games/providers/games_providers.dart';
 import '../../movies/providers/movies_providers.dart';
 import '../../series/providers/series_providers.dart';
@@ -41,7 +42,7 @@ class SettingsScreen extends ConsumerWidget {
           children: [
             // ── Header ────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: _ProfileHeader(summary: summary),
             ),
 
@@ -118,42 +119,20 @@ class _ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            border: Border.all(color: AppColors.divider, width: 1.5),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Icon(
-            Icons.person_rounded,
-            color: AppColors.accent,
-            size: 24,
-          ),
-        ),
-        const SizedBox(width: 14),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Profilo',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
+          child: Semantics(
+            header: true,
+            child: SectionHeaderTitle(
+              icon: Icons.person_rounded,
+              title: 'Profilo',
+              subtitle: Text(
                 summary,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 13,
+                  fontSize: 15,
                 ),
               ),
-            ],
+            ),
           ),
         ),
         const SyncStatusAction(),

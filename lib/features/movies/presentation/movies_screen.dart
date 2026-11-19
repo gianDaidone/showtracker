@@ -8,6 +8,8 @@ import '../../../core/database/app_database.dart';
 import '../../../core/services/app_toast.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/library_header_link.dart';
+import '../../../core/widgets/library_media_card.dart';
+import '../../../core/widgets/release_timeline.dart';
 import '../providers/movies_providers.dart';
 
 // ── Stati del pulsante "segna come visto" ─────────────────────────────────────
@@ -31,7 +33,7 @@ class MoviesScreen extends ConsumerWidget {
             children: [
               // ── Header ────────────────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: _MoviesHeader(totalCount: totalCount),
               ),
 
@@ -77,18 +79,16 @@ class _MoviesHeader extends StatelessWidget {
             subtitle: Text(
               totalCount == 0
                   ? 'Nessun film aggiunto'
-                  : '$totalCount '
-                      '${totalCount == 1 ? 'film nel catalogo' : 'film nel catalogo'}',
+                  : '$totalCount film nel catalogo',
               style: const TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: 13,
+                fontSize: 15,
               ),
             ),
           ),
         ),
         const SyncStatusAction(),
-        IconButton(
-          icon: const Icon(Icons.search, color: AppColors.accent, size: 30),
+        LibrarySearchButton(
           onPressed: () => context.go('/search?filter=movie'),
           tooltip: 'Cerca film',
         ),
@@ -183,6 +183,9 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
                 (m.releaseDate == null || !m.releaseDate!.isAfter(now)))
             .toList();
         if (toWatch.isEmpty) return const _EmptyDaVedere();
+        final indices = {
+          for (final (index, item) in toWatch.indexed) ValueKey(item.id): index,
+        };
         return CustomScrollView(
           slivers: [
             const SliverPadding(padding: EdgeInsets.only(top: 12)),
@@ -213,6 +216,7 @@ class _DaVedereTabState extends ConsumerState<_DaVedereTab>
                   movie: toWatch[index],
                 ),
                 childCount: toWatch.length,
+                findChildIndexCallback: (key) => indices[key],
               ),
             ),
             const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
@@ -259,91 +263,20 @@ class _InUscitaTabState extends ConsumerState<_InUscitaTab>
       data: (movies) {
         if (movies.isEmpty) return const _EmptyInUscita();
 
-        final now = DateTime.now();
-        final threshold = now.add(const Duration(days: 30));
-
-        final prossimamente = <TrackedMovy>[];
-        final inArrivo = <TrackedMovy>[];
-
-        for (final movie in movies) {
-          if (movie.releaseDate != null &&
-              (movie.releaseDate!.isAfter(threshold) ||
-                  movie.releaseDate!.isAtSameMomentAs(threshold))) {
-            inArrivo.add(movie);
-          } else {
-            prossimamente.add(movie);
-          }
-        }
-
-        return CustomScrollView(
-          slivers: [
-            const SliverPadding(padding: EdgeInsets.only(top: 12)),
-            if (prossimamente.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      border: Border(
-                          left: BorderSide(color: Colors.orange, width: 4)),
-                    ),
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Text(
-                      'Prossimamente (${prossimamente.length})',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _UpcomingMovieCard(
-                    key: ValueKey(prossimamente[index].id),
-                    movie: prossimamente[index],
-                    isFarFuture: false,
-                  ),
-                  childCount: prossimamente.length,
-                ),
-              ),
-            ],
-            if (inArrivo.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      border: Border(
-                          left: BorderSide(color: Colors.grey, width: 4)),
-                    ),
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Text(
-                      'In Arrivo (${inArrivo.length})',
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _UpcomingMovieCard(
-                    key: ValueKey(inArrivo[index].id),
-                    movie: inArrivo[index],
-                    isFarFuture: true,
-                  ),
-                  childCount: inArrivo.length,
-                ),
-              ),
-            ],
-            const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
-          ],
+        return ReleaseTimeline(
+          items: movies,
+          now: DateTime.now(),
+          dateFor: (movie) => movie.releaseDate,
+          keyFor: (movie) => ValueKey(movie.id),
+          cardBuilder: (context, movie) {
+            return LibraryMediaCard(
+              title: movie.title,
+              thumbnail: _Poster(path: movie.posterPath),
+              thumbnailSize: const Size(42, 63),
+              margin: EdgeInsets.zero,
+              onTap: () => context.push('/movies/detail/${movie.tmdbId}'),
+            );
+          },
         );
       },
     );
@@ -391,168 +324,19 @@ class _WatchlistMovieCardState extends ConsumerState<_WatchlistMovieCard> {
   @override
   Widget build(BuildContext context) {
     final movie = widget.movie;
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: InkWell(
-        onTap: () => context.push('/movies/detail/${movie.tmdbId}'),
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _Poster(path: movie.posterPath),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      movie.title,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (movie.releaseYear != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        '${movie.releaseYear}',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              _CircularMarkButton(
-                state: _markState,
-                onTap: _markWatched,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Upcoming Movie Card ───────────────────────────────────────────────────────
-
-class _UpcomingMovieCard extends StatelessWidget {
-  final TrackedMovy movie;
-  final bool isFarFuture;
-  const _UpcomingMovieCard(
-      {super.key, required this.movie, this.isFarFuture = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: InkWell(
-        onTap: () => context.push('/movies/detail/${movie.tmdbId}'),
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _Poster(path: movie.posterPath),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      movie.title,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    if (movie.releaseDate != null)
-                      _ReleaseDateBadge(
-                          date: movie.releaseDate!, isFarFuture: isFarFuture),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Release date badge ────────────────────────────────────────────────────────
-
-class _ReleaseDateBadge extends StatelessWidget {
-  final DateTime date;
-  final bool isFarFuture;
-  const _ReleaseDateBadge({required this.date, this.isFarFuture = false});
-
-  static const _months = [
-    'gen',
-    'feb',
-    'mar',
-    'apr',
-    'mag',
-    'giu',
-    'lug',
-    'ago',
-    'set',
-    'ott',
-    'nov',
-    'dic',
-  ];
-
-  String get _formatted =>
-      '${date.day} ${_months[date.month - 1]} ${date.year}';
-
-  String get _countdown {
-    final diff = date.difference(DateTime.now()).inDays;
-    if (diff == 0) return 'Oggi!';
-    if (diff == 1) return 'Domani';
-    if (diff < 30) return 'tra $diff giorni';
-    if (diff < 365) {
-      final months = (diff / 30).round();
-      return 'tra $months ${months == 1 ? 'mese' : 'mesi'}';
-    }
-    return _formatted;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.divider.withAlpha(80),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        '$_formatted · $_countdown',
-        style: const TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w600,
-          fontSize: 11,
-          letterSpacing: 0.3,
-        ),
-      ),
+    return LibraryMediaCard(
+      title: movie.title,
+      thumbnail: _Poster(path: movie.posterPath),
+      thumbnailSize: const Size(52, 78),
+      onTap: () => context.push('/movies/detail/${movie.tmdbId}'),
+      details: movie.releaseYear == null
+          ? null
+          : Text(
+              '${movie.releaseYear}',
+              style:
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+      action: _CircularMarkButton(state: _markState, onTap: _markWatched),
     );
   }
 }
@@ -620,23 +404,15 @@ class _Poster extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = path != null ? 'https://image.tmdb.org/t/p/w185$path' : null;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: 60,
-        height: 90,
-        child: url != null
-            ? MediaImage(
-                source: MediaImageSource.tmdbPoster,
-                imageUrl: url,
-                fit: BoxFit.cover,
-                placeholder: (_, __) =>
-                    const ColoredBox(color: AppColors.divider),
-                errorWidget: (_, __, ___) => const _PosterFallback(),
-              )
-            : const _PosterFallback(),
-      ),
-    );
+    return url == null
+        ? const _PosterFallback()
+        : MediaImage(
+            source: MediaImageSource.tmdbPoster,
+            imageUrl: url,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => const ColoredBox(color: AppColors.divider),
+            errorWidget: (_, __, ___) => const _PosterFallback(),
+          );
   }
 }
 
@@ -659,7 +435,7 @@ class _EmptyDaVedere extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -709,7 +485,7 @@ class _EmptyInUscita extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,

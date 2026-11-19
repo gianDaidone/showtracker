@@ -40,6 +40,14 @@ schermate di dettaglio/lista in `presentation/`.
   e conteggio “Da Vedere”. La visibilità non richiede rete.
 - `NextEpisodeCard` riusa `watch_next_rules.dart`; può invalidare una volta la
   lista quando riceve metadati più freschi che ne cambiano la visibilità.
+- La card mostra il titolo per intero, gli arretrati aggiuntivi nel badge
+  `+N ep` e una barra per gli episodi visti nella stagione o nel cour del
+  prossimo episodio. Il badge compare per conteggi positivi. La barra sta sotto
+  il titolo dell'episodio, nella colonna del testo, e richiede un totale noto
+  compatibile con il prossimo episodio. Se il riepilogo non ha un totale,
+  la card usa il conteggio locale della stagione o del cour.
+- La miniatura segue l'altezza del contenuto della card fino a 112 px logici.
+  Nelle card più alte resta allineata in alto e il testo può andare a capo.
 - `computeNextToWatch` prosegue dal massimo episodio visto nella massima stagione
   vista; non è un algoritmo di ricerca del primo buco nella cronologia.
 - Avanzare stagione solo con totale noto e positivo. Per cour in produzione,
@@ -52,6 +60,11 @@ schermate di dettaglio/lista in `presentation/`.
   → nessuna prova di uscita. Non confondere i due casi.
 - `upcomingEpisodesProvider` costruisce “In Uscita” usando anche il puntatore
   denormalizzato `nextEpisode*`, disponibile offline.
+- Il tab “In Uscita” raggruppa le card in un'unica timeline per data locale,
+  anche oltre i 30 giorni. Ogni card mostra il titolo completo della serie e
+  il codice episodio. Mostra l'orario, centrato verticalmente sul lato destro,
+  solo se il calendario fornisce un orario preciso. Il tap apre il dettaglio
+  episodio.
 - `_resolveNextEpisode` deve superare un puntatore TMDB già trasmesso: il remoto
   può mantenerlo in `next_episode_to_air` per ore.
 - Per segnare episodi precedenti usare il flusso esistente di scelta solo
@@ -59,6 +72,18 @@ schermate di dettaglio/lista in `presentation/`.
 
 Regole canoniche: `lib/features/series/data/watch_next_rules.dart`.
 Numerazione e fallback anime: [09](09-anime-pipeline.md).
+
+## Film e giochi: librerie e date di uscita
+
+- L'header mostra il conteggio della libreria e apre l'elenco completo. La
+  ricerca si apre con il filtro del dominio.
+- Le card di Da Vedere, Backlog e Giocati mostrano il titolo su più righe.
+  La copertina può seguire il contenuto fino a 112 px logici. I giochi
+  mostrano fino a due piattaforme e i voti già disponibili.
+- In Uscita usa una timeline per giorno locale, anche oltre i 30 giorni.
+  La data compare nell'intestazione. I giochi in backlog senza una data
+  rimangono in fondo sotto «Data da annunciare». I film senza data e in
+  stato Da vedere rimangono nel tab Da Vedere.
 
 ## Ricerca e discovery
 
