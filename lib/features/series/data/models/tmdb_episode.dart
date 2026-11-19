@@ -34,19 +34,32 @@ class TmdbEpisode {
     // like "Episodio 5" (TMDB fills these when no translation exists).
     final itName = notEmpty('name', it);
     final enName = notEmpty('name', en ?? {});
-    final name = (itName != null && !RegExp(r'^Episodio\s+\d+$').hasMatch(itName))
-        ? itName
-        : (enName ?? itName ?? 'Episodio ${it['episode_number']}');
+    final name =
+        (itName != null && !RegExp(r'^Episodio\s+\d+$').hasMatch(itName))
+            ? itName
+            : (enName ?? itName ?? 'Episodio ${it['episode_number']}');
 
     return TmdbEpisode(
       episodeNumber: it['episode_number'] as int,
       name: name,
       overview: notEmpty('overview', it) ?? notEmpty('overview', en ?? {}),
-      stillPath: (it['still_path'] as String?) ?? (en?['still_path'] as String?),
+      stillPath:
+          (it['still_path'] as String?) ?? (en?['still_path'] as String?),
       airDate: it['air_date'] as String?,
       voteAverage: (it['vote_average'] as num?)?.toDouble(),
     );
   }
+
+  TmdbEpisode withAiringTime(DateTime time) => TmdbEpisode(
+        episodeNumber: episodeNumber,
+        name: name,
+        overview: overview,
+        stillPath: stillPath,
+        airDate: airDate,
+        voteAverage: voteAverage,
+        absoluteEpisodeNumber: absoluteEpisodeNumber,
+        airingAt: time,
+      );
 
   bool get hasAired {
     if (airingAt != null) {

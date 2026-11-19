@@ -218,16 +218,42 @@ TmdbEpisode withStoredAiringTime(
       show.nextEpisodeAirDate == null) {
     return episode;
   }
-  return TmdbEpisode(
-    episodeNumber: episode.episodeNumber,
-    name: episode.name,
-    overview: episode.overview,
-    stillPath: episode.stillPath,
-    airDate: episode.airDate,
-    voteAverage: episode.voteAverage,
-    absoluteEpisodeNumber: episode.absoluteEpisodeNumber,
-    airingAt: show.nextEpisodeAirDate,
-  );
+  return episode.withAiringTime(show.nextEpisodeAirDate!);
+}
+
+/// Raggruppa gli episodi successivi al puntatore nella stessa stagione/cour.
+/// TMDB può fornire solo il giorno. Quando l'uscita ha un orario preciso,
+/// anche gli altri episodi del gruppo devono avere lo stesso orario noto.
+List<TmdbEpisode> simultaneousUpcomingEpisodes({
+  required TmdbNextEpisode next,
+  required Iterable<TmdbEpisode> episodes,
+  required DateTime? preciseAirTime,
+}) {
+  final scheduledAt = preciseAirTime ?? DateTime.tryParse(next.airDate ?? '');
+  if (scheduledAt == null) return const [];
+  final day = scheduledAt.toLocal();
+  final matches = <int, TmdbEpisode>{};
+  for (final episode in episodes) {
+    if (episode.episodeNumber <= next.episodeNumber) continue;
+    final at = episode.airingAt;
+    if (at != null && !at.isAtSameMomentAs(scheduledAt)) continue;
+    if (preciseAirTime != null) {
+      if (at != null) matches[episode.episodeNumber] = episode;
+      continue;
+    }
+    final date = (at ?? DateTime.tryParse(episode.airDate ?? ''))?.toLocal();
+    if (date == null ||
+        date.year != day.year ||
+        date.month != day.month ||
+        date.day != day.day) {
+      continue;
+    }
+    // Data-only: usa lo stesso orario applicativo del puntatore nel dettaglio.
+    matches[episode.episodeNumber] =
+        at == null ? episode.withAiringTime(scheduledAt) : episode;
+  }
+  return matches.values.toList()
+    ..sort((a, b) => a.episodeNumber.compareTo(b.episodeNumber));
 }
 
 /// Verdetto di TMDB ricavato dagli episodi in cache: true = già uscito,

@@ -263,6 +263,10 @@ void main() {
       ('Una serie più avanti', farFuture, false),
     ];
     final app = (await tester.runAsync(() => AppTestHarness.create(overrides: [
+          for (var i = 0; i < entries.length; i++)
+            seasonDetailProvider(showId: 101 + i, seasonNumber: 1).overrideWith(
+                (ref) async =>
+                    const TmdbSeason(seasonNumber: 1, episodeCount: 0)),
           upcomingEpisodesProvider.overrideWith((ref) async => [
                 for (final (index, (title, date, precise)) in entries.indexed)
                   UpcomingEpisodeInfo(
@@ -320,6 +324,76 @@ void main() {
       scrollable: timeline,
     );
     expect(find.text('S01 E03'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('In Uscita espande le anteprime dello stesso rilascio',
+      (tester) async {
+    final now = DateTime.now();
+    final scheduledAt = DateTime(now.year, now.month, now.day + 1, 9);
+    final date = scheduledAt.toIso8601String().split('T').first;
+    final season = TmdbSeason(
+      seasonNumber: 1,
+      episodeCount: 4,
+      episodes: [
+        TmdbEpisode(episodeNumber: 3, name: 'Oltre la soglia', airDate: date),
+        TmdbEpisode(episodeNumber: 2, name: 'Il ritorno', airDate: date),
+        TmdbEpisode(
+          episodeNumber: 4,
+          name: 'Un altro giorno',
+          airDate: scheduledAt.add(const Duration(days: 1)).toIso8601String(),
+        ),
+      ],
+    );
+    final app = (await tester.runAsync(() async {
+      final app = await AppTestHarness.create(overrides: [
+        seasonDetailProvider(showId: 90, seasonNumber: 1)
+            .overrideWith((ref) async => season),
+      ]);
+      await app.db.showsDao.insertShow(TrackedShowsCompanion(
+        tmdbId: const Value(90),
+        title: const Value('Una nuova stagione'),
+        status: const Value(MediaStatus.watching),
+        nextEpisodeSeason: const Value(1),
+        nextEpisodeNumber: const Value(1),
+        nextEpisodeAirDate: Value(scheduledAt),
+        addedAt: Value(now),
+      ));
+      app.container.listen(upcomingEpisodesProvider, (_, __) {});
+      await app.container.read(upcomingEpisodesProvider.future);
+      return app;
+    }))!;
+    addTearDown(() => app.dispose(tester));
+    await _pumpNarrowSeries(tester, app, initialTab: 1);
+
+    final toggle = find.text('+2 episodi nello stesso giorno');
+    expect(find.textContaining('Domani'), findsOneWidget);
+    expect(find.byType(UpcomingEpisodeCard), findsOneWidget);
+    expect(toggle, findsOneWidget);
+    expect(find.text('S01 E02'), findsNothing);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(find.text('S01 E02'), findsOneWidget);
+    expect(find.text('S01 E03'), findsOneWidget);
+    expect(find.text('S01 E04'), findsNothing);
+    expect(find.text('09:00'), findsNothing);
+    expect(tester.getTopLeft(find.text('S01 E02')).dy,
+        lessThan(tester.getTopLeft(find.text('S01 E03')).dy));
+
+    await tester.tap(find.text('Oltre la soglia'));
+    await app.flush(tester);
+    final sheet = find.byType(BottomSheet);
+    expect(
+      find.descendant(of: sheet, matching: find.text('Oltre la soglia')),
+      findsOneWidget,
+    );
+    expect(find.text('Segna come Visto'), findsNothing);
+    Navigator.of(tester.element(sheet)).pop();
+    await app.flush(tester);
+    await tester.tap(find.text('Nascondi altri episodi'));
+    await tester.pumpAndSettle();
+    expect(find.text('S01 E02'), findsNothing);
+    expect(toggle, findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

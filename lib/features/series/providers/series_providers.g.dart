@@ -402,7 +402,7 @@ final class TrackedShowsNotifierProvider
 }
 
 String _$trackedShowsNotifierHash() =>
-    r'3149d91f8bc4cba772f4a72dd241fd737b96ff3d';
+    r'5dd64865d15a547c50ab4eb0e3720759f7d063d9';
 
 abstract class _$TrackedShowsNotifier
     extends $StreamNotifier<List<TrackedShow>> {
@@ -726,4 +726,4 @@ final class UpcomingEpisodesProvider extends $FunctionalProvider<
   }
 }
 
-String _$upcomingEpisodesHash() => r'994a9f36a80f3d731f3a6fb22a663052ea5cd8f4';
+String _$upcomingEpisodesHash() => r'0e1d904af16f5aaccde5a7596be191e8213ccbb5';

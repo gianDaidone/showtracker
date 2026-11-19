@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:showtracker/core/database/app_database.dart';
 import 'package:showtracker/features/series/data/models/anilist_media.dart';
 import 'package:showtracker/features/series/data/models/normalized_anime_season.dart';
+import 'package:showtracker/features/series/data/models/tmdb_episode.dart';
+import 'package:showtracker/features/series/data/models/tmdb_show_detail.dart';
 import 'package:showtracker/features/series/data/watch_next_rules.dart';
 
 TrackedShow _show({
@@ -36,6 +38,54 @@ CachedEpisode _cached(int season, int episode, String? airDate) =>
     );
 
 void main() {
+  group('simultaneousUpcomingEpisodes', () {
+    const date = '2030-08-10';
+    const next = TmdbNextEpisode(
+      seasonNumber: 1,
+      episodeNumber: 2,
+      name: 'Episodio 2',
+      airDate: '${date}T09:00:00',
+    );
+
+    test('raggruppa per giorno TMDB e mantiene l’orario del puntatore', () {
+      final matches = simultaneousUpcomingEpisodes(
+        next: next,
+        preciseAirTime: null,
+        episodes: const [
+          TmdbEpisode(episodeNumber: 4, name: 'Quarto', airDate: date),
+          TmdbEpisode(episodeNumber: 1, name: 'Precedente', airDate: date),
+          TmdbEpisode(episodeNumber: 3, name: 'Terzo', airDate: date),
+          TmdbEpisode(episodeNumber: 2, name: 'Puntatore', airDate: date),
+          TmdbEpisode(
+              episodeNumber: 5, name: 'Altro giorno', airDate: '2030-08-11'),
+          TmdbEpisode(episodeNumber: 6, name: 'Senza data'),
+        ],
+      );
+      expect(matches.map((episode) => episode.episodeNumber), [3, 4]);
+      expect(matches.map((episode) => episode.airingAt),
+          everyElement(DateTime(2030, 8, 10, 9)));
+    });
+
+    test('con un orario preciso accetta solo lo stesso istante', () {
+      final at = DateTime(2030, 8, 10, 17, 53);
+      final matches = simultaneousUpcomingEpisodes(
+        next: next,
+        preciseAirTime: at,
+        episodes: [
+          TmdbEpisode(
+              episodeNumber: 3, name: 'Contemporaneo', airingAt: at.toUtc()),
+          const TmdbEpisode(episodeNumber: 4, name: 'Solo data', airDate: date),
+          TmdbEpisode(
+            episodeNumber: 5,
+            name: 'Stesso giorno, ora diversa',
+            airingAt: at.add(const Duration(hours: 1)),
+          ),
+        ],
+      );
+      expect(matches.map((episode) => episode.episodeNumber), [3]);
+    });
+  });
+
   final now = DateTime.now();
   final yesterday = now.subtract(const Duration(days: 1));
   final nextWeek = now.add(const Duration(days: 7));

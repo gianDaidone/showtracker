@@ -549,38 +549,58 @@ class _ContentArea extends StatelessWidget {
         const SizedBox(height: 14),
 
         // Info row: data | rating
-        Row(
+        Wrap(
+          spacing: 16,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            if (episode.airDate != null) ...[
-              const Icon(Icons.calendar_today_outlined,
-                  size: 16, color: AppColors.textSecondary),
-              const SizedBox(width: 6),
-              Text(
-                _formatDate(episode.airDate!),
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
+            if (episode.airDate != null)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.calendar_today_outlined,
+                      size: 16, color: AppColors.textSecondary),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      _formatDate(episode.airDate!),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-            if (episode.airDate != null && (episode.voteAverage ?? 0) > 0)
-              const SizedBox(width: 16),
-            if ((episode.voteAverage ?? 0) > 0) ...[
-              const Icon(Icons.star_rounded, size: 16, color: AppColors.accent),
-              const SizedBox(width: 4),
-              Text(
-                episode.voteAverage!.toStringAsFixed(1),
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
+            if ((episode.voteAverage ?? 0) > 0)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.star_rounded,
+                      size: 16, color: AppColors.accent),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: episode.voteAverage!.toStringAsFixed(1),
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const TextSpan(text: '/10'),
+                        ],
+                      ),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const Text(
-                '/10',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-              ),
-            ],
           ],
         ),
         const SizedBox(height: 24),

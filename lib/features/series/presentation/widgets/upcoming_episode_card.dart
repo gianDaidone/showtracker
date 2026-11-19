@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/media_image.dart';
 import '../../data/models/tmdb_episode.dart';
 import '../../data/models/tmdb_show_detail.dart';
+import '../../data/watch_next_rules.dart';
+import '../../providers/series_providers.dart';
 import 'episode_code_badge.dart';
 import 'episode_detail_sheet.dart';
 
-class UpcomingEpisodeCard extends StatefulWidget {
+class UpcomingEpisodeCard extends ConsumerStatefulWidget {
   final TrackedShow show;
   final TmdbNextEpisode episode;
   final DateTime? preciseAirTime;
   final String? seasonName;
-  final List<TmdbEpisode> additionalEpisodes;
 
   const UpcomingEpisodeCard({
     super.key,
@@ -21,18 +23,52 @@ class UpcomingEpisodeCard extends StatefulWidget {
     required this.episode,
     this.preciseAirTime,
     this.seasonName,
-    this.additionalEpisodes = const [],
   });
 
   @override
-  State<UpcomingEpisodeCard> createState() => _UpcomingEpisodeCardState();
+  ConsumerState<UpcomingEpisodeCard> createState() =>
+      _UpcomingEpisodeCardState();
 }
 
-class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
+class _UpcomingEpisodeCardState extends ConsumerState<UpcomingEpisodeCard> {
   bool _expanded = false;
+
+  void _openEpisode(TmdbEpisode episode, String? seasonName) {
+    showEpisodeDetailSheet(
+      context,
+      showTitle: widget.show.title,
+      showTmdbId: widget.show.tmdbId,
+      showPosterPath: widget.show.posterPath,
+      trackedShow: widget.show,
+      season: widget.episode.seasonNumber,
+      episodeNum: episode.episodeNumber,
+      episode: episode,
+      seasonName: seasonName,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final seasonNumber = widget.episode.seasonNumber;
+    final season = ref
+        .watch(seasonDetailProvider(
+          showId: widget.show.tmdbId,
+          seasonNumber: seasonNumber,
+        ))
+        .value;
+    final seasonName =
+        widget.seasonName ?? (widget.show.isAnime ? season?.name : null);
+    final additionalEpisodes = simultaneousUpcomingEpisodes(
+      next: widget.episode,
+      episodes: season?.episodes ?? const [],
+      preciseAirTime: widget.preciseAirTime,
+    );
+    final count = additionalEpisodes.length;
+    final anchor = widget.episode.toTmdbEpisode();
+    final releaseLabel = widget.preciseAirTime == null
+        ? 'nello stesso giorno'
+        : 'in contemporanea';
+
     return Card(
       margin: EdgeInsets.zero,
       color: AppColors.surface,
@@ -43,30 +79,83 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
         children: [
           _UpcomingEpisodeRow(
             show: widget.show,
-            episode: widget.episode.toTmdbEpisode(),
-            seasonNumber: widget.episode.seasonNumber,
-            seasonName: widget.seasonName,
+            episode: anchor,
+            seasonNumber: seasonNumber,
+            seasonName: seasonName,
             preciseAirTime: widget.preciseAirTime,
+            onTap: () => _openEpisode(anchor, seasonName),
           ),
-          if (_expanded)
-            for (final episode in widget.additionalEpisodes)
-              _UpcomingEpisodeRow(
-                key: ValueKey(episode.episodeNumber),
-                show: widget.show,
-                episode: episode,
-                seasonNumber: widget.episode.seasonNumber,
-                seasonName: widget.seasonName,
-              ),
-          if (widget.additionalEpisodes.isNotEmpty)
-            TextButton(
-              onPressed: () => setState(() => _expanded = !_expanded),
-              child: Text(
-                _expanded
-                    ? 'Nascondi altri episodi'
-                    : '+${widget.additionalEpisodes.length} episodi in contemporanea',
-                textAlign: TextAlign.center,
+          if (count > 0) ...[
+            const Divider(height: 1, color: AppColors.divider),
+            Semantics(
+              expanded: _expanded,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.accent,
+                  minimumSize: const Size(0, 48),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: const RoundedRectangleBorder(),
+                ),
+                onPressed: () => setState(() => _expanded = !_expanded),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(_expanded
+                          ? 'Nascondi altri episodi'
+                          : '+$count ${count == 1 ? 'episodio' : 'episodi'} $releaseLabel'),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(_expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded),
+                  ],
+                ),
               ),
             ),
+            if (_expanded)
+              for (final episode in additionalEpisodes) ...[
+                const Divider(height: 1, color: AppColors.divider),
+                InkWell(
+                  key: ValueKey(episode.episodeNumber),
+                  onTap: () => _openEpisode(episode, seasonName),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                EpisodeCodeBadge(
+                                  season: seasonNumber,
+                                  episode: episode.episodeNumber,
+                                  seasonName: seasonName,
+                                ),
+                                if (episode.name.isNotEmpty)
+                                  Text(
+                                    episode.name,
+                                    style: const TextStyle(
+                                        color: AppColors.textPrimary),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.chevron_right_rounded,
+                              color: AppColors.textSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+          ],
         ],
       ),
     );
@@ -76,12 +165,13 @@ class _UpcomingEpisodeCardState extends State<UpcomingEpisodeCard> {
 class _UpcomingEpisodeRow extends StatelessWidget {
   final TrackedShow show;
   final TmdbEpisode episode;
+  final VoidCallback onTap;
   final int seasonNumber;
   final String? seasonName;
   final DateTime? preciseAirTime;
 
   const _UpcomingEpisodeRow({
-    super.key,
+    required this.onTap,
     required this.show,
     required this.episode,
     required this.seasonNumber,
@@ -101,17 +191,7 @@ class _UpcomingEpisodeRow extends StatelessWidget {
     final posterPath = show.posterPath;
 
     return InkWell(
-      onTap: () => showEpisodeDetailSheet(
-        context,
-        showTitle: show.title,
-        showTmdbId: show.tmdbId,
-        showPosterPath: show.posterPath,
-        trackedShow: show,
-        season: seasonNumber,
-        episodeNum: episode.episodeNumber,
-        episode: episode,
-        seasonName: seasonName,
-      ),
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(10),
         child: Row(

@@ -65,6 +65,13 @@ schermate di dettaglio/lista in `presentation/`.
   il codice episodio. Mostra l'orario, centrato verticalmente sul lato destro,
   solo se il calendario fornisce un orario preciso. Il tap apre il dettaglio
   episodio.
+- Una card può espandersi per mostrare gli episodi successivi della stessa
+  stagione o cour in uscita insieme. La card carica il dettaglio stagione
+  solo quando viene costruita nella timeline. Con dati TMDB di sola data
+  raggruppa per giorno. Se l'episodio ha un orario preciso, include solo
+  episodi con lo stesso istante esplicito. Ogni riga apre il suo dettaglio.
+  Se il dettaglio non è disponibile, resta visibile il prossimo episodio
+  salvato.
 - `_resolveNextEpisode` deve superare un puntatore TMDB già trasmesso: il remoto
   può mantenerlo in `next_episode_to_air` per ore.
 - Per segnare episodi precedenti usare il flusso esistente di scelta solo

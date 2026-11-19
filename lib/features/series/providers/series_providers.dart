@@ -44,16 +44,12 @@ class UpcomingEpisodeInfo {
   /// The formatted season name, useful for anime where season numbers are synthetic cours.
   final String? seasonName;
 
-  /// Other episodes of the same series releasing on the EXACT same day.
-  final List<TmdbEpisode> additionalEpisodes;
-
   const UpcomingEpisodeInfo({
     required this.show,
     required this.episode,
     required this.airDate,
     this.preciseAirTime,
     this.seasonName,
-    this.additionalEpisodes = const [],
   });
 }
 
@@ -1316,7 +1312,6 @@ Future<List<UpcomingEpisodeInfo>> upcomingEpisodes(Ref ref) async {
       airDate: airMidnight,
       preciseAirTime: show.isAnime ? show.nextEpisodeAirDate : null,
       seasonName: null,
-      additionalEpisodes: const [],
     ));
   }
 
